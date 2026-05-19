@@ -13,14 +13,15 @@ from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
 from pyrogram import filters, enums, Client
 from deep_translator import GoogleTranslator
-from utils.helpers import cmd_filter, prefixo, resolver_alvo, carregar, salvar, tr
+from utils.helpers import cmd_filter, prefixo, resolver_alvo, carregar, salvar
+from utils.i18n import tr, get_lang
 
 
 @Client.on_message(cmd_filter("hack") & filters.me)
 async def cmd_hack(client, message):
     """Simula um hack animado (diversão)."""
     alvo = message.reply_to_message.from_user.first_name if message.reply_to_message else "SISTEMA"
-    lang = getattr(client, "LANG", "pt")
+    lang = get_lang()
     if lang == "en":
         passos = [
             f"💀 **STARTING TARGETED ATTACK**\n🎯 **Target:** `{alvo}`",
@@ -57,7 +58,7 @@ async def cmd_type(client, message):
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(client, f"⚠️ Use: `{p}type [texto]`", f"⚠️ Use: `{p}type [text]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}type [texto]`", f"⚠️ Use: `{p}type [text]`"))
     texto = partes[1]
     digitado = ""
     for ch in texto:
@@ -76,12 +77,12 @@ async def cmd_ghost(client, message):
     p = prefixo(client)
     partes = message.text.split(None, 2)
     if len(partes) < 3:
-        return await message.edit_text(tr(client, f"⚠️ Use: `{p}ghost [segundos] [texto]`", f"⚠️ Use: `{p}ghost [seconds] [text]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}ghost [segundos] [texto]`", f"⚠️ Use: `{p}ghost [seconds] [text]`"))
     if not partes[1].isdigit():
-        return await message.edit_text(tr(client, f"⚠️ Tempo inválido. Ex: `{p}ghost 10 Olá`", f"⚠️ Invalid time. Ex: `{p}ghost 10 Hello`"))
+        return await message.edit_text(tr(f"⚠️ Tempo inválido. Ex: `{p}ghost 10 Olá`", f"⚠️ Invalid time. Ex: `{p}ghost 10 Hello`"))
     tempo = int(partes[1])
     texto = partes[2]
-    await message.edit_text(tr(client, f"👻 **[Autodestrutiva em {tempo}s]**\n\n{texto}", f"👻 **[Self-destructing in {tempo}s]**\n\n{texto}"))
+    await message.edit_text(tr(f"👻 **[Autodestrutiva em {tempo}s]**\n\n{texto}", f"👻 **[Self-destructing in {tempo}s]**\n\n{texto}"))
     await asyncio.sleep(tempo)
     try:
         await message.delete()
@@ -95,7 +96,7 @@ async def cmd_fake(client, message):
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(client, f"⚠️ Use: `{p}fake [audio|video|typing]`", f"⚠️ Use: `{p}fake [audio|video|typing]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}fake [audio|video|typing]`", f"⚠️ Use: `{p}fake [audio|video|typing]`"))
     tipo = partes[1].strip().lower()
     try:
         await message.delete()
@@ -119,18 +120,18 @@ async def cmd_fake(client, message):
 async def cmd_tr(client, message):
     """Traduz uma mensagem respondida para o idioma especificado."""
     if not message.reply_to_message:
-        return await message.edit_text(tr(client, "⚠️ Responda ao texto a traduzir.", "⚠️ Reply to the text to translate."))
+        return await message.edit_text(tr("⚠️ Responda ao texto a traduzir.", "⚠️ Reply to the text to translate."))
     partes = message.text.split(None, 1)
     alvo = partes[1].strip() if len(partes) > 1 else "pt"
     texto = message.reply_to_message.text or message.reply_to_message.caption
     if not texto:
-        return await message.edit_text(tr(client, "⚠️ Mensagem sem texto.", "⚠️ Message has no text."))
-    await message.edit_text(tr(client, f"🌐 **Traduzindo para `{alvo}`...**", f"🌐 **Translating to `{alvo}`...**"))
+        return await message.edit_text(tr("⚠️ Mensagem sem texto.", "⚠️ Message has no text."))
+    await message.edit_text(tr(f"🌐 **Traduzindo para `{alvo}`...**", f"🌐 **Translating to `{alvo}`...**"))
     try:
         res = GoogleTranslator(source='auto', target=alvo).translate(texto)
-        await message.edit_text(tr(client, f"🌐 **Tradução ({alvo.upper()}):**\n\n{res}", f"🌐 **Translation ({alvo.upper()}):**\n\n{res}"))
+        await message.edit_text(tr(f"🌐 **Tradução ({alvo.upper()}):**\n\n{res}", f"🌐 **Translation ({alvo.upper()}):**\n\n{res}"))
     except Exception as e:
-        await message.edit_text(tr(client, f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
 @Client.on_message(cmd_filter("voz") & filters.me)
@@ -158,9 +159,9 @@ async def cmd_voz(client, message):
         texto = message.reply_to_message.text or message.reply_to_message.caption
         
     if not texto:
-        return await message.edit_text(tr(client, f"⚠️ Use: `{p}voz [sotaque] [texto]`\nEx: `{p}voz pt Fala gajo!`", f"⚠️ Use: `{p}voice [accent] [text]`\nEx: `{p}voice en Hello friend!`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}voz [sotaque] [texto]`\nEx: `{p}voz pt Fala gajo!`", f"⚠️ Use: `{p}voice [accent] [text]`\nEx: `{p}voice en Hello friend!`"))
         
-    await message.edit_text(tr(client, "🎙️ **Gerando áudio...**", "🎙️ **Generating audio...**"))
+    await message.edit_text(tr("🎙️ **Gerando áudio...**", "🎙️ **Generating audio...**"))
     arquivo = "voz_temp.ogg"
     try:
         def gerar_tts():
@@ -172,7 +173,7 @@ async def cmd_voz(client, message):
         os.remove(arquivo)
         await message.delete()
     except Exception as e:
-        await message.edit_text(tr(client, f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
         if os.path.exists(arquivo):
             os.remove(arquivo)
 
@@ -196,12 +197,12 @@ def gerar_print_img(texto, autor, arquivo):
 async def cmd_print(client, message):
     """Gera um print estilizado de uma mensagem respondida."""
     if not message.reply_to_message:
-        return await message.edit_text(tr(client, "⚠️ Responda à mensagem para gerar o print.", "⚠️ Reply to a message to generate the screenshot."))
-    await message.edit_text(tr(client, "📸 **Gerando print...**", "📸 **Generating screenshot...**"))
+        return await message.edit_text(tr("⚠️ Responda à mensagem para gerar o print.", "⚠️ Reply to a message to generate the screenshot."))
+    await message.edit_text(tr("📸 **Gerando print...**", "📸 **Generating screenshot...**"))
     arquivo = "print_temp.png"
     try:
-        texto = message.reply_to_message.text or message.reply_to_message.caption or tr(client, "[Mídia sem texto]", "[Media without text]")
-        autor = tr(client, "Usuário", "User")
+        texto = message.reply_to_message.text or message.reply_to_message.caption or tr("[Mídia sem texto]", "[Media without text]")
+        autor = tr("Usuário", "User")
         if message.reply_to_message.from_user:
             autor = message.reply_to_message.from_user.first_name
         if not os.path.exists("Roboto-Medium.ttf"):
@@ -216,7 +217,7 @@ async def cmd_print(client, message):
         os.remove(arquivo)
         await message.delete()
     except Exception as e:
-        await message.edit_text(tr(client, f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
         if os.path.exists(arquivo):
             os.remove(arquivo)
 
@@ -227,16 +228,16 @@ async def cmd_encurtar(client, message):
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(client, f"⚠️ Use: `{p}encurtar [URL]`", f"⚠️ Use: `{p}shorten [URL]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}encurtar [URL]`", f"⚠️ Use: `{p}shorten [URL]`"))
     url = partes[1].strip()
-    await message.edit_text(tr(client, "🔗 **Encurtando...**", "🔗 **Shortening...**"))
+    await message.edit_text(tr("🔗 **Encurtando...**", "🔗 **Shortening...**"))
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(f"https://tinyurl.com/api-create.php?url={url}") as r:
                 texto_url = await r.text()
-        await message.edit_text(tr(client, f"🔗 **Encurtado:**\n`{texto_url}`", f"🔗 **Shortened:**\n`{texto_url}`"))
+        await message.edit_text(tr(f"🔗 **Encurtado:**\n`{texto_url}`", f"🔗 **Shortened:**\n`{texto_url}`"))
     except Exception as e:
-        await message.edit_text(tr(client, f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
 @Client.on_message(cmd_filter("ipinfo") & filters.me)
@@ -244,13 +245,13 @@ async def cmd_ipinfo(client, message):
     """Exibe informações sobre um endereço IP."""
     partes = message.text.split(None, 1)
     ip = partes[1].strip() if len(partes) > 1 else ""
-    await message.edit_text(tr(client, "🌐 **Buscando dados do IP...**", "🌐 **Fetching IP data...**"))
+    await message.edit_text(tr("🌐 **Buscando dados do IP...**", "🌐 **Fetching IP data...**"))
     try:
         url = f"https://ipinfo.io/{ip}/json" if ip else "https://ipinfo.io/json"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as res:
                 r = await res.json()
-        await message.edit_text(tr(client,
+        await message.edit_text(tr(
             f"🌐 **IP Info** (`{r.get('ip', 'N/A')}`)\n"
             f"├ 🏙️ **Cidade:** `{r.get('city', 'N/A')}`\n"
             f"├ 🗺️ **Região:** `{r.get('region', 'N/A')}`\n"
@@ -265,7 +266,7 @@ async def cmd_ipinfo(client, message):
             f"└ ⏰ **Timezone:** `{r.get('timezone', 'N/A')}`"
         ))
     except Exception as e:
-        await message.edit_text(tr(client, f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
 @Client.on_message(cmd_filter("clima") & filters.me)
@@ -273,7 +274,7 @@ async def cmd_clima(client, message):
     """Exibe o clima atual de uma cidade."""
     partes = message.text.split(None, 1)
     cidade = partes[1].strip() if len(partes) > 1 else "Sao Paulo"
-    await message.edit_text(tr(client, f"🌤️ **Buscando clima de `{cidade}`...**", f"🌤️ **Fetching weather for `{cidade}`...**"))
+    await message.edit_text(tr(f"🌤️ **Buscando clima de `{cidade}`...**", f"🌤️ **Fetching weather for `{cidade}`...**"))
     try:
         cidade_url = cidade.replace(" ", "+")
         async with aiohttp.ClientSession(headers={"User-Agent": "curl/7.68.0"}) as session:
@@ -282,13 +283,13 @@ async def cmd_clima(client, message):
                 texto = await r.text()
                 
         if status == 200 and "Unknown location" not in texto and "ERROR" not in texto:
-            await message.edit_text(tr(client, f"🌍 **Clima:**\n`{texto.strip()}`", f"🌍 **Weather:**\n`{texto.strip()}`"))
+            await message.edit_text(tr(f"🌍 **Clima:**\n`{texto.strip()}`", f"🌍 **Weather:**\n`{texto.strip()}`"))
         else:
-            await message.edit_text(tr(client, "❌ Localidade não encontrada.", "❌ Location not found."))
+            await message.edit_text(tr("❌ Localidade não encontrada.", "❌ Location not found."))
     except asyncio.TimeoutError:
-        await message.edit_text(tr(client, "❌ Tempo esgotado (Timeout).", "❌ Request timed out."))
+        await message.edit_text(tr("❌ Tempo esgotado (Timeout).", "❌ Request timed out."))
     except Exception as e:
-        await message.edit_text(tr(client, f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
 @Client.on_message(cmd_filter("specs") & filters.me)
@@ -297,9 +298,9 @@ async def cmd_specs(client, message):
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(client, f"⚠️ Use: `{p}specs [modelo do celular]`", f"⚠️ Use: `{p}specs [phone model]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}specs [modelo do celular]`", f"⚠️ Use: `{p}specs [phone model]`"))
     modelo = partes[1].strip()
-    await message.edit_text(tr(client, f"📱 **Buscando specs de `{modelo}`...**", f"📱 **Fetching specs for `{modelo}`...**"))
+    await message.edit_text(tr(f"📱 **Buscando specs de `{modelo}`...**", f"📱 **Fetching specs for `{modelo}`...**"))
     try:
         termo = modelo.replace(" ", "+")
         headers = {"User-Agent": "Mozilla/5.0 (Linux; Android 14)"}
@@ -343,9 +344,9 @@ async def cmd_clone(client, message):
     """Clona o nome, bio e foto de um usuário."""
     user, _, _ = await resolver_alvo(client, message)
     if not user:
-        return await message.edit_text(tr(client, f"⚠️ Responda a alguém ou use `{prefixo(client)}clone @user`", f"⚠️ Reply to someone or use `{prefixo(client)}clone @user`"))
+        return await message.edit_text(tr(f"⚠️ Responda a alguém ou use `{prefixo(client)}clone @user`", f"⚠️ Reply to someone or use `{prefixo(client)}clone @user`"))
         
-    msg = await message.edit_text(tr(client, "🎭 **Iniciando clonagem...**", "🎭 **Starting clone...**"))
+    msg = await message.edit_text(tr("🎭 **Iniciando clonagem...**", "🎭 **Starting clone...**"))
     
     backup = carregar("clone_backup.json", {})
     if not backup.get("cloned"):
@@ -370,10 +371,10 @@ async def cmd_clone(client, message):
     try:
         await client.update_profile(first_name=first, last_name=last, bio=bio)
     except Exception as e:
-        return await msg.edit_text(tr(client, f"❌ Erro ao atualizar perfil: `{e}`", f"❌ Error updating profile: `{e}`"))
+        return await msg.edit_text(tr(f"❌ Erro ao atualizar perfil: `{e}`", f"❌ Error updating profile: `{e}`"))
         
     if target.photo:
-        await msg.edit_text(tr(client, "🎭 **Baixando foto de perfil...**", "🎭 **Downloading profile photo...**"))
+        await msg.edit_text(tr("🎭 **Baixando foto de perfil...**", "🎭 **Downloading profile photo...**"))
         photo_path = None
         try:
             photo_path = await client.download_media(target.photo.big_file_id)
@@ -386,7 +387,7 @@ async def cmd_clone(client, message):
             if photo_path and os.path.exists(photo_path):
                 os.remove(photo_path)
                 
-    await msg.edit_text(tr(client, f"✅ **Clone de `{first}` ativado!**\nUse `{prefixo(client)}reverter` para voltar ao normal.", f"✅ **Cloned `{first}`!**\nUse `{prefixo(client)}revert` to restore original profile."))
+    await msg.edit_text(tr(f"✅ **Clone de `{first}` ativado!**\nUse `{prefixo(client)}reverter` para voltar ao normal.", f"✅ **Cloned `{first}`!**\nUse `{prefixo(client)}revert` to restore original profile."))
 
 
 @Client.on_message(cmd_filter("reverter") & filters.me)
@@ -394,9 +395,9 @@ async def cmd_reverter(client, message):
     """Restaura o perfil original após um clone."""
     backup = carregar("clone_backup.json", {})
     if not backup.get("cloned"):
-        return await message.edit_text(tr(client, "⚠️ Você não está clonando ninguém no momento.", "⚠️ You are not cloning anyone right now."))
+        return await message.edit_text(tr("⚠️ Você não está clonando ninguém no momento.", "⚠️ You are not cloning anyone right now."))
         
-    msg = await message.edit_text(tr(client, "🔄 **Revertendo para o perfil original...**", "🔄 **Reverting to original profile...**"))
+    msg = await message.edit_text(tr("🔄 **Revertendo para o perfil original...**", "🔄 **Reverting to original profile...**"))
     
     try:
         await client.update_profile(
@@ -419,4 +420,4 @@ async def cmd_reverter(client, message):
             pass
             
     salvar("clone_backup.json", {})
-    await msg.edit_text(tr(client, "✅ **Perfil original restaurado com sucesso!**", "✅ **Original profile restored successfully!**"))
+    await msg.edit_text(tr("✅ **Perfil original restaurado com sucesso!**", "✅ **Original profile restored successfully!**"))

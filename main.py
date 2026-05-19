@@ -208,6 +208,7 @@ except ImportError:
     pass  # instale com: pip install pyromod
 
 from pyrogram import Client, idle
+from utils.i18n import tr, get_lang
 
 # Google Drive é opcional
 drive = None
@@ -247,11 +248,8 @@ except json.JSONDecodeError as e:
 
 PREFIXO = config.get("PREFIXO", ",")
 logger.info(f"🔧 Prefixo carregado: '{PREFIXO}'")
-LANGUAGE = config.get("LANGUAGE", "pt")
+LANGUAGE = get_lang()
 logger.info(f"🌐 Idioma / Language: '{LANGUAGE.upper()}'")
-
-def tr_log(pt: str, en: str) -> str:
-    return en if LANGUAGE == "en" else pt
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 AUTENTICAÇÃO GOOGLE DRIVE (opcional)
@@ -312,7 +310,7 @@ def manipulador_erros(loop, context):
     if any(x in erro for x in ["Peer id invalid", "Message to delete not found", "MESSAGE_NOT_MODIFIED"]):
         return
     try:
-        msg = tr_log(f"⚠️ **ALERTA DO SISTEMA:**\nErro interno detectado em uma das tarefas de execução:\n`{erro}`", f"⚠️ **SYSTEM ALERT:**\nInternal error detected in an execution task:\n`{erro}`")
+        msg = tr(f"⚠️ **ALERTA DO SISTEMA:**\nErro interno detectado em uma das tarefas de execução:\n`{erro}`", f"⚠️ **SYSTEM ALERT:**\nInternal error detected in an execution task:\n`{erro}`")
         app.loop.create_task(app.send_message(config["ID_CANAL_LOGS"], msg))
     except Exception:
         pass
@@ -327,9 +325,9 @@ async def iniciar():
 
     em_background = "--background" in sys.argv or _ja_esta_em_screen()
     if em_background:
-        screen_info = tr_log("\n🖥️ Rodando em **segundo plano**", "\n🖥️ Running in **background**")
+        screen_info = tr("\n🖥️ Rodando em **segundo plano**", "\n🖥️ Running in **background**")
     else:
-        screen_info = tr_log("\n🖥️ Rodando em **primeiro plano** (terminal aberto)", "\n🖥️ Running in **foreground** (terminal open)")
+        screen_info = tr("\n🖥️ Rodando em **primeiro plano** (terminal aberto)", "\n🖥️ Running in **foreground** (terminal open)")
 
     try:
         if os.path.exists(UPDATE_FLAG):

@@ -7,21 +7,7 @@ import json
 import time
 import asyncio
 from pyrogram import filters, enums
-
-
-EN_ALIASES = {
-    "versao": "version", "atualizar": "update", "processos": "processes",
-    "organizar": "organize", "procurar": "search", "apagar": "delete",
-    "encurtar": "shorten", "clima": "weather", "voz": "voice",
-    "direto": "direct", "resumir": "summarize", "idioma": "lang",
-    "zombies": "zombies", "reverter": "revert"
-}
-
-
-def tr(client, pt: str, en: str) -> str:
-    """Retorna o texto em Inglês se o idioma do bot for 'en', senão retorna em Português."""
-    lang = getattr(client, "LANG", "pt")
-    return en if lang == "en" else pt
+from utils.i18n import tr, get_lang, COMMAND_ALIASES
 
 
 def salvar(arquivo, dados):
@@ -60,8 +46,8 @@ def cmd_filter(nome):
         if not message.text:
             return False
         p = prefixo(client)
-        lang = getattr(client, "LANG", "pt")
-        alias = EN_ALIASES.get(nome, nome)
+        lang = get_lang()
+        alias = COMMAND_ALIASES.get(nome, nome)
         validos = [nome]
         if lang == "en" and alias != nome:
             validos.append(alias)
@@ -98,15 +84,15 @@ async def auditoria(client, acao, user, chat, motivo=None, msg_orig=None):
     nome = getattr(user, "first_name", "Desconhecido") if user else "Desconhecido"
     uid = getattr(user, "id", "?") if user else "?"
     chat_titulo = getattr(chat, "title", "Chat Privado")
-    txt = tr(client,
+    txt = tr(
         f"🛡️ **AUDITORIA DE MODERAÇÃO**\n\n⚙️ **Ação:** `{acao}`\n👤 **Alvo:** {nome} (`{uid}`)\n📍 **Chat:** {chat_titulo}\n",
         f"🛡️ **MODERATION AUDIT**\n\n⚙️ **Action:** `{acao}`\n👤 **Target:** {nome} (`{uid}`)\n📍 **Chat:** {chat_titulo}\n"
     )
     if motivo:
-        txt += tr(client, f"📝 **Motivo:** `{motivo}`\n", f"📝 **Reason:** `{motivo}`\n")
+        txt += tr(f"📝 **Motivo:** `{motivo}`\n", f"📝 **Reason:** `{motivo}`\n")
     if msg_orig:
-        conteudo = msg_orig.text or msg_orig.caption or tr(client, "[Mídia]", "[Media]")
-        txt += tr(client, f"\n💬 **Mensagem original:**\n`{conteudo[:400]}`", f"\n💬 **Original message:**\n`{conteudo[:400]}`")
+        conteudo = msg_orig.text or msg_orig.caption or tr("[Mídia]", "[Media]")
+        txt += tr(f"\n💬 **Mensagem original:**\n`{conteudo[:400]}`", f"\n💬 **Original message:**\n`{conteudo[:400]}`")
     try:
         await client.send_message(log_id, txt)
     except:

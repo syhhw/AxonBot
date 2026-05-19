@@ -73,10 +73,7 @@ _garantir_venv()
 # ══════════════════════════════════════════════════════════════════════════════
 # 🌐 SUPORTE MULTI-IDIOMA DO SETUP
 # ══════════════════════════════════════════════════════════════════════════════
-_LANG = "pt"
-
-def t(pt: str, en: str) -> str:
-    return en if _LANG == "en" else pt
+from utils.i18n import tr as t, get_lang
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 FUNÇÕES AUXILIARES
@@ -269,7 +266,7 @@ def main():
         canal_id                = config['ID_CANAL_LOGS']
         config['PREFIXO']       = input(t(f"  ⌨️  Prefixo dos comandos (padrão ','): ", f"  ⌨️  Command prefix (default ','): ")).strip() or ","
         config['DRIVE_ATIVO']   = drive_ativo
-        config['LANGUAGE']      = _LANG
+        config['LANGUAGE']      = get_lang()
 
         if drive_ativo:
             pasta = input(t(f"  📁 ID da pasta raiz do Drive: ", f"  📁 Root Drive folder ID: ")).strip()

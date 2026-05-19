@@ -21,7 +21,8 @@ from pyrogram import filters, Client, raw
 from pyrogram.raw.types import InputStickerSetShortName
 from pyrogram.errors import StickersetInvalid
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from utils.helpers import cmd_filter, prefixo, tr
+from utils.helpers import cmd_filter, prefixo
+from utils.i18n import tr
 
 STICKER_BOT = "Stickers"
 PACK_FULL_MSG = "Whoa! That's probably enough stickers for one pack"
@@ -83,12 +84,12 @@ async def cmd_kang(client, message):
     reply = message.reply_to_message
 
     if not reply or not (reply.sticker or reply.photo or reply.document):
-        return await message.edit_text(tr(client,
+        return await message.edit_text(tr(
             f"⚠️ Responda a uma **figurinha** ou **foto** com `{p}kang [emoji opcional]`",
             f"⚠️ Reply to a **sticker** or **photo** with `{p}kang [optional emoji]`"
         ))
 
-    await message.edit_text(tr(client, "🔄 **Kanging...**", "🔄 **Kanging...**"))
+    await message.edit_text(tr("🔄 **Kanging...**", "🔄 **Kanging...**"))
 
     me = await client.get_me()
     username = me.username or str(me.id)
@@ -114,10 +115,10 @@ async def cmd_kang(client, message):
             tmp = await client.download_media(reply, file_name=TMP_WEBP)
             file_to_send = await resize_image(tmp, TMP_PNG)
         else:
-            return await message.edit_text(tr(client, "❌ Tipo de arquivo não suportado para kang.", "❌ File type not supported for kang."))
+            return await message.edit_text(tr("❌ Tipo de arquivo não suportado para kang.", "❌ File type not supported for kang."))
     except Exception as e:
         limpar_tmp()
-        return await message.edit_text(tr(client, f"❌ Erro ao processar arquivo: `{e}`", f"❌ Error processing file: `{e}`"))
+        return await message.edit_text(tr(f"❌ Erro ao processar arquivo: `{e}`", f"❌ Error processing file: `{e}`"))
 
     # ── Lê emoji personalizado do argumento ───────────────────────────────────
     partes = message.text.split(None, 1)
@@ -197,7 +198,7 @@ async def cmd_kang(client, message):
                 pack_num += 1
                 packname, packnick, cmd_new = build_names(pack_num)
                 pack_url = f"https://t.me/addstickers/{packname}"
-                await message.edit_text(tr(client, f"📦 Pack cheio! Criando pack **#{pack_num}**...", f"📦 Pack full! Creating pack **#{pack_num}**..."))
+                await message.edit_text(tr(f"📦 Pack cheio! Criando pack **#{pack_num}**...", f"📦 Pack full! Creating pack **#{pack_num}**..."))
 
                 if await pack_exists(client, packname):
                     # Próximo pack também existe, tenta adicionar nele
@@ -222,7 +223,7 @@ async def cmd_kang(client, message):
 
         else:
             # ── Cria o pacote do zero ─────────────────────────────────────────
-            await message.edit_text(tr(client, "📦 **Criando novo pacote...**", "📦 **Creating new pack...**"))
+            await message.edit_text(tr("📦 **Criando novo pacote...**", "📦 **Creating new pack...**"))
             await sw(cmd_new)                          # /newpack
             await sw(packnick)                         # título
             await fw()                                 # figurinha
@@ -234,31 +235,31 @@ async def cmd_kang(client, message):
         # ── Sucesso ───────────────────────────────────────────────────────────
         limpar_tmp()
         if is_anim:
-            tipo = tr(client, "Animada 🎞️", "Animated 🎞️")
+            tipo = tr("Animada 🎞️", "Animated 🎞️")
         elif is_video:
-            tipo = tr(client, "Vídeo 🎬", "Video 🎬")
+            tipo = tr("Vídeo 🎬", "Video 🎬")
         else:
-            tipo = tr(client, "Estática 🖼️", "Static 🖼️")
+            tipo = tr("Estática 🖼️", "Static 🖼️")
             
-        await message.edit_text(tr(client,
+        await message.edit_text(tr(
             f"✅ **Figurinha roubada!**\n\n🎭 Tipo: `{tipo}`\n😀 Emoji: `{emoji}`\n📦 Pack: {packname}",
             f"✅ **Sticker kanged!**\n\n🎭 Type: `{tipo}`\n😀 Emoji: `{emoji}`\n📦 Pack: {packname}"
         ),
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(tr(client, "📦 Ver pacote", "📦 View pack"), url=pack_url)]
+                [InlineKeyboardButton(tr("📦 Ver pacote", "📦 View pack"), url=pack_url)]
             ]),
             disable_web_page_preview=True
         )
 
     except asyncio.TimeoutError:
         limpar_tmp()
-        await message.edit_text(tr(client,
+        await message.edit_text(tr(
             "⏰ **Timeout:** O @Stickers demorou demais para responder.\nTente novamente em alguns segundos.",
             "⏰ **Timeout:** @Stickers took too long to respond.\nTry again in a few seconds."
         ))
     except Exception as e:
         limpar_tmp()
-        await message.edit_text(tr(client, f"❌ **Erro no kang:**\n`{e}`", f"❌ **Kang error:**\n`{e}`"))
+        await message.edit_text(tr(f"❌ **Erro no kang:**\n`{e}`", f"❌ **Kang error:**\n`{e}`"))
 
 
 # ─── Comando ,packinfo ────────────────────────────────────────────────────────
@@ -270,7 +271,7 @@ async def cmd_packinfo(client, message):
     username = me.username or str(me.id)
     p = prefixo(client)
 
-    await message.edit_text(tr(client, "🔍 **Buscando seus pacotes...**", "🔍 **Fetching your packs...**"))
+    await message.edit_text(tr("🔍 **Buscando seus pacotes...**", "🔍 **Fetching your packs...**"))
 
     linhas = []
     for num in range(1, 11):
@@ -278,16 +279,16 @@ async def cmd_packinfo(client, message):
             packname = f"a{me.id}_by_{username}_{num}{suffix}"
             if await pack_exists(client, packname):
                 url = f"https://t.me/addstickers/{packname}"
-                label = tr(client, label_pt, label_en)
+                label = tr(label_pt, label_en)
                 linhas.append(f"**{label} #{num}:** [{packname}]({url})")
 
     if not linhas:
-        return await message.edit_text(tr(client,
+        return await message.edit_text(tr(
             f"⚠️ Nenhum pacote encontrado.\nUse `{p}kang` respondendo a uma figurinha para criar o primeiro!",
             f"⚠️ No packs found.\nUse `{p}kang` replying to a sticker to create your first!"
         ))
 
     await message.edit_text(
-        tr(client, f"📦 **Seus pacotes** (`@{username}`):\n\n", f"📦 **Your packs** (`@{username}`):\n\n") + "\n".join(linhas),
+        tr(f"📦 **Seus pacotes** (`@{username}`):\n\n", f"📦 **Your packs** (`@{username}`):\n\n") + "\n".join(linhas),
         disable_web_page_preview=True
     )

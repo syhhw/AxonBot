@@ -14,6 +14,7 @@ Fluxo de adição (pacote existente):
 import os
 import math
 import asyncio
+import tempfile
 
 from PIL import Image
 from pyrogram import filters, Client, raw
@@ -24,8 +25,8 @@ from utils.helpers import cmd_filter, prefixo, tr
 
 STICKER_BOT = "Stickers"
 PACK_FULL_MSG = "Whoa! That's probably enough stickers for one pack"
-TMP_WEBP = "/tmp/kang_temp.webp"
-TMP_PNG  = "/tmp/kang_temp.png"
+TMP_WEBP = os.path.join(tempfile.gettempdir(), "kang_temp.webp")
+TMP_PNG  = os.path.join(tempfile.gettempdir(), "kang_temp.png")
 
 
 # ─── Utilitários ──────────────────────────────────────────────────────────────

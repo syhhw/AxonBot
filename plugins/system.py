@@ -42,13 +42,20 @@ def _reiniciar_processo():
     python = sys.executable
     args   = sys.argv[:]
 
-    # Garante que o novo processo não entre no loop de perguntar sobre screen
+    # Garante que o novo processo não entre no loop de perguntar sobre screen/background
     if "--no-screen" not in args:
         args.append("--no-screen")
+    if "--background" not in args and "--background" in sys.argv:
+        args.append("--background")
 
-    subprocess.Popen([python] + args)
-    # Encerra o processo atual de forma limpa, sem propagar SIGINT
-    os.kill(os.getpid(), signal.SIGTERM)
+    kwargs = {}
+    if os.name == "nt" and "--background" in args:
+        python = python.replace("python.exe", "pythonw.exe")
+        kwargs["creationflags"] = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    subprocess.Popen([python] + args, **kwargs)
+    # Encerra o processo atual de forma limpa, multiplataforma
+    os._exit(0)
 
 
 @Client.on_message(cmd_filter("versao") & filters.me)

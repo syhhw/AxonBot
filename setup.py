@@ -50,15 +50,20 @@ def _garantir_venv():
         print(f"\n{AMARELO}⚠️  Ambiente virtual não encontrado. Criando venv...{RESET}")
         ret = subprocess.run([sys.executable, "-m", "venv", venv_dir])
         if ret.returncode != 0:
-            print(f"{VERMELHO}❌ Falha ao criar venv. Verifique se python3-venv está instalado:{RESET}")
-            print(f"   {AMARELO}sudo apt install python3-venv{RESET}\n")
+            print(f"{VERMELHO}❌ Falha ao criar venv.{RESET}")
+            if sys.platform != "win32":
+                print(f"   Verifique se python3-venv está instalado:")
+                print(f"   {AMARELO}sudo apt install python3-venv{RESET}\n")
             sys.exit(1)
         print(f"{VERDE}✅ Venv criada em '{venv_dir}/'!{RESET}\n")
         python_venv = next((c for c in candidatos if os.path.isfile(c)), None)
 
     if python_venv:
         print(f"{AMARELO}⚠️  Reiniciando setup dentro da venv...{RESET}\n")
-        os.execv(python_venv, [python_venv] + sys.argv)
+        if os.name == "nt":
+            sys.exit(subprocess.call([python_venv] + sys.argv))
+        else:
+            os.execv(python_venv, [python_venv] + sys.argv)
     else:
         print(f"{VERMELHO}❌ Não foi possível encontrar o Python da venv.{RESET}\n")
         sys.exit(1)
@@ -291,7 +296,8 @@ def main():
         
         notificar_log_telegram(canal_id, "✅ **SETUP CONCLUÍDO**\nAs configurações do Userbot foram geradas ou atualizadas com sucesso!")
         print(f"{AZUL}🚀 Próximos passos:{RESET}")
-        print(f"   • Inicie o bot: {VERDE}python3 main.py{RESET}")
+        cmd_run = "python main.py" if sys.platform == "win32" else "python3 main.py"
+        print(f"   • Inicie o bot: {VERDE}{cmd_run}{RESET}")
         print()
 
     except ValueError as e:

@@ -34,16 +34,24 @@ def _em_venv() -> bool:
     )
 
 if not _em_venv():
-    _base        = os.path.dirname(os.path.abspath(__file__))
-    _python_venv = os.path.join(_base, "venv", "bin", "python3")
+    _base = os.path.dirname(os.path.abspath(__file__))
+    _python_venv = os.path.join(_base, "venv", "Scripts", "python.exe") if os.name == "nt" else os.path.join(_base, "venv", "bin", "python3")
+    if not os.path.isfile(_python_venv) and os.name != "nt":
+        _python_venv = os.path.join(_base, "venv", "bin", "python")
 
     if os.path.isfile(_python_venv):
         print(f"{AMARELO}⚠️  Venv detectada. Reiniciando com: {_python_venv}{RESET}")
-        os.execv(_python_venv, [_python_venv] + sys.argv)
-        # os.execv substitui o processo — nada abaixo é executado
+        if os.name == "nt":
+            import subprocess
+            sys.exit(subprocess.call([_python_venv] + sys.argv))
+        else:
+            os.execv(_python_venv, [_python_venv] + sys.argv)
     else:
         print(f"{AMARELO}⚠️  Pasta venv/ não encontrada. Rodando com Python do sistema.{RESET}")
-        print(f"   Crie com: {VERDE}python3 -m venv venv && source venv/bin/activate{RESET}")
+        if os.name == "nt":
+            print(f"   Crie com: {VERDE}python -m venv venv && venv\\Scripts\\activate{RESET}")
+        else:
+            print(f"   Crie com: {VERDE}python3 -m venv venv && source venv/bin/activate{RESET}")
         print(f"   Depois:   {VERDE}pip install -r requirements.txt{RESET}\n")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -68,12 +76,29 @@ if "--background" not in sys.argv:
     if _resp in ("", "s"):
         _script = os.path.abspath(__file__)
         _log    = os.path.join(os.path.dirname(_script), "userbot.log")
-        _cmd    = f"nohup {sys.executable} {_script} --background > {_log} 2>&1 &"
+        
+        if os.name == "nt":
+            import subprocess
+            _python_bg = sys.executable.replace("python.exe", "pythonw.exe")
+            if not os.path.exists(_python_bg):
+                _python_bg = sys.executable
 
-        os.system(_cmd)
+            with open(_log, "a") as f:
+                subprocess.Popen(
+                    [_python_bg, _script, "--background"],
+                    stdout=f,
+                    stderr=f,
+                    stdin=subprocess.DEVNULL,
+                    creationflags=getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+                )
+            _stop_cmd = "taskkill /F /IM pythonw.exe"
+        else:
+            _cmd = f"nohup {sys.executable} {_script} --background > {_log} 2>&1 &"
+            _stop_cmd = "kill $(pgrep -f 'python.*main.py')"
+            os.system(_cmd)
         print(f"\n{VERDE}✅ Bot iniciado em segundo plano!{RESET}")
         print(f"   Log em: {_log}")
-        print(f"   Para parar: {AMARELO}kill $(pgrep -f 'python.*main.py'){RESET}\n")
+        print(f"   Para parar: {AMARELO}{_stop_cmd}{RESET}\n")
         sys.exit(0)
     else:
         print(f"\n  {VERDE}▶ Rodando em primeiro plano...{RESET}\n")
@@ -91,13 +116,18 @@ def _verificar_primeiro_uso():
 
         if not os.path.exists("setup.py"):
             print(f"  {AMARELO}❌ setup.py também não encontrado. Baixe o projeto completo.{RESET}\n")
-            sys.exit(1)
+        if not os.path.exists("setup.sh") and os.name != "nt":
+            print(f"  {AMARELO}⚠️  setup.sh não encontrado (pode ser ignorado no Windows).{RESET}\n")
 
         resp = input(f"  ❓ Deseja executar o setup agora? (S/n): ").strip().lower()
         if resp in ("", "s"):
             print(f"\n{VERDE}▶ Iniciando setup...{RESET}\n")
             import runpy
             runpy.run_path("setup.py", run_name="__main__")
+            
+            import subprocess
+            if os.path.exists("setup.sh") and os.name != "nt":
+                subprocess.run(["bash", "setup.sh"])
 
             if not os.path.exists("config.json"):
                 print(f"\n  {AMARELO}⚠️  Setup encerrado sem criar config.json. Bot não iniciado.{RESET}\n")
@@ -105,7 +135,8 @@ def _verificar_primeiro_uso():
 
             print(f"\n{VERDE}✅ Setup concluído! Iniciando o bot...{RESET}\n")
         else:
-            print(f"\n  {AMARELO}Setup cancelado. Execute 'python3 setup.py' quando estiver pronto.{RESET}\n")
+            cmd_run = "python setup.py" if os.name == "nt" else "python3 setup.py"
+            print(f"\n  {AMARELO}Setup cancelado. Execute '{cmd_run}' quando estiver pronto.{RESET}\n")
             sys.exit(0)
 
 _verificar_primeiro_uso()
@@ -152,7 +183,10 @@ def _garantir_dependencias():
             print(f"{VERDE}✅ Instalação concluída! Reiniciando o bot...{RESET}\n")
             with open(".deps_updated.json", "w", encoding="utf-8") as f:
                 json.dump(faltando, f)
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+            if os.name == "nt":
+                sys.exit(subprocess.call([sys.executable] + sys.argv))
+            else:
+                os.execv(sys.executable, [sys.executable] + sys.argv)
         except Exception as e:
             print(f"{VERMELHO}❌ Falha crítica ao tentar instalar pacotes automaticamente: {e}{RESET}")
             sys.exit(1)

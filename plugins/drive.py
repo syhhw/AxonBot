@@ -6,6 +6,7 @@ import os
 import asyncio
 import aiohttp
 import humanize
+import tempfile
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, salvar, carregar, deletar_depois, tr
@@ -125,7 +126,7 @@ async def drive_get(client, message):
     msg = await message.edit_text(tr(client, "📥 **Baixando arquivo da URL...**", "📥 **Downloading file from URL...**"))
     try:
         nome = url.split("/")[-1].split("?")[0] or "arquivo"
-        local = os.path.join("/tmp", nome)
+        local = os.path.join(tempfile.gettempdir(), nome)
         
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as r:

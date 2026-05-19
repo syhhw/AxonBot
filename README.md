@@ -8,7 +8,7 @@
 <br>
 
 <div align="center">
-  <a href="#-userbot-pro-v21-english">🇺🇸 English</a> | <a href="#-userbot-pro-v21-português">🇧🇷 Português</a>
+  <a href="#-userbot-pro-v22-english">🇺🇸 English</a> | <a href="#-userbot-pro-v22-português">🇧🇷 Português</a>
 </div>
 
 ---

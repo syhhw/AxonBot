@@ -79,13 +79,13 @@ async def cmd_eval(client, message):
     else:
         await message.edit_text(f"🐍 **Eval Output**\n\n```python\n{out}\n```")
 
-@Client.on_message(cmd_filter("install") & filters.me)
+@Client.on_message(cmd_filter("instalar") & filters.me)
 async def cmd_install(client, message):
     """Baixa e instala um novo plugin via URL."""
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(f"⚠️ Use: `{p}install [url do .py]`", f"⚠️ Use: `{p}install [url to .py]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}instalar [url do .py]`", f"⚠️ Use: `{p}install [url to .py]`"))
     url = partes[1].strip()
     filename = url.split("/")[-1] if url.endswith(".py") else "plugin_baixado.py"
     filepath = os.path.join("plugins", filename)
@@ -103,13 +103,13 @@ async def cmd_install(client, message):
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
-@Client.on_message(cmd_filter("uninstall") & filters.me)
+@Client.on_message(cmd_filter("desinstalar") & filters.me)
 async def cmd_uninstall(client, message):
     """Desinstala um plugin existente."""
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(f"⚠️ Use: `{p}uninstall [nome]`", f"⚠️ Use: `{p}uninstall [filename]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}desinstalar [nome]`", f"⚠️ Use: `{p}uninstall [filename]`"))
     filename = partes[1].strip() if partes[1].endswith(".py") else f"{partes[1].strip()}.py"
     filepath = os.path.join("plugins", filename)
     if not os.path.exists(filepath):

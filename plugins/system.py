@@ -265,7 +265,16 @@ async def cmd_processos(client, message):
 async def cmd_desligar(client, message):
     """Desliga o processo do userbot remotamente."""
     await message.edit_text(tr("🛑 **Desligando o bot com segurança...**", "🛑 **Shutting down gracefully...**"))
-    await asyncio.sleep(1)
-    # Envia o sinal de término para o próprio processo,
-    # acionando o graceful shutdown do Pyrogram e o aviso de log.
-    os.kill(os.getpid(), signal.SIGTERM)
+    await asyncio.sleep(0.5)
+    
+    # Envia a mensagem de log manualmente antes de forçar a saída na raiz
+    cfg = getattr(client, "config", {})
+    log_id = cfg.get("ID_CANAL_LOGS")
+    if log_id:
+        try:
+            await client.send_message(log_id, tr("🛑 **USERBOT OFFLINE**\nO processo foi encerrado remotamente.", "🛑 **USERBOT OFFLINE**\nThe process was terminated safely."))
+        except:
+            pass
+            
+    # Mata o processo instantaneamente (Garante fechamento no Windows e Linux)
+    os._exit(0)

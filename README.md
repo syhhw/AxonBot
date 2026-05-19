@@ -7,7 +7,116 @@
 
 <br>
 
-# 🚀 USERBOT PRO v2.1
+<div align="center">
+  <a href="#-userbot-pro-v21-english">🇺🇸 English</a> | <a href="#-userbot-pro-v21-português">🇧🇷 Português</a>
+</div>
+
+---
+
+# 🇺🇸 USERBOT PRO v2.1 (English)
+
+**Userbot Pro** is an advanced personal assistant for Telegram built with [Pyrogram](https://docs.pyrogram.org/). It runs directly on your account, automating tasks, moderating groups, cloning stickers, integrating Artificial Intelligence, and even backing up files to your Google Drive!
+
+Fully adapted to run stealthily in the background on **Windows**, **Linux** servers (Ubuntu/Debian), and even on **Termux** (Android).
+
+---
+
+## ✨ Highlights & Features
+
+- 🧠 **Artificial Intelligence:** Natively integrated with Google Gemini AI (chat summaries and Q&A).
+- ☁️ **Google Drive:** Download web files directly to your Drive, search files, organize folders, and manage your storage via Telegram.
+- 👻 **Invisible Background:** Native support for running in the background, whether using `nohup` (Linux) or detached windowless processes (`pythonw.exe`) on Windows.
+- 🛡️ **Moderation & Security:** Automatic Captcha for unauthorized PMs, GBAN (Global Ban across your groups), deleted accounts (zombies) cleanup.
+- 🎭 **Fun & Tools:** Auto-kang stickers (creates packs autonomously), profile cloning, universal media downloader (TikTok, YouTube, Insta) via `yt-dlp`.
+- 🔄 **Auto-Update:** Update the bot with a simple `,update` command via GitHub. It downloads dependencies and restarts autonomously.
+- 🌐 **Bilingual System:** Fully localized in English and Portuguese, togglable via command.
+
+---
+
+## 📥 Installation (Step-by-Step)
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
+cd SEU_REPOSITORIO
+```
+
+### Step 2: Run the Smart Setup
+Start the setup script. It will create a virtual environment (venv) automatically and install the required libraries.
+**Windows:** `python setup.py`
+**Linux / Termux:** `python3 setup.py`
+
+### Step 3: Follow On-Screen Instructions
+1. Enter your `API_ID` and `API_HASH` (from my.telegram.org).
+2. Enter the ID of a private group/channel to receive logs (add `-100`).
+3. Choose your command prefix (default is `,`).
+4. *(Optional)* Configure the Google Gemini API Key and Google Drive.
+
+---
+
+## 🚀 Starting the Bot
+
+**Windows:** `python main.py`
+**Linux / Termux:** `python3 main.py`
+
+> 💡 **Tip:** Upon startup, the bot will ask if you want to run it in **Foreground** or **Background**. If you choose Background (`S`), the bot will become invisible, and you can safely close the terminal!
+
+---
+
+## 📚 Main Commands
+Type `,menu` in any chat to dynamically view all available categorized commands!
+
+### 🖥️ System
+| Command | Description |
+| :--- | :--- |
+| `,menu` | Displays all modules and commands dynamically. |
+| `,version` | Checks if the bot is up-to-date with GitHub. |
+| `,update` | Downloads the latest updates from Git and restarts. |
+| `,lang [pt/en]` | Changes the bot's language globally. |
+| `,sysinfo` | Shows used resources (CPU, RAM, OS). |
+
+### 👮 Moderation
+| Command | Description |
+| :--- | :--- |
+| `,ban` / `,unban` | Bans or unbans a user from the group. |
+| `,purge` | Deletes all messages starting from the replied message. |
+| `,zombies` | Removes deleted accounts (ghosts) from the current group. |
+| `,gban` / `,fban` | Bans the target globally (across your groups) or federations. |
+
+### 🎭 Fun & Tools
+| Command | Description |
+| :--- | :--- |
+| `,kang` | Reply to a sticker to steal it and add it to your pack. |
+| `,clone` | Clones the replied user's name, bio, and profile photo. |
+| `,revert`| Restores your original profile after using clone. |
+| `,voice en Text` | Converts text to audio and sends it in the chat. |
+| `,dl [url]` | Downloads videos from YouTube, Instagram, TikTok directly. |
+
+### 🧠 Artificial Intelligence (Gemini)
+| Command | Description |
+| :--- | :--- |
+| `,ask [text]` | Asks a question or requests something from Google Gemini. |
+| `,summarize` | Reads the last 50 chat messages and generates a bullet-point summary. |
+
+### 📂 Google Drive
+| Command | Description |
+| :--- | :--- |
+| `,status` | Shows free/used space on your Drive. |
+| `,get [url]` | Downloads a file directly to the cloud. |
+| `,search [name]`| Searches files in your Drive, allowing you to delete or generate direct links. |
+
+---
+
+## 🛡️ PM Firewall (AFK & Captcha)
+
+If an unauthorized user sends you a private message, the bot intercepts it and sends a **Math Captcha**.
+- Correct answer: PM is automatically allowed.
+- Manual allow: use the `,permit` command.
+- AFK mode: use `,afk [reason]` to leave an auto-reply. Sending any message will disable it.
+
+---
+
+# 🇧🇷 USERBOT PRO v2.1 (Português)
 
 O **Userbot Pro** é um assistente pessoal avançado para Telegram construído com [Pyrogram](https://docs.pyrogram.org/). Ele roda diretamente na sua conta, automatizando tarefas, moderando grupos, clonando figurinhas, integrando Inteligência Artificial e até fazendo backup no seu Google Drive!
 
@@ -23,6 +132,7 @@ Totalmente adaptado para rodar de forma invisível no **Windows**, servidores **
 - 🛡️ **Moderação e Segurança:** Captcha automático para quem te chama no privado (PV), GBAN (Banimento Global em seus grupos), limpeza de contas deletadas (zumbis).
 - 🎭 **Diversão e Ferramentas:** Kang automático de figurinhas (cria pacotes sozinho), clonagem de perfil, downloads universais (TikTok, YouTube, Insta) via `yt-dlp`.
 - 🔄 **Auto-Atualização:** Atualize o bot com um simples comando `,atualizar` via GitHub. Ele baixa as dependências e reinicia sozinho.
+- 🌐 **Sistema Bilíngue:** Totalmente traduzido para Inglês e Português.
 
 ---
 
@@ -100,6 +210,7 @@ O prefixo padrão é `,` (vírgula). Digite `,menu` em qualquer chat para ver to
 | `,atualizar` | Baixa as últimas atualizações do Git e reinicia. |
 | `,restart` | Reinicia o processo do Userbot. |
 | `,ping` | Verifica a latência (ping) do bot no Telegram. |
+| `,idioma [pt/en]` | Muda o idioma do bot (Português/Inglês). |
 | `,sysinfo` | Mostra os recursos usados (CPU, RAM, OS). |
 
 ### 👮 Moderação

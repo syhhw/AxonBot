@@ -1,5 +1,5 @@
 """
-🚀 USERBOT PRO v2.1 - setup.py
+🚀 USERBOT PRO v2.2 - setup.py
 Configurador interativo inteligente:
   - Detecta e ativa a venv automaticamente antes de qualquer verificação.
   - Instala dependências faltantes automaticamente dentro da venv.
@@ -80,7 +80,7 @@ from utils.i18n import tr as t, get_lang
 # ══════════════════════════════════════════════════════════════════════════════
 def cabecalho():
     print(f"\n{AZUL}{NEGRITO}╔════════════════════════════════════════════╗{RESET}")
-    print(f"{AZUL}{NEGRITO}║   🚀 USERBOT PRO v2.1 - SETUP INTELIGENTE  ║{RESET}")
+    print(f"{AZUL}{NEGRITO}║   🚀 USERBOT PRO v2.2 - SETUP INTELIGENTE  ║{RESET}")
     print(f"{AZUL}{NEGRITO}╚════════════════════════════════════════════╝{RESET}\n")
     print(f"  {CIANO}Python:{RESET} {sys.executable}")
     print(t(f"  {CIANO}Venv ativa:{RESET} {VERDE}Sim ✅{RESET}\n", f"  {CIANO}Active venv:{RESET} {VERDE}Yes ✅{RESET}\n"))

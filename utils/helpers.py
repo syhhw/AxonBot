@@ -6,26 +6,70 @@ import os
 import json
 import time
 import asyncio
+import sqlite3
+import sys
+import subprocess
 from pyrogram import filters, enums
 from utils.i18n import tr, get_lang, COMMAND_ALIASES
 
 
+DB_PATH = "userbot.db"
+
+def _init_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)")
+
+_init_db()
+
 def salvar(arquivo, dados):
-    with open(arquivo, "w", encoding="utf-8") as f:
-        json.dump(dados, f, indent=2, ensure_ascii=False)
+    """Salva dados. Se for config/update, mantém como arquivo físico. Senão, usa SQLite."""
+    if arquivo in ["config.json", ".update_pending.json", ".deps_updated.json"]:
+        with open(arquivo, "w", encoding="utf-8") as f:
+            json.dump(dados, f, indent=2, ensure_ascii=False)
+        return
+
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)",
+            (arquivo, json.dumps(dados, ensure_ascii=False))
+        )
 
 
 def carregar(arquivo, padrao):
+    """Carrega dados. Tenta SQLite primeiro. Auto-migra arquivos JSON legados."""
+    if arquivo in ["config.json", ".update_pending.json", ".deps_updated.json"]:
+        if os.path.exists(arquivo):
+            try:
+                with open(arquivo, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except:
+                pass
+        return padrao
+
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.execute("SELECT value FROM kv_store WHERE key = ?", (arquivo,))
+        row = cursor.fetchone()
+        if row:
+            try:
+                return json.loads(row[0])
+            except:
+                pass
+
+    # Migração automática de JSON para SQLite (v2.1 -> v2.2)
     if os.path.exists(arquivo):
         try:
             with open(arquivo, "r", encoding="utf-8") as f:
-                return json.load(f)
+                dados = json.load(f)
+            salvar(arquivo, dados)
+            os.remove(arquivo)  # Apaga o JSON velho após migrar
+            return dados
         except:
             pass
+
     return padrao
 
 
-def deletar_depois(message, tempo=15):
+def deletar_depois(message, tempo=30):
     """Deleta uma mensagem automaticamente após X segundos sem travar o bot."""
     async def _tarefa():
         await asyncio.sleep(tempo)
@@ -129,3 +173,22 @@ async def resolver_alvo(client, message):
         except (ValueError, Exception):
             return None, None, None
     return user_obj, motivo, msg_origem
+
+
+def reiniciar_processo():
+    """Reinicia o bot de forma limpa usando subprocess (Graceful Restart)."""
+    python = sys.executable
+    args   = sys.argv[:]
+
+    if "--no-screen" not in args:
+        args.append("--no-screen")
+    if "--background" not in args and "--background" in sys.argv:
+        args.append("--background")
+
+    kwargs = {}
+    if os.name == "nt" and "--background" in args:
+        python = python.replace("python.exe", "pythonw.exe")
+        kwargs["creationflags"] = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    subprocess.Popen([python] + args, **kwargs)
+    os._exit(0)

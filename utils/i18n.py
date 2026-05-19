@@ -13,7 +13,8 @@ COMMAND_ALIASES = {
     "organizar": "organize", "procurar": "search", "apagar": "delete",
     "encurtar": "shorten", "clima": "weather", "voz": "voice",
     "direto": "direct", "resumir": "summarize", "idioma": "lang",
-    "zombies": "zombies", "reverter": "revert"
+    "zombies": "zombies", "reverter": "revert", "desligar": "stop",
+    "instalar": "install", "desinstalar": "uninstall"
 }
 
 def _load_lang():

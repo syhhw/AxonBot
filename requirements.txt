@@ -13,3 +13,4 @@ aiofiles
 aiohttp
 google-generativeai
 yt-dlp
+uvloop; sys_platform != 'win32'

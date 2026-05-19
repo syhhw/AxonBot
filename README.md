@@ -13,7 +13,7 @@
 
 ---
 
-# 🇺🇸 USERBOT PRO v2.1 (English)
+# 🇺🇸 USERBOT PRO v2.2 (English)
 
 **Userbot Pro** is an advanced personal assistant for Telegram built with [Pyrogram](https://docs.pyrogram.org/). It runs directly on your account, automating tasks, moderating groups, cloning stickers, integrating Artificial Intelligence, and even backing up files to your Google Drive!
 
@@ -29,6 +29,7 @@ Fully adapted to run stealthily in the background on **Windows**, **Linux** serv
 - 🛡️ **Moderation & Security:** Automatic Captcha for unauthorized PMs, GBAN (Global Ban across your groups), deleted accounts (zombies) cleanup.
 - 🎭 **Fun & Tools:** Auto-kang stickers (creates packs autonomously), profile cloning, universal media downloader (TikTok, YouTube, Insta) via `yt-dlp`.
 - 🔄 **Auto-Update:** Update the bot with a simple `,update` command via GitHub. It downloads dependencies and restarts autonomously.
+- 🔌 **Dynamic Architecture:** Features a native SQLite database for speed, built-in Terminal/Eval, and hot-installable plugins via URL.
 - 🌐 **Bilingual System:** Fully localized in English and Portuguese, togglable via command.
 
 ---
@@ -98,6 +99,13 @@ Type `,menu` in any chat to dynamically view all available categorized commands!
 | `,ask [text]` | Asks a question or requests something from Google Gemini. |
 | `,summarize` | Reads the last 50 chat messages and generates a bullet-point summary. |
 
+### 🔌 Developer & Plugins
+| Command | Description |
+| :--- | :--- |
+| `,install [url]` | Downloads a `.py` file from the web and hot-reloads it into the bot. |
+| `,eval [code]` | Evaluates Python code dynamically directly from the chat. |
+| `,term [cmd]` | Executes Bash/Shell terminal commands and returns the output. |
+
 ### 📂 Google Drive
 | Command | Description |
 | :--- | :--- |
@@ -116,7 +124,7 @@ If an unauthorized user sends you a private message, the bot intercepts it and s
 
 ---
 
-# 🇧🇷 USERBOT PRO v2.1 (Português)
+# 🇧🇷 USERBOT PRO v2.2 (Português)
 
 O **Userbot Pro** é um assistente pessoal avançado para Telegram construído com [Pyrogram](https://docs.pyrogram.org/). Ele roda diretamente na sua conta, automatizando tarefas, moderando grupos, clonando figurinhas, integrando Inteligência Artificial e até fazendo backup no seu Google Drive!
 
@@ -132,6 +140,7 @@ Totalmente adaptado para rodar de forma invisível no **Windows**, servidores **
 - 🛡️ **Moderação e Segurança:** Captcha automático para quem te chama no privado (PV), GBAN (Banimento Global em seus grupos), limpeza de contas deletadas (zumbis).
 - 🎭 **Diversão e Ferramentas:** Kang automático de figurinhas (cria pacotes sozinho), clonagem de perfil, downloads universais (TikTok, YouTube, Insta) via `yt-dlp`.
 - 🔄 **Auto-Atualização:** Atualize o bot com um simples comando `,atualizar` via GitHub. Ele baixa as dependências e reinicia sozinho.
+- 🔌 **Arquitetura Dinâmica:** Banco de Dados SQLite nativo, Terminal, Python Eval interno e instalação de novos plugins via URL.
 - 🌐 **Sistema Bilíngue:** Totalmente traduzido para Inglês e Português.
 
 ---
@@ -236,6 +245,13 @@ O prefixo padrão é `,` (vírgula). Digite `,menu` em qualquer chat para ver to
 | `,ask [texto]` | Faz uma pergunta ou pede algo para o Google Gemini. |
 | `,resumir` | Lê as últimas 50 mensagens do chat e gera um resumo em tópicos. |
 
+### 🔌 Desenvolvedor & Plugins
+| Comando | Descrição |
+| :--- | :--- |
+| `,install [url]` | Baixa um script `.py` da internet e instala no bot automaticamente. |
+| `,eval [código]` | Avalia código Python dinamicamente e retorna o resultado no chat. |
+| `,term [comando]`| Executa comandos no Terminal (Bash/CMD) do sistema e retorna a saída. |
+
 ### 📂 Google Drive
 | Comando | Descrição |
 | :--- | :--- |
@@ -279,5 +295,5 @@ Este projeto é apenas para fins educacionais. O uso de "Userbots" não é ofici
 ---
 
 <div align="center">
-  Desenvolvido com ❤️ | <b>Userbot Pro v2.1</b>
+  Desenvolvido com ❤️ | <b>Userbot Pro v2.2</b>
 </div>

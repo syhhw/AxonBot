@@ -13,7 +13,7 @@ from utils.helpers import cmd_filter, prefixo, resolver_alvo, auditoria, verific
 @Client.on_message(cmd_filter("ban") & filters.me)
 async def cmd_ban(client, message):
     """Bane um usuário do grupo."""
-    deletar_depois(message, 10)
+    deletar_depois(message, 20)
     user, motivo, msg_orig = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(client,
@@ -34,7 +34,7 @@ async def cmd_ban(client, message):
 @Client.on_message(cmd_filter("unban") & filters.me)
 async def cmd_unban(client, message):
     """Desbane um usuário do grupo."""
-    deletar_depois(message, 10)
+    deletar_depois(message, 20)
     user, _, _ = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(client,
@@ -51,7 +51,7 @@ async def cmd_unban(client, message):
 @Client.on_message(cmd_filter("mute") & filters.me)
 async def cmd_mute(client, message):
     """Silencia um usuário no grupo."""
-    deletar_depois(message, 10)
+    deletar_depois(message, 20)
     user, motivo, msg_orig = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(client,
@@ -75,7 +75,7 @@ async def cmd_mute(client, message):
 @Client.on_message(cmd_filter("unmute") & filters.me)
 async def cmd_unmute(client, message):
     """Remove o silêncio de um usuário."""
-    deletar_depois(message, 10)
+    deletar_depois(message, 20)
     user, _, _ = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(client,
@@ -129,7 +129,7 @@ async def cmd_purge(client, message):
 @Client.on_message(cmd_filter("admins") & filters.me)
 async def cmd_admins(client, message):
     """Lista todos os administradores do grupo."""
-    deletar_depois(message, 20)
+    deletar_depois(message, 45)
     await message.edit_text(tr(client, "👮 **Listando administradores...**", "👮 **Listing administrators...**"))
     try:
         txt = tr(client, f"👮 **Admins de {message.chat.title}:**\n\n", f"👮 **Admins of {message.chat.title}:**\n\n")
@@ -167,7 +167,7 @@ async def cmd_zombies(client, message):
         ))
     except Exception as e:
         await msg.edit_text(tr(client, f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-    deletar_depois(msg, 15)
+    deletar_depois(msg, 30)
 
 
 @Client.on_message(cmd_filter("gban") & filters.me)
@@ -198,7 +198,7 @@ async def cmd_gban(client, message):
         f"☢️ **GBAN concluído!**\n👤 Alvo: {user.first_name} (`{user.id}`)\n🔨 Banido em `{sucesso}` grupos.",
         f"☢️ **GBAN completed!**\n👤 Target: {user.first_name} (`{user.id}`)\n🔨 Banned in `{sucesso}` groups."
     ))
-    deletar_depois(aviso, 15)
+    deletar_depois(aviso, 30)
 
 
 @Client.on_message(cmd_filter("fban") & filters.me)
@@ -231,13 +231,13 @@ async def cmd_fban(client, message):
     ))
     if user_obj:
         await auditoria(client, "FBAN", user_obj, message.chat, motivo, msg_orig)
-    deletar_depois(message, 15)
+    deletar_depois(message, 30)
 
 
 @Client.on_message(cmd_filter("addfed") & filters.me)
 async def cmd_addfed(client, message):
     """Adiciona o grupo atual à federação."""
-    deletar_depois(message, 10)
+    deletar_depois(message, 20)
     feds = carregar("feds.json", [])
     if message.chat.id in feds:
         return await message.edit_text(tr(client, "⚠️ Este grupo já está cadastrado.", "⚠️ This group is already registered."))
@@ -249,7 +249,7 @@ async def cmd_addfed(client, message):
 @Client.on_message(cmd_filter("delfed") & filters.me)
 async def cmd_delfed(client, message):
     """Remove o grupo atual da federação."""
-    deletar_depois(message, 10)
+    deletar_depois(message, 20)
     feds = carregar("feds.json", [])
     if message.chat.id not in feds:
         return await message.edit_text(tr(client, "⚠️ Este grupo não está cadastrado.", "⚠️ This group is not registered."))
@@ -261,7 +261,7 @@ async def cmd_delfed(client, message):
 @Client.on_message(cmd_filter("feds") & filters.me)
 async def cmd_feds(client, message):
     """Lista todos os grupos da federação."""
-    deletar_depois(message, 20)
+    deletar_depois(message, 45)
     feds = carregar("feds.json", [])
     if not feds:
         return await message.edit_text(tr(client, "⚠️ Nenhuma federação cadastrada.", "⚠️ No federations registered."))

@@ -15,7 +15,7 @@ import platform
 import pyrogram
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, salvar, deletar_depois
+from utils.helpers import cmd_filter, salvar, deletar_depois, reiniciar_processo
 from utils.i18n import tr, set_lang, get_lang
 
 
@@ -35,34 +35,11 @@ def _e_repositorio_git():
     return cod == 0
 
 
-def _reiniciar_processo():
-    """
-    Reinicia o bot de forma limpa usando subprocess.
-    Evita o problema de múltiplos SIGINT causado pelo os.execl dentro de handlers async.
-    """
-    python = sys.executable
-    args   = sys.argv[:]
-
-    # Garante que o novo processo não entre no loop de perguntar sobre screen/background
-    if "--no-screen" not in args:
-        args.append("--no-screen")
-    if "--background" not in args and "--background" in sys.argv:
-        args.append("--background")
-
-    kwargs = {}
-    if os.name == "nt" and "--background" in args:
-        python = python.replace("python.exe", "pythonw.exe")
-        kwargs["creationflags"] = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-
-    subprocess.Popen([python] + args, **kwargs)
-    # Encerra o processo atual de forma limpa, multiplataforma
-    os._exit(0)
-
 
 @Client.on_message(cmd_filter("versao") & filters.me)
 async def cmd_versao(client, message):
     """Mostra a versão local, a remota e o último commit."""
-    deletar_depois(message, 15)
+    deletar_depois(message, 30)
     versao_local = getattr(client, "VERSAO", "?")
     if not _e_repositorio_git():
         return await message.edit_text(tr(
@@ -164,7 +141,7 @@ async def cmd_atualizar(client, message):
     await asyncio.sleep(2)
 
     # Reinicia de forma limpa (sem múltiplos SIGINT)
-    _reiniciar_processo()
+    reiniciar_processo()
 
 
 @Client.on_message(cmd_filter("restart") & filters.me)
@@ -172,13 +149,13 @@ async def cmd_restart(client, message):
     """Reinicia o userbot."""
     await message.edit_text(tr("🔄 **Reiniciando...**", "🔄 **Restarting...**"))
     await asyncio.sleep(1)
-    _reiniciar_processo()
+    reiniciar_processo()
 
 
 @Client.on_message(cmd_filter("ping") & filters.me)
 async def cmd_ping(client, message):
     """Mede a latência do bot."""
-    deletar_depois(message, 5)
+    deletar_depois(message, 15)
     inicio = time.time()
     await message.edit_text("⏱️")
     delta = (time.time() - inicio) * 1000
@@ -233,13 +210,13 @@ async def cmd_speed(client, message):
         ))
     except Exception as e:
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-    deletar_depois(message, 15)
+    deletar_depois(message, 30)
 
 
 @Client.on_message(cmd_filter("sysinfo") & filters.me)
 async def cmd_sysinfo(client, message):
     """Exibe informações do sistema no estilo neofetch."""
-    deletar_depois(message, 30)
+    deletar_depois(message, 60)
     cpu = psutil.cpu_percent(interval=0.5)
     ram = psutil.virtual_memory()
     disco = psutil.disk_usage('/')
@@ -273,7 +250,7 @@ async def cmd_sysinfo(client, message):
 @Client.on_message(cmd_filter("processos") & filters.me)
 async def cmd_processos(client, message):
     """Lista os 5 processos que mais consomem CPU."""
-    deletar_depois(message, 20)
+    deletar_depois(message, 45)
     procs = sorted(
         psutil.process_iter(['pid', 'name', 'cpu_percent']),
         key=lambda x: x.info['cpu_percent'] or 0,
@@ -283,3 +260,12 @@ async def cmd_processos(client, message):
     for p in procs:
         txt += f"• `{p.info['name']}` | PID `{p.info['pid']}` | CPU `{p.info['cpu_percent']}%`\n"
     await message.edit_text(txt)
+
+@Client.on_message(cmd_filter("desligar") & filters.me)
+async def cmd_desligar(client, message):
+    """Desliga o processo do userbot remotamente."""
+    await message.edit_text(tr("🛑 **Desligando o bot com segurança...**", "🛑 **Shutting down gracefully...**"))
+    await asyncio.sleep(1)
+    # Envia o sinal de término para o próprio processo,
+    # acionando o graceful shutdown do Pyrogram e o aviso de log.
+    os.kill(os.getpid(), signal.SIGTERM)

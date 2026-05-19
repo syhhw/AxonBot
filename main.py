@@ -1,5 +1,5 @@
 """
-🚀 USERBOT PRO v2.1 - main.py
+🚀 USERBOT PRO v2.2 - main.py
 Núcleo central que carrega configurações, conecta ao Google Drive
 e inicializa o cliente Pyrogram com os plugins.
 
@@ -168,6 +168,9 @@ def _garantir_dependencias():
         ("yt_dlp",              "yt-dlp"),
         ("pydrive2",            "PyDrive2")
     ]
+    if sys.platform != "win32":
+        libs.append(("uvloop", "uvloop"))
+
     faltando = []
     for lib_import, lib_name in libs:
         try:
@@ -222,7 +225,7 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 IDENTIDADE DO PROJETO
 # ══════════════════════════════════════════════════════════════════════════════
-__VERSAO__ = "2.1"
+__VERSAO__ = "2.2"
 UPDATE_FLAG = ".update_pending.json"
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -391,6 +394,13 @@ async def iniciar():
 
 
 if __name__ == "__main__":
+    # Ativa o turbo assíncrono em sistemas Unix (Linux/Termux)
+    if sys.platform != "win32":
+        try:
+            import uvloop
+            uvloop.install()
+        except ImportError:
+            pass
     try:
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(manipulador_erros)

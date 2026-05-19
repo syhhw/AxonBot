@@ -52,7 +52,7 @@ def obter_pasta(client, nome):
 @Client.on_message(cmd_filter("status") & filters.me)
 async def drive_status(client, message):
     """Exibe o uso de espaço do Google Drive."""
-    deletar_depois(message, 15)
+    deletar_depois(message, 30)
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))
@@ -111,7 +111,7 @@ async def drive_organizar(client, message):
         await msg.edit_text(tr(f"✅ **Organização concluída!**\n📦 `{movidos}` arquivos movidos da raiz para subpastas.", f"✅ **Organization complete!**\n📦 `{movidos}` files moved from root to subfolders."))
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-    deletar_depois(msg, 15)
+    deletar_depois(msg, 30)
 
 
 @Client.on_message(cmd_filter("get") & filters.me)
@@ -162,13 +162,13 @@ async def drive_get(client, message):
         ))
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-    deletar_depois(msg, 15)
+    deletar_depois(msg, 30)
 
 
 @Client.on_message(cmd_filter("direto") & filters.me)
 async def drive_direto(client, message):
     """Gera um link de download direto para um arquivo do Drive."""
-    deletar_depois(message, 20)
+    deletar_depois(message, 45)
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))
@@ -193,7 +193,7 @@ async def drive_direto(client, message):
 @Client.on_message(cmd_filter("procurar") & filters.me)
 async def drive_procurar(client, message):
     """Busca arquivos no Drive pelo nome."""
-    deletar_depois(message, 30)
+    deletar_depois(message, 60)
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))
@@ -226,7 +226,7 @@ async def drive_procurar(client, message):
 @Client.on_message(cmd_filter("apagar") & filters.me)
 async def drive_apagar(client, message):
     """Move um arquivo encontrado pelo procurar para a lixeira do Drive."""
-    deletar_depois(message, 10)
+    deletar_depois(message, 20)
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))

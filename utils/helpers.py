@@ -1,121 +1,52 @@
 """
 utils/helpers.py
 Funções auxiliares compartilhadas por todos os plugins.
+
+A camada de persistência (salvar/carregar/cache) vive em utils/db.py.
+Este módulo re-exporta tudo de lá para manter compatibilidade com os
+imports existentes nos plugins — nenhum plugin precisa mudar.
 """
 import os
-import json
+import sys
 import time
 import asyncio
-import sqlite3
-import sys
 import subprocess
 import logging
 from pyrogram import filters, enums
 from pyrogram.handlers import MessageHandler
+from utils.db import salvar, carregar       # re-export
 from utils.i18n import tr, get_lang, COMMAND_ALIASES
 
-logger = logging.getLogger("UserbotDB")
+logger = logging.getLogger("UserbotHelper")
+
+__all__ = [
+    # re-exports de utils.db
+    "salvar", "carregar",
+    # re-exports de utils.i18n
+    "tr", "get_lang", "COMMAND_ALIASES",
+    # próprios
+    "deletar_depois", "prefixo", "listen", "cmd_filter",
+    "verificar_admin", "auditoria", "resolver_alvo", "reiniciar_processo",
+]
 
 
-DB_PATH = "userbot.db"
-
-def _init_db():
-    try:
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)")
-    except sqlite3.DatabaseError:
-        logger.warning(f"⚠️  Banco de dados corrompido detectado. Recriando {DB_PATH} — dados anteriores serão perdidos.")
-        if os.path.exists(DB_PATH):
-            os.remove(DB_PATH)
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)")
-
-_init_db()
-
-def salvar(arquivo, dados):
-    """Salva dados. Se for config/update, mantém como arquivo físico. Senão, usa SQLite."""
-    if arquivo in ["config.json", ".update_pending.json", ".deps_updated.json"]:
-        with open(arquivo, "w", encoding="utf-8") as f:
-            json.dump(dados, f, indent=2, ensure_ascii=False)
-        return
-
-    try:
-        with sqlite3.connect(DB_PATH) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)",
-                (arquivo, json.dumps(dados, ensure_ascii=False))
-            )
-    except sqlite3.DatabaseError:
-        logger.warning(f"⚠️  Falha ao salvar '{arquivo}'. Banco corrompido — recriando.")
-        _init_db()
-        try:
-            with sqlite3.connect(DB_PATH) as conn:
-                conn.execute(
-                    "INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)",
-                    (arquivo, json.dumps(dados, ensure_ascii=False))
-                )
-        except Exception:
-            pass
-
-
-def carregar(arquivo, padrao):
-    """Carrega dados. Tenta SQLite primeiro. Auto-migra arquivos JSON legados."""
-    if arquivo in ["config.json", ".update_pending.json", ".deps_updated.json"]:
-        if os.path.exists(arquivo):
-            try:
-                with open(arquivo, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except:
-                pass
-        return padrao
-
-    try:
-        with sqlite3.connect(DB_PATH) as conn:
-            cursor = conn.execute("SELECT value FROM kv_store WHERE key = ?", (arquivo,))
-            row = cursor.fetchone()
-            if row:
-                try:
-                    return json.loads(row[0])
-                except:
-                    pass
-    except sqlite3.DatabaseError:
-        logger.warning(f"⚠️  Falha ao carregar '{arquivo}'. Banco corrompido — recriando.")
-        _init_db()
-
-    # Migração automática de JSON para SQLite (v2.1 -> v2.2)
-    if os.path.exists(arquivo):
-        try:
-            with open(arquivo, "r", encoding="utf-8") as f:
-                dados = json.load(f)
-            salvar(arquivo, dados)
-            os.remove(arquivo)  # Apaga o JSON velho após migrar
-            return dados
-        except:
-            pass
-
-    return padrao
-
-
-def deletar_depois(message, tempo=30):
-    """Deleta uma mensagem automaticamente após X segundos sem travar o bot."""
+def deletar_depois(message, tempo: int = 30) -> None:
+    """Agenda a deleção de uma mensagem sem travar o event loop."""
     async def _tarefa():
         await asyncio.sleep(tempo)
         try:
             await message.delete()
-        except:
+        except Exception:
             pass
     asyncio.create_task(_tarefa())
 
 
-def prefixo(client):
+def prefixo(client) -> str:
     return getattr(client, "PREFIXO", ",")
 
 
 async def listen(client, chat_id: int, timeout: int = 30):
-    """
-    Waits for the next message from chat_id without pyromod.
-    Uses a temporary handler + asyncio.Future on the main loop.
-    """
+    """Aguarda a próxima mensagem de chat_id sem pyromod."""
     loop = asyncio.get_event_loop()
     fut = loop.create_future()
 
@@ -134,42 +65,47 @@ async def listen(client, chat_id: int, timeout: int = 30):
             pass
 
 
-def cmd_filter(nome):
-    """Cria um filtro dinâmico que aceita o comando em PT e EN independente do idioma configurado."""
+def cmd_filter(nome: str):
+    """Cria filtro que aceita o comando em PT e EN independente do idioma configurado."""
     async def func(flt, client, message):
         if not message.text:
             return False
         p = prefixo(client)
         alias = COMMAND_ALIASES.get(nome, nome)
-        validos = {nome, alias}
-        for cmd in validos:
+        for cmd in {nome, alias}:
             if message.text == f"{p}{cmd}" or message.text.startswith(f"{p}{cmd} "):
                 chat = message.chat
-                chat_name = getattr(chat, "title", None) or getattr(chat, "first_name", "Private")
+                chat_name = (
+                    getattr(chat, "title", None)
+                    or getattr(chat, "first_name", "Private")
+                )
                 logger.info(f"CMD: {p}{cmd} | Chat: {chat_name} ({chat.id})")
                 return True
         return False
     return filters.create(func)
 
 
-async def verificar_admin(client, chat_id):
-    """Verifica se o userbot é admin no chat. Cache de 15 dias."""
+async def verificar_admin(client, chat_id: int) -> bool:
+    """Verifica se o userbot é admin no chat. Cache de 15 dias no SQLite."""
     agora = time.time()
     cid = str(chat_id)
     cache = carregar("admin_cache.json", {})
-    if cid in cache and agora - cache[cid].get("checado_em", 0) < 1296000:
+    if cid in cache and agora - cache[cid].get("checado_em", 0) < 1_296_000:
         return cache[cid].get("is_admin", False)
     try:
         m = await client.get_chat_member(chat_id, "me")
-        is_admin = m.status in [enums.ChatMemberStatus.ADMINISTRATOR, enums.ChatMemberStatus.OWNER]
-        cache[cid] = {"is_admin": is_admin, "checado_em": agora, "era_admin": is_admin}
+        is_admin = m.status in (
+            enums.ChatMemberStatus.ADMINISTRATOR,
+            enums.ChatMemberStatus.OWNER,
+        )
+        cache[cid] = {"is_admin": is_admin, "checado_em": agora}
         salvar("admin_cache.json", cache)
         return is_admin
-    except:
+    except Exception:
         return False
 
 
-async def auditoria(client, acao, user, chat, motivo=None, msg_orig=None):
+async def auditoria(client, acao: str, user, chat, motivo=None, msg_orig=None) -> None:
     """Envia log detalhado de moderação para o canal de logs."""
     cfg = getattr(client, "config", {})
     log_id = cfg.get("ID_CANAL_LOGS")
@@ -179,27 +115,33 @@ async def auditoria(client, acao, user, chat, motivo=None, msg_orig=None):
     uid = getattr(user, "id", "?") if user else "?"
     chat_titulo = getattr(chat, "title", "Chat Privado")
     txt = tr(
-        f"🛡️ **AUDITORIA DE MODERAÇÃO**\n\n⚙️ **Ação:** `{acao}`\n👤 **Alvo:** {nome} (`{uid}`)\n📍 **Chat:** {chat_titulo}\n",
-        f"🛡️ **MODERATION AUDIT**\n\n⚙️ **Action:** `{acao}`\n👤 **Target:** {nome} (`{uid}`)\n📍 **Chat:** {chat_titulo}\n"
+        f"🛡️ **AUDITORIA DE MODERAÇÃO**\n\n"
+        f"⚙️ **Ação:** `{acao}`\n"
+        f"👤 **Alvo:** {nome} (`{uid}`)\n"
+        f"📍 **Chat:** {chat_titulo}\n",
+        f"🛡️ **MODERATION AUDIT**\n\n"
+        f"⚙️ **Action:** `{acao}`\n"
+        f"👤 **Target:** {nome} (`{uid}`)\n"
+        f"📍 **Chat:** {chat_titulo}\n",
     )
     if motivo:
         txt += tr(f"📝 **Motivo:** `{motivo}`\n", f"📝 **Reason:** `{motivo}`\n")
     if msg_orig:
         conteudo = msg_orig.text or msg_orig.caption or tr("[Mídia]", "[Media]")
-        txt += tr(f"\n💬 **Mensagem original:**\n`{conteudo[:400]}`", f"\n💬 **Original message:**\n`{conteudo[:400]}`")
+        txt += tr(
+            f"\n💬 **Mensagem original:**\n`{conteudo[:400]}`",
+            f"\n💬 **Original message:**\n`{conteudo[:400]}`",
+        )
     try:
         await client.send_message(log_id, txt)
-    except:
+    except Exception:
         pass
 
 
 async def resolver_alvo(client, message):
     """
-    Resolve o alvo de um comando de moderação aceitando 3 formatos:
-      1. Resposta a uma mensagem (reply)
-      2. @username como argumento
-      3. ID numérico como argumento
-    Retorna (user_obj, motivo, msg_origem) ou (None, None, None) se não encontrar.
+    Resolve o alvo de um comando de moderação (reply / @username / ID numérico).
+    Retorna (user_obj, motivo, msg_origem) ou (None, None, None).
     """
     partes = message.text.split(None, 2)
     user_obj = None
@@ -216,24 +158,27 @@ async def resolver_alvo(client, message):
         if len(partes) > 2:
             motivo = partes[2]
         try:
-            if alvo.startswith("@"):
-                user_obj = await client.get_users(alvo)
-            else:
-                user_obj = await client.get_users(int(alvo))
+            user_obj = await client.get_users(
+                alvo if alvo.startswith("@") else int(alvo)
+            )
         except (ValueError, Exception):
             return None, None, None
+
     return user_obj, motivo, msg_origem
 
 
-def reiniciar_processo():
-    """Reinicia o bot de forma limpa usando subprocess (Graceful Restart)."""
+def reiniciar_processo() -> None:
+    """Reinicia o bot de forma limpa (Graceful Restart)."""
     python = sys.executable
-    args   = sys.argv[:]
-    kwargs = {}
+    args = sys.argv[:]
+    kwargs: dict = {}
     if os.name == "nt" and "--background" in args:
         python = python.replace("python.exe", "pythonw.exe")
         if not os.path.exists(python):
             python = sys.executable
-        kwargs["creationflags"] = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        kwargs["creationflags"] = (
+            getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+            | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        )
     subprocess.Popen([python] + args, **kwargs)
     os._exit(0)

@@ -1,5 +1,5 @@
 """
-🚀 USERBOT PRO v2.2 - main.py
+🚀 USERBOT PRO v2.3 - main.py
 Núcleo central que carrega configurações, conecta ao Google Drive
 e inicializa o cliente Pyrogram com os plugins.
 
@@ -194,11 +194,19 @@ UPDATE_FLAG = ".update_pending.json"
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 LOGS COLORIDOS NO TERMINAL
 # ══════════════════════════════════════════════════════════════════════════════
+from logging.handlers import RotatingFileHandler as _RFH
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%H:%M:%S"
+    datefmt="%H:%M:%S",
 )
+_file_handler = _RFH("userbot.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
+_file_handler.setFormatter(
+    logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s", datefmt="%H:%M:%S")
+)
+logging.getLogger().addHandler(_file_handler)
+
 logger = logging.getLogger("UserbotCore")
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
@@ -346,7 +354,7 @@ async def iniciar():
             finally:
                 try:
                     os.remove(UPDATE_FLAG)
-                except:
+                except OSError:
                     pass
         elif os.path.exists(".deps_updated.json"):
             try:
@@ -362,7 +370,7 @@ async def iniciar():
             finally:
                 try:
                     os.remove(".deps_updated.json")
-                except:
+                except OSError:
                     pass
         else:
             await app.send_message(

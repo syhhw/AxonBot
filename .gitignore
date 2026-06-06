@@ -25,5 +25,4 @@ __pycache__/
 *.pyc
 
 # Ferramentas locais (não vai pro repositório)
-debug.py
 .claude/

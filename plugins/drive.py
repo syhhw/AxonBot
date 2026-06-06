@@ -167,27 +167,71 @@ async def drive_get(client, message):
 
 @Client.on_message(cmd_filter("direto") & filters.me)
 async def drive_direto(client, message):
-    """Gera um link de download direto para um arquivo do Drive."""
-    deletar_depois(message, 45)
+    """Responda a qualquer arquivo do Telegram para fazer upload direto no Google Drive."""
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))
-    partes = message.text.split(None, 1)
-    if len(partes) < 2:
-        return await message.edit_text(tr(f"⚠️ Use: `{prefixo(client)}direto [nome do arquivo]`", f"⚠️ Use: `{prefixo(client)}direct [file name]`"))
-    termo = partes[1].strip()
+
+    reply = message.reply_to_message
+    if not reply:
+        p = prefixo(client)
+        return await message.edit_text(tr(
+            f"⚠️ Responda a um arquivo com `{p}direto` para enviá-lo ao Drive.",
+            f"⚠️ Reply to a file with `{p}direct` to upload it to Drive."
+        ))
+
+    media = reply.document or reply.video or reply.audio or reply.photo or reply.voice or reply.video_note
+    if not media:
+        return await message.edit_text(tr("⚠️ A mensagem não contém nenhum arquivo.", "⚠️ The message does not contain any file."))
+
+    if reply.document:
+        nome = reply.document.file_name or f"arquivo_{reply.document.file_unique_id[:8]}"
+    elif reply.video:
+        nome = reply.video.file_name or f"video_{reply.video.file_unique_id[:8]}.mp4"
+    elif reply.audio:
+        nome = reply.audio.file_name or f"audio_{reply.audio.file_unique_id[:8]}.mp3"
+    elif reply.photo:
+        nome = f"foto_{reply.photo.file_unique_id[:8]}.jpg"
+    elif reply.voice:
+        nome = f"voice_{reply.voice.file_unique_id[:8]}.ogg"
+    else:
+        nome = f"video_{reply.video_note.file_unique_id[:8]}.mp4"
+
+    msg = await message.edit_text(tr("📥 **Baixando do Telegram...**", "📥 **Downloading from Telegram...**"))
     try:
-        def do_search():
-            return drive.ListFile({'q': f"title = '{termo}' and trashed=false"}).GetList()
-            
-        arquivos = await asyncio.to_thread(do_search)
-        if not arquivos:
-            return await message.edit_text(tr("❌ Arquivo não encontrado.", "❌ File not found."))
-        f = arquivos[0]
-        link = f"https://drive.google.com/uc?export=download&id={f['id']}"
-        await message.edit_text(tr(f"🔗 **Link Direto**\n\n📁 `{f['title']}`\n`{link}`", f"🔗 **Direct Link**\n\n📁 `{f['title']}`\n`{link}`"))
+        local = await client.download_media(reply, file_name=os.path.join(tempfile.gettempdir(), nome))
+
+        await msg.edit_text(tr("☁️ **Enviando para o Google Drive...**", "☁️ **Uploading to Google Drive...**"))
+
+        def do_upload():
+            ext = os.path.splitext(nome)[1].lower()
+            categoria = CATEGORIAS.get(ext, 'Outros')
+            id_pasta = obter_pasta(client, categoria)
+            f_drive = drive.CreateFile({'title': nome, 'parents': [{'id': id_pasta}]})
+            f_drive.SetContentFile(local)
+            f_drive.Upload()
+            f_drive.InsertPermission({'type': 'anyone', 'value': 'anyone', 'role': 'reader'})
+            return f_drive, categoria
+
+        f_drive, categoria = await asyncio.to_thread(do_upload)
+        os.remove(local)
+
+        link_direto = f"https://drive.google.com/uc?export=download&id={f_drive['id']}"
+        await msg.edit_text(tr(
+            f"✅ **Upload Concluído!**\n"
+            f"├ 📁 **Arquivo:** `{nome}`\n"
+            f"├ 🗂️ **Categoria:** `{categoria}`\n"
+            f"├ 🔗 [Abrir no Drive]({f_drive['alternateLink']})\n"
+            f"└ 📎 **Link direto:** `{link_direto}`",
+            f"✅ **Upload Complete!**\n"
+            f"├ 📁 **File:** `{nome}`\n"
+            f"├ 🗂️ **Category:** `{categoria}`\n"
+            f"├ 🔗 [Open in Drive]({f_drive['alternateLink']})\n"
+            f"└ 📎 **Direct link:** `{link_direto}`"
+        ))
     except Exception as e:
-        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+    deletar_depois(msg, 60)
 
 
 @Client.on_message(cmd_filter("procurar") & filters.me)

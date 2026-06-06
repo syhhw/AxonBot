@@ -17,15 +17,15 @@ except ImportError:
 async def cmd_dl(client, message):
     """Baixa um vídeo de quase qualquer rede social (Instagram, TikTok, YouTube)."""
     if not HAS_YTDLP:
-        return await message.edit_text(tr(client, "❌ Biblioteca `yt-dlp` não instalada.", "❌ `yt-dlp` library not installed."))
+        return await message.edit_text(tr("❌ Biblioteca `yt-dlp` não instalada.", "❌ `yt-dlp` library not installed."))
         
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(client, f"⚠️ Use: `{p}dl [link do vídeo]`", f"⚠️ Use: `{p}dl [video link]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}dl [link do vídeo]`", f"⚠️ Use: `{p}dl [video link]`"))
     
     url = partes[1].strip()
-    msg = await message.edit_text(tr(client, "📥 **Analisando link e baixando vídeo...**\nIsso pode demorar dependendo do tamanho.", "📥 **Analyzing link and downloading video...**\nThis might take a while depending on the size."))
+    msg = await message.edit_text(tr("📥 **Analisando link e baixando vídeo...**\nIsso pode demorar dependendo do tamanho.", "📥 **Analyzing link and downloading video...**\nThis might take a while depending on the size."))
     
     def baixar_video():
         opts = {
@@ -45,9 +45,9 @@ async def cmd_dl(client, message):
             
     try:
         arquivo, titulo = await asyncio.to_thread(baixar_video)
-        await msg.edit_text(tr(client, "☁️ **Enviando para o Telegram...**", "☁️ **Uploading to Telegram...**"))
-        await client.send_video(message.chat.id, arquivo, caption=tr(client, f"🎥 **{titulo}**\n🔗 Link Original", f"🎥 **{titulo}**\n🔗 Original Link"))
+        await msg.edit_text(tr("☁️ **Enviando para o Telegram...**", "☁️ **Uploading to Telegram...**"))
+        await client.send_video(message.chat.id, arquivo, caption=tr(f"🎥 **{titulo}**\n🔗 Link Original", f"🎥 **{titulo}**\n🔗 Original Link"))
         os.remove(arquivo)
         await msg.delete()
     except Exception as e:
-        await msg.edit_text(tr(client, f"❌ Erro ao baixar:\n`{str(e)[:300]}`", f"❌ Error downloading:\n`{str(e)[:300]}`"))
+        await msg.edit_text(tr(f"❌ Erro ao baixar:\n`{str(e)[:300]}`", f"❌ Error downloading:\n`{str(e)[:300]}`"))

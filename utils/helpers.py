@@ -9,15 +9,26 @@ import asyncio
 import sqlite3
 import sys
 import subprocess
+import logging
 from pyrogram import filters, enums
+from pyrogram.handlers import MessageHandler
 from utils.i18n import tr, get_lang, COMMAND_ALIASES
+
+logger = logging.getLogger("UserbotDB")
 
 
 DB_PATH = "userbot.db"
 
 def _init_db():
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)")
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)")
+    except sqlite3.DatabaseError:
+        logger.warning(f"⚠️  Banco de dados corrompido detectado. Recriando {DB_PATH} — dados anteriores serão perdidos.")
+        if os.path.exists(DB_PATH):
+            os.remove(DB_PATH)
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("CREATE TABLE IF NOT EXISTS kv_store (key TEXT PRIMARY KEY, value TEXT)")
 
 _init_db()
 
@@ -28,11 +39,23 @@ def salvar(arquivo, dados):
             json.dump(dados, f, indent=2, ensure_ascii=False)
         return
 
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)",
-            (arquivo, json.dumps(dados, ensure_ascii=False))
-        )
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)",
+                (arquivo, json.dumps(dados, ensure_ascii=False))
+            )
+    except sqlite3.DatabaseError:
+        logger.warning(f"⚠️  Falha ao salvar '{arquivo}'. Banco corrompido — recriando.")
+        _init_db()
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.execute(
+                    "INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)",
+                    (arquivo, json.dumps(dados, ensure_ascii=False))
+                )
+        except Exception:
+            pass
 
 
 def carregar(arquivo, padrao):
@@ -46,14 +69,18 @@ def carregar(arquivo, padrao):
                 pass
         return padrao
 
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.execute("SELECT value FROM kv_store WHERE key = ?", (arquivo,))
-        row = cursor.fetchone()
-        if row:
-            try:
-                return json.loads(row[0])
-            except:
-                pass
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.execute("SELECT value FROM kv_store WHERE key = ?", (arquivo,))
+            row = cursor.fetchone()
+            if row:
+                try:
+                    return json.loads(row[0])
+                except:
+                    pass
+    except sqlite3.DatabaseError:
+        logger.warning(f"⚠️  Falha ao carregar '{arquivo}'. Banco corrompido — recriando.")
+        _init_db()
 
     # Migração automática de JSON para SQLite (v2.1 -> v2.2)
     if os.path.exists(arquivo):
@@ -84,19 +111,42 @@ def prefixo(client):
     return getattr(client, "PREFIXO", ",")
 
 
+async def listen(client, chat_id: int, timeout: int = 30):
+    """
+    Waits for the next message from chat_id without pyromod.
+    Uses a temporary handler + asyncio.Future on the main loop.
+    """
+    loop = asyncio.get_event_loop()
+    fut = loop.create_future()
+
+    async def _handler(c, msg):
+        if not fut.done():
+            fut.set_result(msg)
+
+    h = MessageHandler(_handler, filters.chat(chat_id))
+    client.add_handler(h, group=-100)
+    try:
+        return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
+    finally:
+        try:
+            client.remove_handler(h, group=-100)
+        except Exception:
+            pass
+
+
 def cmd_filter(nome):
-    """Cria um filtro dinâmico que valida o prefixo do cliente em tempo real."""
+    """Cria um filtro dinâmico que aceita o comando em PT e EN independente do idioma configurado."""
     async def func(flt, client, message):
         if not message.text:
             return False
         p = prefixo(client)
-        lang = get_lang()
         alias = COMMAND_ALIASES.get(nome, nome)
-        validos = [nome]
-        if lang == "en" and alias != nome:
-            validos.append(alias)
+        validos = {nome, alias}
         for cmd in validos:
             if message.text == f"{p}{cmd}" or message.text.startswith(f"{p}{cmd} "):
+                chat = message.chat
+                chat_name = getattr(chat, "title", None) or getattr(chat, "first_name", "Private")
+                logger.info(f"CMD: {p}{cmd} | Chat: {chat_name} ({chat.id})")
                 return True
         return False
     return filters.create(func)

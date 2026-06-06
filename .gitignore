@@ -1,29 +1,29 @@
-# ─── Python ───
-__pycache__/
-*.py[cod]
-*$py.class
+# Ambientes Virtuais
 venv/
 env/
-.env
 
-# ─── Pyrogram Sessões (CRÍTICO) ───
-*.session
-*.session-journal
-
-# ─── Configurações e Credenciais (CRÍTICO) ───
-config.json
-meu_drive.json
-client_secrets.json
-credentials.json
-
-# ─── Bancos de Dados Locais e Caches ───
-permitidos.json
+# Banco de Dados e Caches locais
+userbot.db
 admin_cache.json
 feds.json
+permitidos.json
 triggers.json
+clone_backup.json
 .update_pending.json
 .deps_updated.json
-clone_backup.json
 
-# ─── Logs e Temporários ───
-*.log
+# Credenciais e Sessões (CRÍTICO - NUNCA SUBIR)
+config.json
+meu_userbot.session
+meu_userbot.session-journal
+meu_drive.json
+client_secrets.json
+
+# Logs, temporários e Python Cache
+userbot.log
+__pycache__/
+*.pyc
+
+# Ferramentas locais (não vai pro repositório)
+debug.py
+.claude/

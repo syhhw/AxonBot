@@ -14,45 +14,12 @@ Inteligência automática:
 import os
 import sys
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟡 BLOCO 1 — PASSO 1: DETECÇÃO E ATIVAÇÃO DA VENV
-# Se não estiver na venv, reinicia com o Python dela via os.execv.
-# os.execv substitui o processo atual — não cria filho, sem loop.
-# ══════════════════════════════════════════════════════════════════════════════
-
-AMARELO = "\033[93m"
-VERDE   = "\033[92m"
-AZUL    = "\033[94m"
+AMARELO  = "\033[93m"
+VERDE    = "\033[92m"
+AZUL     = "\033[94m"
 VERMELHO = "\033[91m"
-NEGRITO = "\033[1m"
-RESET   = "\033[0m"
-
-def _em_venv() -> bool:
-    return (
-        hasattr(sys, "real_prefix")
-        or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix)
-    )
-
-if not _em_venv():
-    _base = os.path.dirname(os.path.abspath(__file__))
-    _python_venv = os.path.join(_base, "venv", "Scripts", "python.exe") if os.name == "nt" else os.path.join(_base, "venv", "bin", "python3")
-    if not os.path.isfile(_python_venv) and os.name != "nt":
-        _python_venv = os.path.join(_base, "venv", "bin", "python")
-
-    if os.path.isfile(_python_venv):
-        print(f"{AMARELO}⚠️  Venv detectada. Reiniciando com: {_python_venv}{RESET}")
-        if os.name == "nt":
-            import subprocess
-            sys.exit(subprocess.call([_python_venv] + sys.argv))
-        else:
-            os.execv(_python_venv, [_python_venv] + sys.argv)
-    else:
-        print(f"{AMARELO}⚠️  Pasta venv/ não encontrada. Rodando com Python do sistema.{RESET}")
-        if os.name == "nt":
-            print(f"   Crie com: {VERDE}python -m venv venv && venv\\Scripts\\activate{RESET}")
-        else:
-            print(f"   Crie com: {VERDE}python3 -m venv venv && source venv/bin/activate{RESET}")
-        print(f"   Depois:   {VERDE}pip install -r requirements.txt{RESET}\n")
+NEGRITO  = "\033[1m"
+RESET    = "\033[0m"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟡 BLOCO 1 — PASSO 2: SEGUNDO PLANO VIA NOHUP
@@ -64,7 +31,7 @@ def _ja_esta_em_screen() -> bool:
     """Detecta se já está dentro de uma sessão screen (para o aviso no log)."""
     return "STY" in os.environ or os.environ.get("TERM") == "screen"
 
-if "--background" not in sys.argv:
+if "--background" not in sys.argv and "--debug" not in sys.argv:
     print(f"\n{AZUL}{NEGRITO}╔════════════════════════════════════════════╗{RESET}")
     print(f"{AZUL}{NEGRITO}║   🖥️  MODO DE EXECUÇÃO                      ║{RESET}")
     print(f"{AZUL}{NEGRITO}╚════════════════════════════════════════════╝{RESET}\n")
@@ -161,15 +128,12 @@ def _garantir_dependencias():
         ("deep_translator",     "deep-translator"),
         ("psutil",              "psutil"),
         ("tgcrypto",            "TgCrypto"),
-        ("pyromod",             "pyromod"),
         ("aiofiles",            "aiofiles"),
         ("aiohttp",             "aiohttp"),
-        ("google.generativeai", "google-generativeai"),
+        ("google.genai", "google-genai"),
         ("yt_dlp",              "yt-dlp"),
         ("pydrive2",            "PyDrive2")
     ]
-    if sys.platform != "win32":
-        libs.append(("uvloop", "uvloop"))
 
     faltando = []
     for lib_import, lib_name in libs:
@@ -204,14 +168,13 @@ import time
 import logging
 import asyncio
 
-# pyromod DEVE ser importado antes do Client para injetar client.listen()
-try:
-    import pyromod
-except ImportError:
-    pass  # instale com: pip install pyromod
-
-from pyrogram import Client, idle
+from pyrogram import Client, filters, idle
 from utils.i18n import tr, get_lang
+
+# Cria e define o event loop ANTES do Client para que o Pyrogram
+# capture o loop correto ao inicializar o Dispatcher
+_loop = asyncio.new_event_loop()
+asyncio.set_event_loop(_loop)
 
 # Google Drive é opcional
 drive = None
@@ -261,6 +224,7 @@ logger.info(f"🌐 Idioma / Language: '{LANGUAGE.upper()}'")
 _drive_configurado = (
     config.get("ID_PASTA_RAIZ_DRIVE")
     and os.path.exists("meu_drive.json")
+    and os.path.exists("client_secrets.json")
 )
 
 if _DRIVE_DISPONIVEL and _drive_configurado:
@@ -268,18 +232,22 @@ if _DRIVE_DISPONIVEL and _drive_configurado:
         gauth = GoogleAuth()
         gauth.LoadCredentialsFile("meu_drive.json")
         if gauth.credentials is None:
-            logger.warning("⚠️ Credenciais do Drive não encontradas em meu_drive.json")
+            logger.warning("⚠️ Credenciais do Drive não encontradas em meu_drive.json — Drive offline.")
         elif gauth.access_token_expired:
             gauth.Refresh()
             gauth.SaveCredentialsFile("meu_drive.json")
+            drive = GoogleDrive(gauth)
+            logger.info("✅ Google Drive conectado (token renovado).")
         else:
             gauth.Authorize()
-        drive = GoogleDrive(gauth)
-        logger.info("✅ Google Drive conectado.")
+            drive = GoogleDrive(gauth)
+            logger.info("✅ Google Drive conectado.")
     except Exception as e:
         logger.error(f"❌ Falha ao conectar Drive: {e}")
 elif _drive_configurado and not _DRIVE_DISPONIVEL:
     logger.warning("⚠️ pydrive2 não instalado. Instale com: pip install pydrive2")
+elif config.get("ID_PASTA_RAIZ_DRIVE") and not os.path.exists("client_secrets.json"):
+    logger.warning("⚠️ client_secrets.json não encontrado — Drive offline. Baixe em console.cloud.google.com.")
 else:
     logger.info("ℹ️  Google Drive não configurado (opcional).")
 
@@ -294,7 +262,6 @@ app = Client(
     api_hash=config["API_HASH"],
     device_model="Samsung Galaxy S25",
     system_version="Android 14",
-    plugins=dict(root="plugins")
 )
 
 app.config       = config
@@ -322,9 +289,35 @@ def manipulador_erros(loop, context):
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 ROTINA PRINCIPAL
 # ══════════════════════════════════════════════════════════════════════════════
+
+def _carregar_plugins():
+    import importlib
+    import glob
+    from pyrogram.handlers import MessageHandler
+    plugins_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
+    for path in sorted(glob.glob(os.path.join(plugins_dir, "*.py"))):
+        nome = os.path.basename(path)[:-3]
+        if nome.startswith("_"):
+            continue
+        mod_name = f"plugins.{nome}"
+        try:
+            mod = importlib.import_module(mod_name)
+            count = 0
+            for attr in vars(mod).values():
+                if callable(attr) and hasattr(attr, "handlers"):
+                    for handler, group in attr.handlers:
+                        app.add_handler(handler, group)
+                        count += 1
+            logger.info(f"✅ Plugin carregado: {nome} ({count} handler(s))")
+        except Exception as e:
+            logger.warning(f"⚠️ Falha ao carregar plugin {nome}: {e}")
+
+
 async def iniciar():
+    asyncio.get_event_loop().set_exception_handler(manipulador_erros)
     logger.info(f"🚀 INICIANDO USERBOT PRO v{__VERSAO__}...")
     await app.start()
+    _carregar_plugins()
 
     em_background = "--background" in sys.argv or _ja_esta_em_screen()
     if em_background:
@@ -394,19 +387,12 @@ async def iniciar():
 
 
 if __name__ == "__main__":
-    # Ativa o turbo assíncrono em sistemas Unix (Linux/Termux)
-    if sys.platform != "win32":
-        try:
-            import uvloop
-            uvloop.install()
-        except ImportError:
-            pass
     try:
-        loop = asyncio.get_event_loop()
-        loop.set_exception_handler(manipulador_erros)
-        loop.run_until_complete(iniciar())
+        _loop.run_until_complete(iniciar())
     except KeyboardInterrupt:
         logger.info("👋 Encerrado pelo usuário.")
     except Exception as e:
         logger.error(f"❌ Erro fatal: {e}")
         sys.exit(1)
+    finally:
+        _loop.close()

@@ -65,7 +65,7 @@ async def cmd_eval(client, message):
     try:
         exec(exec_code, env)
         with contextlib.redirect_stdout(stdout):
-            await env"_aexec"
+            await env["_aexec"]()
         out = stdout.getvalue().strip() or "✅ Sucesso (sem saída)."
     except Exception:
         out = traceback.format_exc()

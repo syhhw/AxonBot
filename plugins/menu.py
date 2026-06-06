@@ -15,7 +15,8 @@ import re
 import ast
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, deletar_depois, tr, EN_ALIASES
+from utils.helpers import cmd_filter, prefixo, deletar_depois, tr
+from utils.i18n import COMMAND_ALIASES
 
 
 def extrair_comandos_do_arquivo(filepath: str) -> list[dict]:
@@ -77,6 +78,10 @@ def nome_modulo(client, filename: str) -> str:
             "tools.py":      "🛠️ Tools",
             "account.py":    "👤 Account & AFK",
             "kang.py":       "🎭 Stickers",
+            "ai.py":         "🧠 Artificial Intelligence",
+            "dev.py":        "⚙️ Developer",
+            "downloader.py": "⬇️ Downloader",
+            "triggers.py":   "⚡ Triggers",
         }
     else:
         nomes = {
@@ -86,6 +91,10 @@ def nome_modulo(client, filename: str) -> str:
             "tools.py":      "🛠️ Ferramentas",
             "account.py":    "👤 Conta & AFK",
             "kang.py":       "🎭 Figurinhas",
+            "ai.py":         "🧠 Inteligência Artificial",
+            "dev.py":        "⚙️ Desenvolvedor",
+            "downloader.py": "⬇️ Downloader",
+            "triggers.py":   "⚡ Gatilhos",
         }
     return nomes.get(filename, f"🔌 {filename.replace('.py', '').capitalize()}")
 
@@ -120,7 +129,7 @@ async def cmd_menu(client, message):
         lang = getattr(client, "LANG", "pt")
         cmds_list = []
         for c in comandos:
-            nome_cmd = EN_ALIASES.get(c['cmd'], c['cmd']) if lang == "en" else c['cmd']
+            nome_cmd = COMMAND_ALIASES.get(c['cmd'], c['cmd']) if lang == "en" else c['cmd']
             cmds_list.append(f"`{p}{nome_cmd}`")
             
         linha_cmds = " ".join(cmds_list)
@@ -129,14 +138,14 @@ async def cmd_menu(client, message):
 
     if not secoes:
         return await message.edit_text(
-            tr(client, f"⚠️ Nenhum comando encontrado.", f"⚠️ No commands found in plugins.")
+            tr(f"⚠️ Nenhum comando encontrado.", f"⚠️ No commands found in plugins.")
         )
 
     versao = getattr(client, "VERSAO", "1.0")
     header = (
         f"⚡ **USERBOT PRO v{versao}**\n"
         f"├ 🔧 **Prefixo:** `{p}`\n"
-        f"└ 📦 **{tr(client, 'Comandos', 'Commands')}:** `{total_cmds}`\n"
+        f"└ 📦 **{tr('Comandos', 'Commands')}:** `{total_cmds}`\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
     )
 

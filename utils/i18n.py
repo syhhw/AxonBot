@@ -14,7 +14,8 @@ COMMAND_ALIASES = {
     "encurtar": "shorten", "clima": "weather", "voz": "voice",
     "direto": "direct", "resumir": "summarize", "idioma": "lang",
     "zombies": "zombies", "reverter": "revert", "desligar": "stop",
-    "instalar": "install", "desinstalar": "uninstall"
+    "instalar": "install", "desinstalar": "uninstall",
+    "perguntar": "ask"
 }
 
 def _load_lang():

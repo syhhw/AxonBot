@@ -2,9 +2,6 @@
 plugins/kang.py
 Comando ,kang — Rouba figurinhas e adiciona automaticamente ao pacote do usuário.
 
-Dependência extra necessária na VM:
-    pip install pyromod
-
 Fluxo de criação (pacote novo):
     /newpack → título → figurinha → emoji → /publish → /skip → nome_do_pack
 
@@ -21,7 +18,7 @@ from pyrogram import filters, Client, raw
 from pyrogram.raw.types import InputStickerSetShortName
 from pyrogram.errors import StickersetInvalid
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from utils.helpers import cmd_filter, prefixo
+from utils.helpers import cmd_filter, prefixo, listen
 from utils.i18n import tr
 
 STICKER_BOT = "Stickers"
@@ -155,7 +152,7 @@ async def cmd_kang(client, message):
     async def sw(text: str, timeout: int = 30):
         """Envia mensagem ao @Stickers e aguarda resposta."""
         await client.send_message(STICKER_BOT, text)
-        return await client.listen(chat_id=bot_id, timeout=timeout)
+        return await listen(client, chat_id=bot_id, timeout=timeout)
 
     async def fw(timeout: int = 30):
         """Envia a figurinha ao @Stickers e aguarda resposta."""
@@ -163,7 +160,7 @@ async def cmd_kang(client, message):
             await client.forward_messages(STICKER_BOT, message.chat.id, reply.id)
         else:
             await client.send_document(STICKER_BOT, file_to_send, force_document=True)
-        return await client.listen(chat_id=bot_id, timeout=timeout)
+        return await listen(client, chat_id=bot_id, timeout=timeout)
 
     # ─────────────────────────────────────────────────────────────────────────
     # FLUXO CORRETO DO @Stickers bot:

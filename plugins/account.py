@@ -33,9 +33,9 @@ async def cmd_afk(client, message):
     """Ativa o modo AFK com motivo opcional."""
     global AFK_ATIVO, AFK_MOTIVO
     partes = message.text.split(None, 1)
-    AFK_MOTIVO = partes[1].strip() if len(partes) > 1 else tr(client, "Ausente.", "Away.")
+    AFK_MOTIVO = partes[1].strip() if len(partes) > 1 else tr("Ausente.", "Away.")
     AFK_ATIVO = True
-    await message.edit_text(tr(client, f"💤 **Modo AFK Ativado**\n└ 📝 **Motivo:** `{AFK_MOTIVO}`", f"💤 **AFK Mode Activated**\n└ 📝 **Reason:** `{AFK_MOTIVO}`"))
+    await message.edit_text(tr(f"💤 **Modo AFK Ativado**\n└ 📝 **Motivo:** `{AFK_MOTIVO}`", f"💤 **AFK Mode Activated**\n└ 📝 **Reason:** `{AFK_MOTIVO}`"))
 
 
 @Client.on_message(cmd_filter("unafk") & filters.me)
@@ -43,7 +43,7 @@ async def cmd_unafk(client, message):
     """Desativa o modo AFK manualmente."""
     global AFK_ATIVO
     AFK_ATIVO = False
-    await message.edit_text(tr(client, "✅ **Modo AFK desativado.**", "✅ **AFK Mode deactivated.**"))
+    await message.edit_text(tr("✅ **Modo AFK desativado.**", "✅ **AFK Mode deactivated.**"))
 
 
 @Client.on_message(cmd_filter("permit") & filters.me)
@@ -54,12 +54,12 @@ async def cmd_permit(client, message):
     elif message.chat.type == enums.ChatType.PRIVATE:
         uid = message.chat.id
     else:
-        return await message.edit_text(tr(client, "⚠️ Use em PV ou responda a alguém.", "⚠️ Use in PM or reply to someone."))
+        return await message.edit_text(tr("⚠️ Use em PV ou responda a alguém.", "⚠️ Use in PM or reply to someone."))
     permitidos = carregar("permitidos.json", [])
     if uid not in permitidos:
         permitidos.append(uid)
         salvar("permitidos.json", permitidos)
-    await message.edit_text(tr(client, f"✅ **PV autorizado para `{uid}`**", f"✅ **PM authorized for `{uid}`**"))
+    await message.edit_text(tr(f"✅ **PV autorizado para `{uid}`**", f"✅ **PM authorized for `{uid}`**"))
 
 
 # ==========================================
@@ -79,11 +79,11 @@ async def pm_permit_checker(client, message):
                 permitidos.append(uid)
                 salvar("permitidos.json", permitidos)
                 del CAPTCHA_PENDENTE[uid]
-                await message.reply_text(tr(client, "✅ **Verificação concluída!** Você agora pode me enviar mensagens.", "✅ **Verification complete!** You can now send me messages."))
+                await message.reply_text(tr("✅ **Verificação concluída!** Você agora pode me enviar mensagens.", "✅ **Verification complete!** You can now send me messages."))
                 message.stop_propagation()
                 return
             else:
-                await message.reply_text(tr(client, "❌ **Resposta incorreta.** Tente novamente.", "❌ **Incorrect answer.** Try again."))
+                await message.reply_text(tr("❌ **Resposta incorreta.** Tente novamente.", "❌ **Incorrect answer.** Try again."))
                 message.stop_propagation()
                 return
                 
@@ -93,7 +93,7 @@ async def pm_permit_checker(client, message):
         CAPTCHA_PENDENTE[uid] = {"resposta": n1 + n2}
         
         try:
-            await message.reply_text(tr(client,
+            await message.reply_text(tr(
                 f"🛡️ **Firewall de Segurança**\n\nMensagens restritas. Para provar que é humano, resolva a conta:\n👉 **{n1} + {n2} = ?**",
                 f"🛡️ **Security Firewall**\n\nRestricted messages. To prove you are human, solve this:\n👉 **{n1} + {n2} = ?**"
             ))
@@ -118,7 +118,7 @@ async def auto_unafk(client, message):
         if not message.text.startswith(f"{p}afk"):
             AFK_ATIVO = False
             try:
-                aviso = await message.reply_text(tr(client, "✅ **AFK desativado automaticamente.**", "✅ **AFK automatically deactivated.**"))
+                aviso = await message.reply_text(tr("✅ **AFK desativado automaticamente.**", "✅ **AFK automatically deactivated.**"))
                 await asyncio.sleep(3)
                 await aviso.delete()
             except:
@@ -145,7 +145,7 @@ async def monitor_central(client, message):
                 try:
                     await client.send_message(
                         log_id,
-                        tr(client, f"⚠️ **PERDA DE CARGO**\n\nVocê não é mais admin em:\n**{message.chat.title}** (`{message.chat.id}`)",
+                        tr(f"⚠️ **PERDA DE CARGO**\n\nVocê não é mais admin em:\n**{message.chat.title}** (`{message.chat.id}`)",
                                    f"⚠️ **DEMOTION**\n\nYou are no longer an admin in:\n**{message.chat.title}** (`{message.chat.id}`)")
                     )
                 except:
@@ -157,7 +157,7 @@ async def monitor_central(client, message):
     global AFK_ATIVO, AFK_MOTIVO
     if AFK_ATIVO:
         try:
-            await message.reply_text(tr(client, f"💤 **Estou AFK:** `{AFK_MOTIVO}`", f"💤 **I'm AFK:** `{AFK_MOTIVO}`"))
+            await message.reply_text(tr(f"💤 **Estou AFK:** `{AFK_MOTIVO}`", f"💤 **I'm AFK:** `{AFK_MOTIVO}`"))
         except:
             pass
 

@@ -8,9 +8,7 @@ Pillow
 gTTS
 deep-translator
 psutil
-pyromod
 aiofiles
 aiohttp
-google-generativeai
+google-genai
 yt-dlp
-uvloop; sys_platform != 'win32'

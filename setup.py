@@ -114,9 +114,9 @@ def instalar_dependencias(faltando: list) -> bool:
             "pyrogram": "pyrogram", "pydrive2": "PyDrive2", "requests": "requests",
             "humanize": "humanize", "speedtest": "speedtest-cli", "PIL": "Pillow",
             "gtts": "gTTS", "deep_translator": "deep-translator",
-            "psutil": "psutil", "tgcrypto": "TgCrypto", "pyromod": "pyromod",
+            "psutil": "psutil", "tgcrypto": "TgCrypto",
             "aiofiles": "aiofiles", "aiohttp": "aiohttp",
-            "google.generativeai": "google-generativeai",
+            "google.genai": "google-genai",
             "yt_dlp": "yt-dlp"
         }
         for lib in faltando:
@@ -140,10 +140,9 @@ def verificar_bibliotecas() -> list:
         ("deep_translator", "deep-translator"),
         ("psutil",          "psutil"),
         ("tgcrypto",        "TgCrypto"),
-        ("pyromod",         "pyromod"),
         ("aiofiles",        "aiofiles"),
         ("aiohttp",         "aiohttp"),
-        ("google.generativeai", "google-generativeai"),
+        ("google.genai", "google-genai"),
         ("yt_dlp",          "yt-dlp"),
     ]
     faltando = []

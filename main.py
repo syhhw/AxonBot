@@ -198,7 +198,7 @@ from logging.handlers import RotatingFileHandler as _RFH
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     datefmt="%H:%M:%S",
 )
 _file_handler = _RFH("userbot.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")

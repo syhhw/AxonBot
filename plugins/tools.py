@@ -21,7 +21,7 @@ from utils.i18n import tr, get_lang
 async def cmd_hack(client, message):
     """Simulador de hack animado com dados reais da vítima (diversão)."""
 
-    # ── Dados reais do alvo ────────────────────────────────────────────────────
+    # ── Dados reais do alvo ───────────────────────────────────────────────────
     if message.reply_to_message and message.reply_to_message.from_user:
         u        = message.reply_to_message.from_user
         nome     = u.first_name or "User"
@@ -41,23 +41,29 @@ async def cmd_hack(client, message):
     senha    = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789!@#", k=random.randint(9, 14)))
     dev      = random.choice(["Samsung Galaxy S25", "iPhone 16 Pro", "Pixel 9 Pro", "Xiaomi 14 Ultra", "OnePlus 13"])
     osv      = random.choice(["Android 14", "iOS 18.3", "Android 15", "iOS 17.6"])
-    loc      = random.choice(["São Paulo, BR", "Rio de Janeiro, BR", "Manaus, BR", "Belo Horizonte, BR", "Fortaleza, BR"])
+    isp      = random.choice(["Claro BR", "Vivo", "TIM Brasil", "NET Virtua", "Oi Fibra"])
+    loc      = random.choice(["São Paulo, BR", "Rio de Janeiro, BR", "Manaus, BR", "Belo Horizonte, BR", "Fortaleza, BR", "Curitiba, BR"])
+    lat      = f"{random.uniform(-33.0, 5.0):.6f}"
+    lon      = f"{random.uniform(-73.0, -34.0):.6f}"
     ports    = random.choice(["443, 80, 8443", "443, 8080, 22", "443, 993, 3306"])
+    pkts     = random.randint(3_000, 12_000)
+    tentativa = random.randint(200, 700)
     msgs     = random.randint(1_200, 45_000)
+    apagadas = random.randint(30, 500)
     ctcts    = random.randint(50, 800)
     media    = random.randint(200, 5_000)
-    pkts     = random.randint(2_000, 9_999)
+    salvos   = random.randint(10, 300)
+    chamadas = random.randint(50, 400)
 
     pt = get_lang() != "en"
 
-    # ── Animação por terminal acumulado ───────────────────────────────────────
     terminal: list[str] = []
 
-    async def frame(bar_n: int, phase: str, new_line: str = "", sleep: float = 1.3):
+    async def frame(bar_n: int, phase: str, new_line: str = "", sleep: float = 1.8):
         if new_line:
             terminal.append(new_line)
         b   = "▰" * bar_n + "▱" * (10 - bar_n)
-        log = "\n".join(terminal[-6:])
+        log = "\n".join(terminal[-7:])
         text = (
             f"{'💀 **ATAQUE EM ANDAMENTO**' if pt else '💀 **ATTACK IN PROGRESS**'}\n"
             f"{'🎯 Alvo' if pt else '🎯 Target'}: **{nome}** (`{uid}`){user_tag}\n\n"
@@ -72,65 +78,86 @@ async def cmd_hack(client, message):
         await asyncio.sleep(sleep)
 
     # ── FASE 1 — RECONHECIMENTO ───────────────────────────────────────────────
-    p1 = f"🔍 {'FASE 1 — RECONHECIMENTO' if pt else 'PHASE 1 — RECON'}"
-    await frame(1, p1, f"[*] {'Iniciando varredura de rede...' if pt else 'Starting network scan...'}", 1.0)
-    await frame(2, p1, f"[+] IP {'localizado' if pt else 'found'}: {ip}", 1.1)
-    await frame(2, p1, f"[+] MAC: {mac}", 0.9)
-    await frame(3, p1, f"[+] {'Dispositivo' if pt else 'Device'}: {dev} / {osv}", 1.2)
-    await frame(3, p1, f"[+] {'Localização' if pt else 'Location'}: {loc}", 1.0)
+    p1 = f"🔍 {'FASE 1 — RECONHECIMENTO' if pt else 'PHASE 1 — RECONNAISSANCE'}"
+    await frame(1, p1, f"[*] {'Iniciando varredura de rede...' if pt else 'Starting network scan...'}", 1.8)
+    await frame(1, p1, f"[*] {'Localizando alvo na rede Telegram...' if pt else 'Locating target on Telegram network...'}", 2.0)
+    await frame(2, p1, f"[+] IP {'localizado' if pt else 'found'}: {ip}", 1.8)
+    await frame(2, p1, f"[+] MAC: {mac}", 1.5)
+    await frame(2, p1, f"[+] {'Provedor' if pt else 'ISP'}: {isp}", 1.6)
+    await frame(3, p1, f"[+] {'Dispositivo' if pt else 'Device'}: {dev} ({osv})", 1.8)
+    await frame(3, p1, f"[+] {'Localização' if pt else 'Location'}: {loc}", 1.6)
+    await frame(3, p1, f"[+] GPS: {lat}, {lon}", 2.0)
 
     # ── FASE 2 — INFILTRAÇÃO ──────────────────────────────────────────────────
     p2 = f"📡 {'FASE 2 — INFILTRAÇÃO' if pt else 'PHASE 2 — INFILTRATION'}"
-    await frame(4, p2, f"[*] {'Portas abertas' if pt else 'Open ports'}: {ports}", 1.2)
-    await frame(5, p2, f"[*] {'Interceptando tráfego MTProto...' if pt else 'Intercepting MTProto...'}", 1.4)
-    await frame(5, p2, f"[i] {'Pacotes capturados' if pt else 'Packets captured'}: {pkts:,}", 1.0)
-    await frame(6, p2, f"[+] {'Token de sessão extraído' if pt else 'Session token extracted'}: {token}", 1.2)
-    await frame(6, p2, f"[+] {'Senha encontrada' if pt else 'Password cracked'}: {senha}", 1.1)
-    await frame(6, p2, f"[+] 2FA {'contornado' if pt else 'bypassed'} ✓", 1.0)
+    await frame(4, p2, f"[*] {'Portas abertas' if pt else 'Open ports'}: {ports}", 1.8)
+    await frame(4, p2, f"[*] {'Estabelecendo canal encoberto...' if pt else 'Establishing covert channel...'}", 2.2)
+    await frame(5, p2, f"[*] {'Interceptando tráfego MTProto...' if pt else 'Intercepting MTProto traffic...'}", 2.0)
+    await frame(5, p2, f"[i] {'Pacotes capturados' if pt else 'Packets captured'}: {pkts:,}", 1.6)
+    await frame(5, p2, f"[*] {'Descriptografando AES-256...' if pt else 'Decrypting AES-256...'}", 2.2)
+    await frame(6, p2, f"[*] {'Força bruta na senha: tentativa' if pt else 'Brute force on password: attempt'} {tentativa}/1000", 2.5)
+    await frame(6, p2, f"[+] {'Senha encontrada' if pt else 'Password cracked'}: {senha}", 2.0)
+    await frame(6, p2, f"[+] {'Token de sessão extraído' if pt else 'Session token extracted'}: {token}", 1.8)
+    await frame(7, p2, f"[+] 2FA {'contornado' if pt else 'bypassed'} ✓", 1.6)
+    await frame(7, p2, f"[+] {'Sessão hijackada com sucesso' if pt else 'Session successfully hijacked'} ✓", 2.0)
 
     # ── FASE 3 — EXTRAÇÃO ─────────────────────────────────────────────────────
     p3 = f"📂 {'FASE 3 — EXTRAÇÃO DE DADOS' if pt else 'PHASE 3 — DATA EXTRACTION'}"
-    await frame(7, p3, f"[*] {'Clonando sessão ativa...' if pt else 'Cloning active session...'}", 1.4)
-    await frame(8, p3, f"[+] {'Mensagens baixadas' if pt else 'Messages downloaded'}: {msgs:,} ✓", 1.2)
+    await frame(7, p3, f"[*] {'Espelhando conversas privadas...' if pt else 'Mirroring private conversations...'}", 2.2)
+    await frame(8, p3, f"[+] {'Mensagens baixadas' if pt else 'Messages downloaded'}: {msgs:,} ✓", 1.8)
+    await frame(8, p3, f"[+] {'Mensagens apagadas recuperadas' if pt else 'Deleted messages recovered'}: {apagadas} ✓", 2.2)
+    await frame(8, p3, f"[+] {'Salvos do Telegram' if pt else 'Saved messages'}: {salvos} | {'Chamadas' if pt else 'Calls'}: {chamadas} ✓", 1.8)
     if tem_foto:
-        await frame(8, p3, f"[+] {'Fotos de perfil' if pt else 'Profile photos'}: {'capturadas' if pt else 'captured'} ✓", 1.0)
-    await frame(9, p3, f"[+] {'Mídias' if pt else 'Media'}: {media:,} | {'Contatos' if pt else 'Contacts'}: {ctcts} ✓", 1.2)
+        await frame(9, p3, f"[+] {'Fotos de perfil capturadas' if pt else 'Profile photos captured'} ✓", 1.6)
+    await frame(9, p3, f"[+] {'Mídias' if pt else 'Media files'}: {media:,} | {'Contatos' if pt else 'Contacts'}: {ctcts} ✓", 1.8)
+    await frame(9, p3, f"[!] {'Ativando câmera traseira...' if pt else 'Activating rear camera...'} ✓", 2.5)
+    await frame(9, p3, f"[!] {'Ativando microfone...' if pt else 'Activating microphone...'} ✓", 2.5)
 
     # ── FASE 4 — PAYLOAD ──────────────────────────────────────────────────────
     p4 = f"☢️ {'FASE 4 — PAYLOAD' if pt else 'PHASE 4 — PAYLOAD'}"
-    await frame(9,  p4, f"[*] {'Injetando rootkit persistente...' if pt else 'Injecting persistent rootkit...'}", 1.5)
-    await frame(10, p4, f"[+] {'Acesso root obtido' if pt else 'Root access granted'} ✓", 1.2)
-    await frame(10, p4, f"[+] {'Upload para servidor remoto: 100%' if pt else 'Upload to remote server: 100%'} ✓", 1.5)
+    await frame(9,  p4, f"[*] {'Instalando módulo de espionagem...' if pt else 'Installing spyware module...'}", 2.2)
+    await frame(10, p4, f"[*] {'Configurando backdoor persistente...' if pt else 'Configuring persistent backdoor...'}", 2.2)
+    await frame(10, p4, f"[+] {'Acesso root obtido' if pt else 'Root access granted'} ✓", 1.8)
+    await frame(10, p4, f"[+] {'Ocultando rastros do ataque...' if pt else 'Erasing attack traces...'} ✓", 2.0)
+    await frame(10, p4, f"[+] {'Upload para servidor remoto: 100%' if pt else 'Upload to remote server: 100%'} ✓", 2.0)
 
     # ── TELA FINAL ────────────────────────────────────────────────────────────
     if pt:
         final = (
             f"💀 **HACK CONCLUÍDO COM SUCESSO** 💀\n\n"
             f"🎯 **Alvo:** **{nome}** (`{uid}`){user_tag}\n"
-            f"🌐 **IP:** `{ip}` — {loc}\n"
+            f"🌐 **IP:** `{ip}` — {isp} — {loc}\n"
+            f"📍 **GPS:** `{lat}, {lon}`\n"
             f"📱 **Device:** `{dev}` ({osv})\n"
             f"🔑 **Token:** `{token}`\n"
             f"🔐 **Senha:** `{senha}`\n\n"
             f"📊 **Dados extraídos:**\n"
-            f"  💬 Mensagens: `{msgs:,}`\n"
+            f"  💬 Mensagens: `{msgs:,}` (+`{apagadas}` apagadas)\n"
             f"  📸 Mídias: `{media:,}`\n"
-            f"  👥 Contatos: `{ctcts}`\n\n"
-            f"💸 **ATENÇÃO:** Envie **10 Bitcoin** abaixo em 24h ou tudo será vazado:\n"
+            f"  👥 Contatos: `{ctcts}`\n"
+            f"  📞 Chamadas: `{chamadas}`\n"
+            f"  📌 Salvos: `{salvos}`\n"
+            f"  🎥 Câmera + 🎙️ Microfone: **ativos**\n\n"
+            f"💸 **ATENÇÃO:** Envie **10 Bitcoin** em 24h ou tudo será vazado:\n"
             f"`bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh`"
         )
     else:
         final = (
             f"💀 **HACK SUCCESSFULLY COMPLETED** 💀\n\n"
             f"🎯 **Target:** **{nome}** (`{uid}`){user_tag}\n"
-            f"🌐 **IP:** `{ip}` — {loc}\n"
+            f"🌐 **IP:** `{ip}` — {isp} — {loc}\n"
+            f"📍 **GPS:** `{lat}, {lon}`\n"
             f"📱 **Device:** `{dev}` ({osv})\n"
             f"🔑 **Token:** `{token}`\n"
             f"🔐 **Password:** `{senha}`\n\n"
             f"📊 **Extracted data:**\n"
-            f"  💬 Messages: `{msgs:,}`\n"
+            f"  💬 Messages: `{msgs:,}` (+`{apagadas}` deleted)\n"
             f"  📸 Media: `{media:,}`\n"
-            f"  👥 Contacts: `{ctcts}`\n\n"
-            f"💸 **WARNING:** Send **10 Bitcoin** below in 24h or everything leaks:\n"
+            f"  👥 Contacts: `{ctcts}`\n"
+            f"  📞 Calls: `{chamadas}`\n"
+            f"  📌 Saved: `{salvos}`\n"
+            f"  🎥 Camera + 🎙️ Mic: **active**\n\n"
+            f"💸 **WARNING:** Send **10 Bitcoin** in 24h or everything leaks:\n"
             f"`bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh`"
         )
     try:

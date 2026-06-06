@@ -56,7 +56,7 @@ async def cmd_ask(client, message):
             return ai.models.generate_content(model=modelo, contents=pergunta).text
 
         resposta = await asyncio.to_thread(run_ai)
-        await message.edit_text(f"🧠 **Gemini AI:**\n\n{resposta}")
+        await message.edit_text(tr(f"🧠 **Gemini IA:**\n\n{resposta}", f"🧠 **Gemini AI:**\n\n{resposta}"))
     except Exception as e:
         await message.edit_text(tr(f"❌ Erro na IA: `{e}`", f"❌ AI Error: `{e}`"))
 

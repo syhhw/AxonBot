@@ -249,7 +249,8 @@ async def drive_procurar(client, message):
     await message.edit_text(tr(f"🔎 **Procurando:** `{termo}`...", f"🔎 **Searching:** `{termo}`..."))
     try:
         def do_search():
-            return drive.ListFile({'q': f"title contains '{termo}' and trashed=false"}).GetList()
+            termo_safe = termo.replace("'", "\\'")
+            return drive.ListFile({'q': f"title contains '{termo_safe}' and trashed=false"}).GetList()
             
         arquivos = await asyncio.to_thread(do_search)
         if not arquivos:

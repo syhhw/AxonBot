@@ -106,11 +106,11 @@ async def cmd_kang(client, message):
                 await client.download_media(reply, file_name=TMP_WEBP)
                 file_to_send = await resize_image(TMP_WEBP, TMP_PNG)
         elif reply.photo:
-            tmp = await client.download_media(reply, file_name=TMP_WEBP)
-            file_to_send = await resize_image(tmp, TMP_PNG)
+            await client.download_media(reply, file_name=TMP_WEBP)
+            file_to_send = await resize_image(TMP_WEBP, TMP_PNG)
         elif reply.document and reply.document.mime_type and "image" in reply.document.mime_type:
-            tmp = await client.download_media(reply, file_name=TMP_WEBP)
-            file_to_send = await resize_image(tmp, TMP_PNG)
+            await client.download_media(reply, file_name=TMP_WEBP)
+            file_to_send = await resize_image(TMP_WEBP, TMP_PNG)
         else:
             return await message.edit_text(tr("❌ Tipo de arquivo não suportado para kang.", "❌ File type not supported for kang."))
     except Exception as e:

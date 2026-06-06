@@ -110,7 +110,8 @@ async def cmd_uninstall(client, message):
     partes = message.text.split(None, 1)
     if len(partes) < 2:
         return await message.edit_text(tr(f"⚠️ Use: `{p}desinstalar [nome]`", f"⚠️ Use: `{p}uninstall [filename]`"))
-    filename = partes[1].strip() if partes[1].endswith(".py") else f"{partes[1].strip()}.py"
+    nome = partes[1].strip()
+    filename = nome if nome.endswith(".py") else f"{nome}.py"
     filepath = os.path.join("plugins", filename)
     if not os.path.exists(filepath):
         return await message.edit_text(tr(f"❌ Plugin `{filename}` não encontrado.", f"❌ Plugin `{filename}` not found."))

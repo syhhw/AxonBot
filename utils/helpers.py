@@ -229,16 +229,11 @@ def reiniciar_processo():
     """Reinicia o bot de forma limpa usando subprocess (Graceful Restart)."""
     python = sys.executable
     args   = sys.argv[:]
-
-    if "--no-screen" not in args:
-        args.append("--no-screen")
-    if "--background" not in args and "--background" in sys.argv:
-        args.append("--background")
-
     kwargs = {}
     if os.name == "nt" and "--background" in args:
         python = python.replace("python.exe", "pythonw.exe")
+        if not os.path.exists(python):
+            python = sys.executable
         kwargs["creationflags"] = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-
     subprocess.Popen([python] + args, **kwargs)
     os._exit(0)

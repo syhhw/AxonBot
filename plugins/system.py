@@ -372,6 +372,12 @@ async def cmd_sysinfo(client, message):
     freq_str = f" @ {cpu_freq.current/1000:.1f} GHz" if cpu_freq else ""
     disco_str = "\n             ".join(discos)
 
+    swap      = psutil.swap_memory()
+    swap_str  = (
+        f"{humanize.naturalsize(swap.used)} / {humanize.naturalsize(swap.total)} ({swap.percent}%)"
+        if swap.total > 0 else tr("N/A", "N/A")
+    )
+
     texto = (
         tr("💻 **Neofetch — Userbot Pro**\n\n", "💻 **Neofetch — Userbot Pro**\n\n") +
         f"```text\n"
@@ -383,7 +389,7 @@ async def cmd_sysinfo(client, message):
         f"Cores    : {cpu_cores}C / {cpu_threads}T{freq_str} @ {cpu_uso}%\n"
         f"GPU      : {gpu_info}\n"
         f"RAM      : {humanize.naturalsize(ram.used)} / {humanize.naturalsize(ram.total)} ({ram.percent}%)\n"
-        f"Swap     : {humanize.naturalsize(ram.available)} {tr('disponível', 'available')}\n"
+        f"Swap     : {swap_str}\n"
         f"─────────────────────────────\n"
         f"Disk     : {disco_str}\n"
         f"Net ↑    : {humanize.naturalsize(net.bytes_sent)}\n"

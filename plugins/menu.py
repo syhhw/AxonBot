@@ -138,13 +138,13 @@ async def cmd_menu(client, message):
 
     if not secoes:
         return await message.edit_text(
-            tr(f"⚠️ Nenhum comando encontrado.", f"⚠️ No commands found in plugins.")
+            tr("⚠️ Nenhum comando encontrado nos plugins.", "⚠️ No commands found in plugins.")
         )
 
     versao = getattr(client, "VERSAO", "1.0")
     header = (
         f"⚡ **USERBOT PRO v{versao}**\n"
-        f"├ 🔧 **Prefixo:** `{p}`\n"
+        f"├ 🔧 **{tr('Prefixo', 'Prefix')}:** `{p}`\n"
         f"└ 📦 **{tr('Comandos', 'Commands')}:** `{total_cmds}`\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n\n"
     )

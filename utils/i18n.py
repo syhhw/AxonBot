@@ -9,13 +9,21 @@ import json
 _LANG = "pt"
 
 COMMAND_ALIASES = {
+    # core
     "versao": "version", "atualizar": "update", "processos": "processes",
     "organizar": "organize", "procurar": "search", "apagar": "delete",
     "encurtar": "shorten", "clima": "weather", "voz": "voice",
     "direto": "direct", "resumir": "summarize", "idioma": "lang",
     "zombies": "zombies", "reverter": "revert", "desligar": "stop",
-    "instalar": "install", "desinstalar": "uninstall",
-    "perguntar": "ask"
+    "instalar": "install", "desinstalar": "uninstall", "perguntar": "ask",
+    # chatfilters
+    "addfiltro": "addfilter", "delfiltro": "delfilter", "filtros": "filters",
+    # notes
+    "nota": "note", "delnota": "delnote", "notas": "notes",
+    # welcome
+    "bemvindo": "welcome", "setbemvindo": "setwelcome", "delbemvindo": "delwelcome",
+    # tagall
+    "mencionar": "tagall",
 }
 
 def _load_lang():

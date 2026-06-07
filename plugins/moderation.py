@@ -273,3 +273,72 @@ async def cmd_feds(client, message):
         except:
             txt += tr(f"• `{fid}` (inacessível)\n", f"• `{fid}` (inaccessible)\n")
     await message.edit_text(txt)
+
+
+@Client.on_message(cmd_filter("fixar") & filters.me)
+async def cmd_fixar(client, message):
+    """Fixa a mensagem respondida no chat e registra no canal de logs."""
+    if not message.reply_to_message:
+        return await message.edit_text(tr(
+            "⚠️ Responda à mensagem que deseja fixar.",
+            "⚠️ Reply to the message you want to pin."
+        ))
+
+    alvo = message.reply_to_message
+    chat_id = message.chat.id
+
+    try:
+        await client.pin_chat_message(chat_id, alvo.id, disable_notification=False)
+    except Exception as e:
+        return await message.edit_text(tr(f"❌ Não foi possível fixar:\n`{e}`", f"❌ Could not pin:\n`{e}`"))
+
+    nome_chat = getattr(message.chat, "title", None) or tr("Conversa Privada", "Private Chat")
+    autor = alvo.from_user
+    autor_str = f"[{autor.first_name}](tg://user?id={autor.id})" if autor else tr("Desconhecido", "Unknown")
+
+    confirmacao = tr(
+        f"📌 **Mensagem fixada!**\n"
+        f"├ 💬 Chat: `{nome_chat}`\n"
+        f"└ 👤 Autor: {autor_str}",
+        f"📌 **Message pinned!**\n"
+        f"├ 💬 Chat: `{nome_chat}`\n"
+        f"└ 👤 Author: {autor_str}"
+    )
+    await message.edit_text(confirmacao)
+
+    cfg = getattr(client, "config", {})
+    log_id = cfg.get("ID_CANAL_LOGS")
+    if log_id:
+        try:
+            await client.send_message(log_id, tr(
+                f"📌 **Mensagem fixada**\n"
+                f"├ 💬 Chat: **{nome_chat}** (`{chat_id}`)\n"
+                f"└ 👤 Autor: {autor_str}",
+                f"📌 **Message pinned**\n"
+                f"├ 💬 Chat: **{nome_chat}** (`{chat_id}`)\n"
+                f"└ 👤 Author: {autor_str}"
+            ))
+            await alvo.forward(log_id)
+        except Exception:
+            pass
+
+    deletar_depois(message, 10)
+
+
+@Client.on_message(cmd_filter("desafixar") & filters.me)
+async def cmd_desafixar(client, message):
+    """Desafixa a mensagem respondida (ou a última fixada) no chat."""
+    chat_id = message.chat.id
+
+    msg_id = message.reply_to_message.id if message.reply_to_message else None
+
+    try:
+        if msg_id:
+            await client.unpin_chat_message(chat_id, msg_id)
+        else:
+            await client.unpin_chat_message(chat_id)
+    except Exception as e:
+        return await message.edit_text(tr(f"❌ Não foi possível desafixar:\n`{e}`", f"❌ Could not unpin:\n`{e}`"))
+
+    await message.edit_text(tr("📌 **Mensagem desafixada.**", "📌 **Message unpinned.**"))
+    deletar_depois(message, 8)

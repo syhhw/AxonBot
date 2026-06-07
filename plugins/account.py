@@ -3,15 +3,32 @@ plugins/account.py
 Comandos de conta e monitoramento: afk, unafk, permit + handlers passivos (pm_permit, auto_unafk, monitor)
 """
 import os
+import time
 import asyncio
 
 from pyrogram import filters, enums, Client
 from utils.helpers import cmd_filter, prefixo, carregar, salvar, verificar_admin, tr
 
 # Estado global do AFK (compartilhado dentro deste módulo)
-AFK_ATIVO = False
+AFK_ATIVO  = False
 AFK_MOTIVO = ""
+AFK_INICIO: float = 0.0
 CAPTCHA_PENDENTE = {}
+
+
+def _tempo_afk() -> str:
+    """Retorna quanto tempo o AFK está ativo em formato legível."""
+    s = int(time.time() - AFK_INICIO)
+    if s < 60:
+        return f"{s}s"
+    m = s // 60
+    if m < 60:
+        return f"{m}min"
+    h, mr = divmod(m, 60)
+    if h < 24:
+        return f"{h}h {mr}min" if mr else f"{h}h"
+    d, hr = divmod(h, 24)
+    return f"{d}d {hr}h"
 
 CATEGORIAS = {
     '.apk': 'Apps', '.zip': 'Zips', '.rar': 'Zips', '.7z': 'Zips',
@@ -31,19 +48,27 @@ def obter_pasta(client, nome):
 @Client.on_message(cmd_filter("afk") & filters.me)
 async def cmd_afk(client, message):
     """Ativa o modo AFK com motivo opcional."""
-    global AFK_ATIVO, AFK_MOTIVO
+    global AFK_ATIVO, AFK_MOTIVO, AFK_INICIO
     partes = message.text.split(None, 1)
     AFK_MOTIVO = partes[1].strip() if len(partes) > 1 else tr("Ausente.", "Away.")
-    AFK_ATIVO = True
-    await message.edit_text(tr(f"💤 **Modo AFK Ativado**\n└ 📝 **Motivo:** `{AFK_MOTIVO}`", f"💤 **AFK Mode Activated**\n└ 📝 **Reason:** `{AFK_MOTIVO}`"))
+    AFK_ATIVO  = True
+    AFK_INICIO = time.time()
+    await message.edit_text(tr(
+        f"💤 **Modo AFK Ativado**\n└ 📝 **Motivo:** `{AFK_MOTIVO}`",
+        f"💤 **AFK Mode Activated**\n└ 📝 **Reason:** `{AFK_MOTIVO}`"
+    ))
 
 
 @Client.on_message(cmd_filter("unafk") & filters.me)
 async def cmd_unafk(client, message):
     """Desativa o modo AFK manualmente."""
     global AFK_ATIVO
+    tempo = _tempo_afk() if AFK_ATIVO else "—"
     AFK_ATIVO = False
-    await message.edit_text(tr("✅ **Modo AFK desativado.**", "✅ **AFK Mode deactivated.**"))
+    await message.edit_text(tr(
+        f"✅ **Modo AFK desativado.**\n└ ⏱️ Ausente por: `{tempo}`",
+        f"✅ **AFK Mode deactivated.**\n└ ⏱️ Away for: `{tempo}`"
+    ))
 
 
 @Client.on_message(cmd_filter("permit") & filters.me)
@@ -116,12 +141,16 @@ async def auto_unafk(client, message):
     if AFK_ATIVO and message.text:
         p = prefixo(client)
         if not message.text.startswith(f"{p}afk"):
+            tempo = _tempo_afk()
             AFK_ATIVO = False
             try:
-                aviso = await message.reply_text(tr("✅ **AFK desativado automaticamente.**", "✅ **AFK automatically deactivated.**"))
-                await asyncio.sleep(3)
+                aviso = await message.reply_text(tr(
+                    f"✅ **AFK desativado automaticamente.**\n└ ⏱️ Você ficou ausente por: `{tempo}`",
+                    f"✅ **AFK automatically deactivated.**\n└ ⏱️ You were away for: `{tempo}`"
+                ))
+                await asyncio.sleep(4)
                 await aviso.delete()
-            except:
+            except Exception:
                 pass
 
 
@@ -157,8 +186,11 @@ async def monitor_central(client, message):
     global AFK_ATIVO, AFK_MOTIVO
     if AFK_ATIVO:
         try:
-            await message.reply_text(tr(f"💤 **Estou AFK:** `{AFK_MOTIVO}`", f"💤 **I'm AFK:** `{AFK_MOTIVO}`"))
-        except:
+            await message.reply_text(tr(
+                f"💤 **Estou AFK há {_tempo_afk()}**\n└ 📝 Motivo: `{AFK_MOTIVO}`",
+                f"💤 **I've been AFK for {_tempo_afk()}**\n└ 📝 Reason: `{AFK_MOTIVO}`"
+            ))
+        except Exception:
             pass
 
     # Encaminha para logs + auto-upload de arquivos pequenos

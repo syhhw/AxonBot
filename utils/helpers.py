@@ -168,7 +168,14 @@ async def resolver_alvo(client, message):
 
 
 def reiniciar_processo() -> None:
-    """Reinicia o bot de forma limpa (Graceful Restart)."""
+    """Reinicia o bot de forma limpa (Graceful Restart).
+
+    Se rodando sob debug.py (DEBUG_PANEL=1), sai com código 42 para que o
+    painel detecte e relance o processo sem encerrar o debug.
+    """
+    if os.environ.get("DEBUG_PANEL") == "1":
+        os._exit(42)
+
     python = sys.executable
     args = sys.argv[:]
     kwargs: dict = {}

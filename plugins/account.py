@@ -5,9 +5,11 @@ Comandos de conta e monitoramento: afk, unafk, permit + handlers passivos (pm_pe
 import os
 import time
 import asyncio
+from datetime import datetime
 
 from pyrogram import filters, enums, Client
 from utils.helpers import cmd_filter, prefixo, carregar, salvar, verificar_admin, tr
+from utils.i18n import tr_log
 
 # Estado global do AFK (compartilhado dentro deste módulo)
 AFK_ATIVO  = False
@@ -164,6 +166,8 @@ async def monitor_central(client, message):
     if message.chat and message.chat.id == log_id:
         return
 
+    ts = datetime.now().strftime("%d/%m/%Y %H:%M")
+
     # Verifica perda de admin
     if message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
         cache = carregar("admin_cache.json", {})
@@ -172,12 +176,19 @@ async def monitor_central(client, message):
             is_admin_atual = await verificar_admin(client, message.chat.id)
             if cache[cid].get("era_admin") and not is_admin_atual:
                 try:
-                    await client.send_message(
-                        log_id,
-                        tr(f"⚠️ **PERDA DE CARGO**\n\nVocê não é mais admin em:\n**{message.chat.title}** (`{message.chat.id}`)",
-                                   f"⚠️ **DEMOTION**\n\nYou are no longer an admin in:\n**{message.chat.title}** (`{message.chat.id}`)")
-                    )
-                except:
+                    await client.send_message(log_id, tr_log(
+                        f"⚠️ **PERDA DE CARGO**\n"
+                        f"━━━━━━━━━━━━━━━━━━\n"
+                        f"├ 💬 **Grupo:** {message.chat.title}\n"
+                        f"├ 🆔 `{message.chat.id}`\n"
+                        f"└ 🕐 `{ts}`",
+                        f"⚠️ **DEMOTION ALERT**\n"
+                        f"━━━━━━━━━━━━━━━━━━\n"
+                        f"├ 💬 **Group:** {message.chat.title}\n"
+                        f"├ 🆔 `{message.chat.id}`\n"
+                        f"└ 🕐 `{ts}`",
+                    ))
+                except Exception:
                     pass
                 cache[cid]["era_admin"] = False
                 salvar("admin_cache.json", cache)
@@ -193,8 +204,40 @@ async def monitor_central(client, message):
         except Exception:
             pass
 
-    # Encaminha para logs + auto-upload de arquivos pequenos
+    # Cabeçalho de contexto + forward para o canal de logs
+    sender = message.from_user
+    if sender:
+        nome     = sender.first_name or "?"
+        uid      = sender.id
+        mention  = f"[{nome}](tg://user?id={uid})"
+        user_tag = f" • @{sender.username}" if sender.username else ""
+    else:
+        mention  = tr_log("Desconhecido", "Unknown")
+        user_tag = ""
+
+    is_pm      = message.chat.type == enums.ChatType.PRIVATE
+    is_mention = message.mentioned
+    tipo_icon  = "💬" if is_pm else "📣"
+    tipo_label = tr_log(
+        "Mensagem Privada" if is_pm else "Menção em Grupo",
+        "Private Message"  if is_pm else "Group Mention",
+    )
+    chat_nome = tr_log("Chat Privado", "Private Chat") if is_pm else (message.chat.title or "?")
+
+    header = tr_log(
+        f"{tipo_icon} **{tipo_label}**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"├ 👤 **De:** {mention}{user_tag}\n"
+        f"├ 💬 **Em:** {chat_nome}\n"
+        f"└ 🕐 `{ts}`",
+        f"{tipo_icon} **{tipo_label}**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"├ 👤 **From:** {mention}{user_tag}\n"
+        f"├ 💬 **In:** {chat_nome}\n"
+        f"└ 🕐 `{ts}`",
+    )
     try:
+        await client.send_message(log_id, header)
         await message.forward(log_id)
     except Exception:
         pass

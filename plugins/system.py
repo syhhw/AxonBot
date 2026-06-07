@@ -16,7 +16,7 @@ import pyrogram
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, salvar, deletar_depois, reiniciar_processo
-from utils.i18n import tr, set_lang, get_lang
+from utils.i18n import tr, tr_log, set_lang, get_lang
 
 _IS_ANDROID = os.path.exists("/system/build.prop") or "TERMUX_VERSION" in os.environ
 _IS_WINDOWS = platform.system() == "Windows"
@@ -428,7 +428,18 @@ async def cmd_desligar(client, message):
     log_id = cfg.get("ID_CANAL_LOGS")
     if log_id:
         try:
-            await client.send_message(log_id, tr("🛑 **USERBOT OFFLINE**\nO processo foi encerrado remotamente.", "🛑 **USERBOT OFFLINE**\nThe process was terminated safely."))
+            from datetime import datetime
+            ts = datetime.now().strftime("%d/%m/%Y %H:%M")
+            await client.send_message(log_id, tr_log(
+                f"🛑 **USERBOT OFFLINE**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ ⚙️ Encerrado remotamente via comando\n"
+                f"└ 🕐 `{ts}`",
+                f"🛑 **USERBOT OFFLINE**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ ⚙️ Terminated remotely via command\n"
+                f"└ 🕐 `{ts}`",
+            ))
         except:
             pass
             

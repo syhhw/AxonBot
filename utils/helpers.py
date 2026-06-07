@@ -15,7 +15,7 @@ import logging
 from pyrogram import filters, enums
 from pyrogram.handlers import MessageHandler
 from utils.db import salvar, carregar       # re-export
-from utils.i18n import tr, get_lang, COMMAND_ALIASES
+from utils.i18n import tr, tr_log, get_lang, COMMAND_ALIASES
 
 logger = logging.getLogger("UserbotHelper")
 
@@ -105,35 +105,53 @@ async def verificar_admin(client, chat_id: int) -> bool:
         return False
 
 
+_ACAO_EMOJI: dict[str, str] = {
+    "BAN": "🔨", "UNBAN": "🔓", "MUTE": "🔇", "UNMUTE": "🔊",
+    "GBAN": "☢️", "FBAN": "📡", "KICK": "👟", "WARN": "⚠️",
+    "PIN": "📌", "UNPIN": "📌",
+}
+
+
 async def auditoria(client, acao: str, user, chat, motivo=None, msg_orig=None) -> None:
     """Envia log detalhado de moderação para o canal de logs."""
     cfg = getattr(client, "config", {})
     log_id = cfg.get("ID_CANAL_LOGS")
     if not log_id:
         return
-    nome = getattr(user, "first_name", "Desconhecido") if user else "Desconhecido"
-    uid = getattr(user, "id", "?") if user else "?"
-    chat_titulo = getattr(chat, "title", "Chat Privado")
-    txt = tr(
-        f"🛡️ **AUDITORIA DE MODERAÇÃO**\n\n"
-        f"⚙️ **Ação:** `{acao}`\n"
-        f"👤 **Alvo:** {nome} (`{uid}`)\n"
-        f"📍 **Chat:** {chat_titulo}\n",
-        f"🛡️ **MODERATION AUDIT**\n\n"
-        f"⚙️ **Action:** `{acao}`\n"
-        f"👤 **Target:** {nome} (`{uid}`)\n"
-        f"📍 **Chat:** {chat_titulo}\n",
+
+    from datetime import datetime
+    ts = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    emoji     = _ACAO_EMOJI.get(acao.upper(), "🛡️")
+    nome      = getattr(user, "first_name", None) or tr_log("Desconhecido", "Unknown")
+    uid       = getattr(user, "id", "?")
+    username  = getattr(user, "username", None)
+    chat_nome = getattr(chat, "title", None) or tr_log("Chat Privado", "Private Chat")
+    chat_id   = getattr(chat, "id", "?")
+
+    mention  = f"[{nome}](tg://user?id={uid})"
+    user_tag = f" • @{username}" if username else ""
+
+    txt = tr_log(
+        f"{emoji} **{acao.upper()}**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"├ 👤 **Alvo:** {mention}{user_tag}\n"
+        f"├ 🆔 **ID:** `{uid}`\n"
+        f"└ 💬 **Chat:** {chat_nome} (`{chat_id}`)\n",
+        f"{emoji} **{acao.upper()}**\n"
+        f"━━━━━━━━━━━━━━━━━━\n"
+        f"├ 👤 **Target:** {mention}{user_tag}\n"
+        f"├ 🆔 **ID:** `{uid}`\n"
+        f"└ 💬 **Chat:** {chat_nome} (`{chat_id}`)\n",
     )
     if motivo:
-        txt += tr(f"📝 **Motivo:** `{motivo}`\n", f"📝 **Reason:** `{motivo}`\n")
-    if msg_orig:
-        conteudo = msg_orig.text or msg_orig.caption or tr("[Mídia]", "[Media]")
-        txt += tr(
-            f"\n💬 **Mensagem original:**\n`{conteudo[:400]}`",
-            f"\n💬 **Original message:**\n`{conteudo[:400]}`",
-        )
+        txt += tr_log(f"├ 📝 **Motivo:** `{motivo}`\n", f"├ 📝 **Reason:** `{motivo}`\n")
+    txt += f"└ 🕐 `{ts}`"
+
     try:
         await client.send_message(log_id, txt)
+        if msg_orig:
+            await msg_orig.forward(log_id)
     except Exception:
         pass
 

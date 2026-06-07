@@ -8,6 +8,7 @@ from pyrogram import filters, enums, Client
 from pyrogram.types import ChatPermissions
 from pyrogram.errors import FloodWait
 from utils.helpers import cmd_filter, prefixo, resolver_alvo, auditoria, verificar_admin, carregar, salvar, deletar_depois, tr
+from utils.i18n import tr_log
 
 
 @Client.on_message(cmd_filter("ban") & filters.me)
@@ -306,17 +307,24 @@ async def cmd_fixar(client, message):
     )
     await message.edit_text(confirmacao)
 
+    from datetime import datetime
+    ts = datetime.now().strftime("%d/%m/%Y %H:%M")
+
     cfg = getattr(client, "config", {})
     log_id = cfg.get("ID_CANAL_LOGS")
     if log_id:
         try:
-            await client.send_message(log_id, tr(
-                f"📌 **Mensagem fixada**\n"
-                f"├ 💬 Chat: **{nome_chat}** (`{chat_id}`)\n"
-                f"└ 👤 Autor: {autor_str}",
-                f"📌 **Message pinned**\n"
-                f"├ 💬 Chat: **{nome_chat}** (`{chat_id}`)\n"
-                f"└ 👤 Author: {autor_str}"
+            await client.send_message(log_id, tr_log(
+                f"📌 **MENSAGEM FIXADA**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ 💬 **Chat:** {nome_chat} (`{chat_id}`)\n"
+                f"├ 👤 **Autor:** {autor_str}\n"
+                f"└ 🕐 `{ts}`",
+                f"📌 **MESSAGE PINNED**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ 💬 **Chat:** {nome_chat} (`{chat_id}`)\n"
+                f"├ 👤 **Author:** {autor_str}\n"
+                f"└ 🕐 `{ts}`",
             ))
             await alvo.forward(log_id)
         except Exception:

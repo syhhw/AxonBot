@@ -490,16 +490,44 @@ async def cmd_clone(client, message):
     if target.photo:
         await msg.edit_text(tr("🎭 **Baixando foto de perfil...**", "🎭 **Downloading profile photo...**"))
         photo_path = None
+
+        # Tentativa 1: foto em alta qualidade (pode falhar se perfil restrito)
         try:
-            photo_path = await client.download_media(target.photo.big_file_id)
-            await client.set_profile_photo(photo=photo_path)
-            backup["photos_added"] = backup.get("photos_added", 0) + 1
-            salvar("clone_backup.json", backup)
+            photos = [p async for p in client.get_profile_photos(user.id, limit=1)]
+            if photos:
+                photo_path = await client.download_media(photos[0])
         except Exception:
             pass
-        finally:
-            if photo_path and os.path.exists(photo_path):
-                os.remove(photo_path)
+
+        # Tentativa 2: miniatura visível no chat (sempre acessível quando .photo existe)
+        if not photo_path:
+            try:
+                photo_path = await client.download_media(target.photo.big_file_id)
+            except Exception:
+                pass
+
+        if photo_path:
+            try:
+                await client.set_profile_photo(photo=photo_path)
+
+                # Garante visibilidade pública independente das configurações da conta
+                from pyrogram import raw as _raw
+                await client.invoke(
+                    _raw.functions.account.SetPrivacyRules(
+                        key=_raw.types.InputPrivacyKeyProfilePhoto(),
+                        rules=[_raw.types.InputPrivacyValueAllowAll()],
+                    )
+                )
+
+                backup["photos_added"] = backup.get("photos_added", 0) + 1
+                salvar("clone_backup.json", backup)
+            except Exception:
+                pass
+            finally:
+                try:
+                    os.remove(photo_path)
+                except Exception:
+                    pass
                 
     await msg.edit_text(tr(f"✅ **Clone de `{first}` ativado!**\nUse `{prefixo(client)}reverter` para voltar ao normal.", f"✅ **Cloned `{first}`!**\nUse `{prefixo(client)}revert` to restore original profile."))
 

@@ -149,7 +149,7 @@ def _build_modulo_section(filename: str, comandos: list[dict], p: str, lang: str
         if desc:
             entry += f" — {desc}"
         linhas.append(entry)
-    return f"**{titulo}** _({n})_\n" + "\n".join(linhas)
+    return f"**{titulo}** ({n})\n" + "\n".join(linhas)
 
 
 @Client.on_message(cmd_filter("menu") & filters.me)
@@ -240,8 +240,8 @@ async def cmd_menu(client, message):
         for c in comandos[:4]:
             nome_cmd = COMMAND_ALIASES.get(c["cmd"], c["cmd"]) if lang == "en" else c["cmd"]
             chips.append(f"`{p}{nome_cmd}`")
-        suffix = f" _+{n - 4}_" if n > 4 else ""
-        secoes_toc.append(f"**{titulo}** _({n})_\n  {' '.join(chips)}{suffix}")
+        suffix = f" +{n - 4}" if n > 4 else ""
+        secoes_toc.append(f"**{titulo}** ({n})\n  {' '.join(chips)}{suffix}")
 
     await message.edit_text(
         header + "\n\n".join(secoes_toc) + footer,

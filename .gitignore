@@ -24,6 +24,11 @@ userbot.log
 __pycache__/
 *.pyc
 
+# IPC do painel bot (arquivos temporários de comunicação)
+_panel_cmd.json
+_panel_result.json
+_panel_status.json
+
 # Ferramentas locais (não vai pro repositório)
 debug.py
 .claude/

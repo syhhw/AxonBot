@@ -317,6 +317,11 @@ def _carregar_plugins():
                         app.add_handler(handler, group)
                         count += 1
             logger.info(f"✅ Plugin carregado: {nome} ({count} handler(s))")
+            # Hook opcional: _on_start(client) para tarefas de background
+            startup = getattr(mod, "_on_start", None)
+            if startup and asyncio.iscoroutinefunction(startup):
+                asyncio.create_task(startup(app))
+                logger.info(f"  ↳ _on_start() agendado para {nome}")
         except Exception as e:
             logger.warning(f"⚠️ Falha ao carregar plugin {nome}: {e}")
 

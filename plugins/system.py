@@ -13,6 +13,7 @@ import speedtest
 import subprocess
 import platform
 import pyrogram
+from datetime import datetime
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, salvar, deletar_depois, reiniciar_processo
@@ -42,7 +43,7 @@ def _e_repositorio_git():
 
 @Client.on_message(cmd_filter("versao") & filters.me)
 async def cmd_versao(client, message):
-    """Mostra a versão local, a remota e o último commit."""
+    """Versão local, remota e último commit do repositório."""
     deletar_depois(message, 30)
     versao_local = getattr(client, "VERSAO", "?")
     if not _e_repositorio_git():
@@ -150,9 +151,25 @@ async def cmd_atualizar(client, message):
 
 @Client.on_message(cmd_filter("restart") & filters.me)
 async def cmd_restart(client, message):
-    """Reinicia o userbot."""
+    """Reinicia o bot."""
     await message.edit_text(tr("🔄 **Reiniciando...**", "🔄 **Restarting...**"))
-    await asyncio.sleep(1)
+    cfg    = getattr(client, "config", {})
+    log_id = cfg.get("ID_CANAL_LOGS")
+    if log_id:
+        try:
+            ts = datetime.now().strftime("%d/%m/%Y %H:%M")
+            await client.send_message(log_id, tr_log(
+                f"🔄 **USERBOT REINICIANDO**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ ⚙️ Reiniciado via comando\n"
+                f"└ 🕐 `{ts}`",
+                f"🔄 **USERBOT RESTARTING**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ ⚙️ Restarted via command\n"
+                f"└ 🕐 `{ts}`",
+            ))
+        except Exception:
+            pass
     reiniciar_processo()
 
 
@@ -341,7 +358,7 @@ def _disk_type(device: str, ssd_set: set) -> str:
 
 @Client.on_message(cmd_filter("sysinfo") & filters.me)
 async def cmd_sysinfo(client, message):
-    """Exibe informações completas do sistema no estilo neofetch."""
+    """Informações completas do sistema (estilo neofetch)."""
     deletar_depois(message, 90)
     await message.edit_text(tr("💻 **Coletando informações do sistema...**", "💻 **Collecting system info...**"))
 
@@ -421,7 +438,7 @@ async def cmd_processos(client, message):
 
 @Client.on_message(cmd_filter("desligar") & filters.me)
 async def cmd_desligar(client, message):
-    """Desliga o processo do userbot remotamente."""
+    """Encerra o bot remotamente."""
     await message.edit_text(tr("🛑 **Desligando o bot com segurança...**", "🛑 **Shutting down gracefully...**"))
     await asyncio.sleep(0.5)
     
@@ -430,7 +447,6 @@ async def cmd_desligar(client, message):
     log_id = cfg.get("ID_CANAL_LOGS")
     if log_id:
         try:
-            from datetime import datetime
             ts = datetime.now().strftime("%d/%m/%Y %H:%M")
             await client.send_message(log_id, tr_log(
                 f"🛑 **USERBOT OFFLINE**\n"

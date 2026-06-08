@@ -3,6 +3,7 @@ plugins/moderation.py
 Comandos de moderação: ban, unban, mute, unmute, del, purge, admins, zombies, gban, fban, addfed, delfed, feds
 """
 import asyncio
+from datetime import datetime
 
 from pyrogram import filters, enums, Client
 from pyrogram.types import ChatPermissions
@@ -45,6 +46,7 @@ async def cmd_unban(client, message):
     try:
         await client.unban_chat_member(message.chat.id, user.id)
         await message.edit_text(tr(f"✅ **Desbanido:** {user.first_name} (`{user.id}`)", f"✅ **Unbanned:** {user.first_name} (`{user.id}`)"))
+        await auditoria(client, "UNBAN", user, message.chat)
     except Exception as e:
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
@@ -92,6 +94,7 @@ async def cmd_unmute(client, message):
             )
         )
         await message.edit_text(tr(f"🔊 **Desmutado:** {user.first_name} (`{user.id}`)", f"🔊 **Unmuted:** {user.first_name} (`{user.id}`)"))
+        await auditoria(client, "UNMUTE", user, message.chat)
     except Exception as e:
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
@@ -104,7 +107,7 @@ async def cmd_del(client, message):
     try:
         await message.reply_to_message.delete()
         await message.delete()
-    except:
+    except Exception:
         pass
 
 
@@ -133,41 +136,107 @@ async def cmd_admins(client, message):
     deletar_depois(message, 45)
     await message.edit_text(tr("👮 **Listando administradores...**", "👮 **Listing administrators...**"))
     try:
-        txt = tr(f"👮 **Admins de {message.chat.title}:**\n\n", f"👮 **Admins of {message.chat.title}:**\n\n")
+        admins = []
         async for m in client.get_chat_members(message.chat.id, filter=enums.ChatMembersFilter.ADMINISTRATORS):
-            cargo = "👑" if m.status == enums.ChatMemberStatus.OWNER else "🛡️"
-            txt += f"{cargo} **{m.user.first_name}** (`{m.user.id}`)\n"
-        await message.edit_text(txt)
+            cargo    = "👑" if m.status == enums.ChatMemberStatus.OWNER else "🛡️"
+            nome     = m.user.first_name or "?"
+            uid      = m.user.id
+            username = f" @{m.user.username}" if m.user.username else ""
+            admins.append(f"{cargo} **{nome}**{username} (`{uid}`)")
+        header = tr(
+            f"👮 **Admins de {message.chat.title}** ({len(admins)}):\n\n",
+            f"👮 **Admins of {message.chat.title}** ({len(admins)}):\n\n",
+        )
+        await message.edit_text(header + "\n".join(admins))
     except Exception as e:
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
 @Client.on_message(cmd_filter("zombies") & filters.me)
 async def cmd_zombies(client, message):
-    """Remove contas deletadas do grupo."""
-    msg = await message.edit_text(tr("🧟 **Iniciando varredura de contas excluídas...**", "🧟 **Starting scan for deleted accounts...**"))
+    """Detecta e remove contas deletadas do grupo (pede confirmação)."""
+    p   = prefixo(client)
+    msg = await message.edit_text(tr(
+        "🔍 **Varrendo membros do grupo...**",
+        "🔍 **Scanning group members...**",
+    ))
     if not await verificar_admin(client, message.chat.id):
-        return await msg.edit_text(tr("⚠️ Você não é admin neste grupo.", "⚠️ You are not an admin in this group."))
-    removidos, total = 0, 0
+        return await msg.edit_text(tr(
+            "⚠️ Você não é admin neste grupo.",
+            "⚠️ You are not an admin in this group.",
+        ))
+
+    zumbis: list[int] = []
+    total = 0
     try:
         async for m in client.get_chat_members(message.chat.id):
             total += 1
             if m.user.is_deleted:
-                try:
-                    await client.ban_chat_member(message.chat.id, m.user.id)
-                    await asyncio.sleep(0.3)
-                    await client.unban_chat_member(message.chat.id, m.user.id)
-                    removidos += 1
-                except FloodWait as e:
-                    await asyncio.sleep(e.value)
-                except:
-                    pass
-        await msg.edit_text(tr(
-            f"🧟 **Limpeza Concluída!**\n\n👥 Membros analisados: `{total}`\n🗑️ Zumbis removidos: `{removidos}`",
-            f"🧟 **Cleanup Complete!**\n\n👥 Members scanned: `{total}`\n🗑️ Zombies removed: `{removidos}`"
-        ))
+                zumbis.append(m.user.id)
     except Exception as e:
-        await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        return await msg.edit_text(tr(f"❌ Erro na varredura: `{e}`", f"❌ Scan error: `{e}`"))
+
+    if not zumbis:
+        await msg.edit_text(tr(
+            f"✅ **Nenhuma conta deletada encontrada.**\n└ 👥 Membros verificados: `{total}`",
+            f"✅ **No deleted accounts found.**\n└ 👥 Members scanned: `{total}`",
+        ))
+        return deletar_depois(msg, 20)
+
+    await msg.edit_text(tr(
+        f"🧟 **{len(zumbis)} conta(s) deletada(s) encontrada(s)**\n"
+        f"└ 👥 Membros verificados: `{total}`\n\n"
+        f"Responda **sim** para remover ou **não** para cancelar.",
+        f"🧟 **{len(zumbis)} deleted account(s) found**\n"
+        f"└ 👥 Members scanned: `{total}`\n\n"
+        f"Reply **yes** to remove or **no** to cancel.",
+    ))
+
+    from utils.helpers import listen
+    try:
+        resp = await listen(client, message.chat.id, timeout=30)
+        confirmado = resp.text.strip().lower() in ("sim", "yes", "s", "y")
+    except asyncio.TimeoutError:
+        await msg.edit_text(tr(
+            "⏰ **Tempo esgotado.** Operação cancelada.",
+            "⏰ **Timed out.** Operation cancelled.",
+        ))
+        return deletar_depois(msg, 15)
+
+    try:
+        await resp.delete()
+    except Exception:
+        pass
+
+    if not confirmado:
+        await msg.edit_text(tr("🚫 **Operação cancelada.**", "🚫 **Operation cancelled.**"))
+        return deletar_depois(msg, 10)
+
+    await msg.edit_text(tr(
+        f"🧟 **Removendo {len(zumbis)} zumbi(s)...**",
+        f"🧟 **Removing {len(zumbis)} zombie(s)...**",
+    ))
+
+    removidos = 0
+    for uid in zumbis:
+        try:
+            await client.ban_chat_member(message.chat.id, uid)
+            await asyncio.sleep(0.3)
+            await client.unban_chat_member(message.chat.id, uid)
+            removidos += 1
+        except FloodWait as e:
+            await asyncio.sleep(e.value)
+        except Exception:
+            pass
+
+    await msg.edit_text(tr(
+        f"🧟 **Limpeza concluída!**\n\n"
+        f"├ 👥 Membros verificados: `{total}`\n"
+        f"└ 🗑️ Zumbis removidos: `{removidos}`",
+        f"🧟 **Cleanup complete!**\n\n"
+        f"├ 👥 Members scanned: `{total}`\n"
+        f"└ 🗑️ Zombies removed: `{removidos}`",
+    ))
     deletar_depois(msg, 30)
 
 
@@ -307,7 +376,6 @@ async def cmd_fixar(client, message):
     )
     await message.edit_text(confirmacao)
 
-    from datetime import datetime
     ts = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     cfg = getattr(client, "config", {})

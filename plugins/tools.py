@@ -8,6 +8,7 @@ import asyncio
 import random
 import textwrap
 import aiohttp
+from datetime import date as _date
 
 from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
@@ -17,9 +18,27 @@ from utils.helpers import cmd_filter, prefixo, resolver_alvo, carregar, salvar
 from utils.i18n import tr, get_lang
 
 
+_CLIMA_CODES_THUNDER = {200, 386, 389, 392, 395}
+_CLIMA_CODES_RAIN    = {176, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311}
+_CLIMA_CODES_SNOW    = {179, 182, 185, 227, 230, 314, 317, 320, 323, 326, 329,
+                        332, 335, 338, 350, 353, 356, 359, 362, 365, 368, 371, 374, 377}
+_CLIMA_CODES_FOG     = {143, 248, 260}
+
+
+def _clima_icon(code: int) -> str:
+    if code == 113:                    return "☀️"
+    if code == 116:                    return "⛅"
+    if code in (119, 122):             return "☁️"
+    if code in _CLIMA_CODES_FOG:       return "🌫️"
+    if code in _CLIMA_CODES_THUNDER:   return "⛈️"
+    if code in _CLIMA_CODES_RAIN:      return "🌧️"
+    if code in _CLIMA_CODES_SNOW:      return "❄️"
+    return "🌡️"
+
+
 @Client.on_message(cmd_filter("hack") & filters.me)
 async def cmd_hack(client, message):
-    """Simulador de hack animado com dados reais da vítima (diversão)."""
+    """Simulador de hack interativo com dados reais do alvo."""
 
     # ── Dados reais do alvo ───────────────────────────────────────────────────
     if message.reply_to_message and message.reply_to_message.from_user:
@@ -250,7 +269,7 @@ async def cmd_tr(client, message):
 
 @Client.on_message(cmd_filter("voz") & filters.me)
 async def cmd_voz(client, message):
-    """Converte texto em voz. Sotaques: br, pt, en, es, ja, ru"""
+    """Converte texto em áudio de voz (br, pt, en, es, ja, ru)."""
     p = prefixo(client)
     
     sotaques_map = {
@@ -309,7 +328,7 @@ def gerar_print_img(texto, autor, arquivo):
 
 @Client.on_message(cmd_filter("print") & filters.me)
 async def cmd_print(client, message):
-    """Gera um print estilizado de uma mensagem respondida."""
+    """Gera imagem estilizada de uma mensagem respondida."""
     if not message.reply_to_message:
         return await message.edit_text(tr("⚠️ Responda à mensagem para gerar o print.", "⚠️ Reply to a message to generate the screenshot."))
     await message.edit_text(tr("📸 **Gerando print...**", "📸 **Generating screenshot...**"))
@@ -385,30 +404,126 @@ async def cmd_ipinfo(client, message):
 
 @Client.on_message(cmd_filter("clima") & filters.me)
 async def cmd_clima(client, message):
-    """Exibe o clima atual de uma cidade."""
+    """Clima atual e previsão de 3 dias para uma cidade."""
+    p      = prefixo(client)
     partes = message.text.split(None, 1)
-    cidade = partes[1].strip() if len(partes) > 1 else "Sao Paulo"
-    await message.edit_text(tr(f"🌤️ **Buscando clima de `{cidade}`...**", f"🌤️ **Fetching weather for `{cidade}`...**"))
+    if len(partes) < 2:
+        return await message.edit_text(tr(
+            f"⚠️ Use: `{p}clima [cidade]`\nEx: `{p}clima São Paulo`",
+            f"⚠️ Use: `{p}weather [city]`\nEx: `{p}weather New York`",
+        ))
+    cidade = partes[1].strip()
+    await message.edit_text(tr(
+        f"🌤️ **Buscando clima de** `{cidade}`**...**",
+        f"🌤️ **Fetching weather for** `{cidade}`**...**",
+    ))
+
+    lang_param = "en" if get_lang() == "en" else "pt"
+    cidade_url = cidade.replace(" ", "+")
+    url        = f"https://wttr.in/{cidade_url}?format=j1&lang={lang_param}"
+
     try:
-        cidade_url = cidade.replace(" ", "+")
-        async with aiohttp.ClientSession(headers={"User-Agent": "curl/7.68.0"}) as session:
-            async with session.get(f"https://wttr.in/{cidade_url}?format=%l:+%C+%t+%h+%w&lang=pt") as r:
-                status = r.status
-                texto = await r.text()
-                
-        if status == 200 and "Unknown location" not in texto and "ERROR" not in texto:
-            await message.edit_text(tr(f"🌍 **Clima:**\n`{texto.strip()}`", f"🌍 **Weather:**\n`{texto.strip()}`"))
-        else:
-            await message.edit_text(tr("❌ Localidade não encontrada.", "❌ Location not found."))
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(
+            headers={"User-Agent": "curl/7.68.0"}, timeout=timeout
+        ) as session:
+            async with session.get(url) as r:
+                if r.status != 200:
+                    return await message.edit_text(tr(
+                        "❌ Localidade não encontrada.",
+                        "❌ Location not found.",
+                    ))
+                data = await r.json(content_type=None)
     except asyncio.TimeoutError:
-        await message.edit_text(tr("❌ Tempo esgotado (Timeout).", "❌ Request timed out."))
+        return await message.edit_text(tr(
+            "❌ Tempo esgotado ao consultar o serviço.",
+            "❌ Request timed out.",
+        ))
     except Exception as e:
-        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+        return await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
+
+    if not data.get("current_condition") or not data.get("nearest_area"):
+        return await message.edit_text(tr(
+            "❌ Localidade não encontrada.",
+            "❌ Location not found.",
+        ))
+
+    try:
+        current   = data["current_condition"][0]
+        area_info = data["nearest_area"][0]
+        forecasts = data["weather"]
+
+        area    = area_info["areaName"][0]["value"]
+        country = area_info["country"][0]["value"]
+        loc_str = f"{area}, {country}"
+
+        temp_c     = current["temp_C"]
+        feels_c    = current["FeelsLikeC"]
+        humidity   = current["humidity"]
+        wind_kmph  = current["windspeedKmph"]
+        wind_dir   = current["winddir16Point"]
+        uv_index   = current.get("uvIndex", "?")
+        visibility = current["visibility"]
+
+        desc_key  = "lang_pt" if lang_param == "pt" else "weatherDesc"
+        desc_list = current.get(desc_key) or current.get("weatherDesc", [])
+        cond_desc = desc_list[0]["value"] if desc_list else "?"
+
+        cond_icon = _clima_icon(int(current.get("weatherCode", 0)))
+
+        # Previsão dos próximos 3 dias
+        _DAY_PT = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+        _DAY_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        day_names = _DAY_PT if lang_param == "pt" else _DAY_EN
+
+        forecast_lines = []
+        for day in forecasts[:3]:
+            d       = _date.fromisoformat(day["date"])
+            dname   = day_names[d.isoweekday() % 7]   # isoweekday: Mon=1..Sun=7 → %7: Sun=0
+            max_c   = day["maxtempC"]
+            min_c   = day["mintempC"]
+            slot    = day.get("hourly", [{}])
+            midday  = slot[4] if len(slot) > 4 else (slot[-1] if slot else {})
+            d_list  = midday.get(desc_key) or midday.get("weatherDesc", [])
+            d_desc  = d_list[0]["value"] if d_list else "?"
+            forecast_lines.append(f"  {dname}  {min_c}° ~ {max_c}°C  —  {d_desc}")
+
+        forecast_block = "\n".join(forecast_lines) or "N/A"
+
+        txt = tr(
+            f"{cond_icon} **{loc_str}**\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"├ 🌡️ **Temp.:** `{temp_c}°C` _(sensação `{feels_c}°C`)_\n"
+            f"├ 💧 **Umidade:** `{humidity}%`\n"
+            f"├ 💨 **Vento:** `{wind_kmph} km/h` {wind_dir}\n"
+            f"├ 👁️ **Visibilidade:** `{visibility} km`\n"
+            f"├ ☀️ **Índice UV:** `{uv_index}`\n"
+            f"└ 🌤️ **Condição:** {cond_desc}\n\n"
+            f"📅 **Previsão (3 dias)**\n"
+            f"```\n{forecast_block}\n```",
+            f"{cond_icon} **{loc_str}**\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"├ 🌡️ **Temp.:** `{temp_c}°C` _(feels like `{feels_c}°C`)_\n"
+            f"├ 💧 **Humidity:** `{humidity}%`\n"
+            f"├ 💨 **Wind:** `{wind_kmph} km/h` {wind_dir}\n"
+            f"├ 👁️ **Visibility:** `{visibility} km`\n"
+            f"├ ☀️ **UV Index:** `{uv_index}`\n"
+            f"└ 🌤️ **Condition:** {cond_desc}\n\n"
+            f"📅 **Forecast (3 days)**\n"
+            f"```\n{forecast_block}\n```",
+        )
+        await message.edit_text(txt, disable_web_page_preview=True)
+
+    except (KeyError, IndexError, ValueError) as e:
+        await message.edit_text(tr(
+            f"❌ Erro ao processar os dados do clima: `{e}`",
+            f"❌ Error parsing weather data: `{e}`",
+        ))
 
 
 @Client.on_message(cmd_filter("specs") & filters.me)
 async def cmd_specs(client, message):
-    """Busca as especificações técnicas de um celular no GSMArena."""
+    """Especificações técnicas de celular via GSMArena."""
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
@@ -455,7 +570,7 @@ async def cmd_specs(client, message):
 
 @Client.on_message(cmd_filter("clone") & filters.me)
 async def cmd_clone(client, message):
-    """Clona o nome, bio e foto de um usuário."""
+    """Clona nome, bio e foto de perfil de um usuário."""
     user, _, _ = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(f"⚠️ Responda a alguém ou use `{prefixo(client)}clone @user`", f"⚠️ Reply to someone or use `{prefixo(client)}clone @user`"))

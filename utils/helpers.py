@@ -137,12 +137,12 @@ async def auditoria(client, acao: str, user, chat, motivo=None, msg_orig=None) -
         f"━━━━━━━━━━━━━━━━━━\n"
         f"├ 👤 **Alvo:** {mention}{user_tag}\n"
         f"├ 🆔 **ID:** `{uid}`\n"
-        f"└ 💬 **Chat:** {chat_nome} (`{chat_id}`)\n",
+        f"├ 💬 **Chat:** {chat_nome} (`{chat_id}`)\n",
         f"{emoji} **{acao.upper()}**\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"├ 👤 **Target:** {mention}{user_tag}\n"
         f"├ 🆔 **ID:** `{uid}`\n"
-        f"└ 💬 **Chat:** {chat_nome} (`{chat_id}`)\n",
+        f"├ 💬 **Chat:** {chat_nome} (`{chat_id}`)\n",
     )
     if motivo:
         txt += tr_log(f"├ 📝 **Motivo:** `{motivo}`\n", f"├ 📝 **Reason:** `{motivo}`\n")

@@ -346,21 +346,22 @@ async def cmd_sysinfo(client, message):
     await message.edit_text(tr("💻 **Coletando informações do sistema...**", "💻 **Collecting system info...**"))
 
     def coletar():
-        cpu_nome  = _get_cpu_name()
-        cpu_cores = psutil.cpu_count(logical=False)
+        cpu_nome    = _get_cpu_name()
+        cpu_cores   = psutil.cpu_count(logical=False)
         cpu_threads = psutil.cpu_count(logical=True)
-        cpu_freq  = psutil.cpu_freq()
-        cpu_uso   = psutil.cpu_percent(interval=0.5)
-        gpu_info  = _get_gpu_info()
-        ram       = psutil.virtual_memory()
-        discos    = _get_disk_info()
-        net       = psutil.net_io_counters()
-        return cpu_nome, cpu_cores, cpu_threads, cpu_freq, cpu_uso, gpu_info, ram, discos, net
+        cpu_freq    = psutil.cpu_freq()
+        cpu_uso     = psutil.cpu_percent(interval=0.5)
+        gpu_info    = _get_gpu_info()
+        ram         = psutil.virtual_memory()
+        discos      = _get_disk_info()
+        net         = psutil.net_io_counters()
+        kernel      = platform.release()
+        return cpu_nome, cpu_cores, cpu_threads, cpu_freq, cpu_uso, gpu_info, ram, discos, net, kernel
 
     (cpu_nome, cpu_cores, cpu_threads, cpu_freq, cpu_uso,
-     gpu_info, ram, discos, net) = await asyncio.to_thread(coletar)
+     gpu_info, ram, discos, net, kernel) = await asyncio.to_thread(coletar)
 
-    inicio    = getattr(client, "tempo_inicio", time.time())
+    inicio     = getattr(client, "tempo_inicio", time.time())
     uptime_bot = humanize.precisedelta(time.time() - inicio, minimum_unit="seconds")
     uptime_os  = humanize.precisedelta(time.time() - psutil.boot_time(), minimum_unit="minutes")
 
@@ -369,19 +370,20 @@ async def cmd_sysinfo(client, message):
     pyro_ver = pyrogram.__version__
     versao   = getattr(client, "VERSAO", "1.0")
 
-    freq_str = f" @ {cpu_freq.current/1000:.1f} GHz" if cpu_freq else ""
+    freq_str  = f" @ {cpu_freq.current/1000:.1f} GHz" if cpu_freq else ""
     disco_str = "\n             ".join(discos)
 
-    swap      = psutil.swap_memory()
-    swap_str  = (
+    swap     = psutil.swap_memory()
+    swap_str = (
         f"{humanize.naturalsize(swap.used)} / {humanize.naturalsize(swap.total)} ({swap.percent}%)"
-        if swap.total > 0 else tr("N/A", "N/A")
+        if swap.total > 0 else "N/A"
     )
 
     texto = (
         tr("💻 **Neofetch — Userbot Pro**\n\n", "💻 **Neofetch — Userbot Pro**\n\n") +
         f"```text\n"
         f"OS       : {os_info}\n"
+        f"Kernel   : {kernel}\n"
         f"Uptime   : {uptime_os}\n"
         f"Bot Up   : {uptime_bot}\n"
         f"─────────────────────────────\n"

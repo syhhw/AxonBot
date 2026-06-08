@@ -345,7 +345,7 @@ async def iniciar():
                 texto_update = (
                     f"🔄 **SISTEMA ATUALIZADO** / **SYSTEM UPDATED**\n\n"
                     f"📦 **v{__VERSAO__}** (`{info_update.get('commit', 'n/a')}`)\n"
-                    f"💬 _{info_update.get('mensagem', 'n/a')}_\n"
+                    f"💬 `{info_update.get('mensagem', 'n/a')}`\n"
                     f"{screen_info}"
                 )
                 await app.send_message(config["ID_CANAL_LOGS"], texto_update)

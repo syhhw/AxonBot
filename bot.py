@@ -518,8 +518,25 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
 # ── Entry point ────────────────────────────────────────────────────────────────
+def _launch_companion_userbot() -> None:
+    """Sobe main.py junto se bot.py não foi iniciado por ele."""
+    if os.environ.get("PANEL_CHILD"):
+        return
+    if not os.path.exists("main.py"):
+        return
+    import subprocess
+    env = os.environ.copy()
+    env["PANEL_CHILD"] = "1"
+    try:
+        subprocess.Popen([sys.executable, "main.py", "--debug"], env=env)
+        print("⚙️ main.py iniciado como companion.")
+    except Exception as e:
+        print(f"⚠️ Falha ao iniciar main.py: {e}")
+
+
 def main() -> None:
     print("🤖 Iniciando painel bot...")
+    _launch_companion_userbot()
     app = Application.builder().token(_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CallbackQueryHandler(handle_callback))

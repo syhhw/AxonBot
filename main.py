@@ -280,6 +280,24 @@ app.LANG         = LANGUAGE
 app.VERSAO       = __VERSAO__
 app.UPDATE_FLAG  = UPDATE_FLAG
 
+# ── Companion bot ─────────────────────────────────────────────────────────────
+def _launch_companion_bot() -> None:
+    """Sobe bot.py junto se configurado e main.py não foi iniciado por ele."""
+    if os.environ.get("PANEL_CHILD"):
+        return
+    if not os.path.exists("bot.py") or not config.get("BOT_TOKEN"):
+        return
+    import subprocess as _sp
+    env = os.environ.copy()
+    env["PANEL_CHILD"] = "1"
+    try:
+        _sp.Popen([sys.executable, "bot.py"], env=env)
+        logger.info("🤖 bot.py iniciado como companion.")
+    except Exception as e:
+        logger.warning(f"⚠️ Falha ao iniciar bot.py: {e}")
+
+_launch_companion_bot()
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 TRATAMENTO SILENCIOSO DE ERROS COMUNS
 # ══════════════════════════════════════════════════════════════════════════════

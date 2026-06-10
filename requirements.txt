@@ -13,3 +13,4 @@ aiohttp
 google-genai
 yt-dlp
 python-telegram-bot>=20.0
+apscheduler

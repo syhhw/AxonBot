@@ -1,17 +1,14 @@
 """
 plugins/panel.py
-IPC plugin: escreve heartbeat de status a cada 30s e processa comandos do painel bot.
-
-Protocolo de arquivos:
-  _panel_status.json  — userbot escreve (lido pelo bot)
-  _panel_cmd.json     — bot escreve (lido pelo userbot)
-  _panel_result.json  — userbot escreve (lido pelo bot)
+IPC bridge: heartbeat de status (com métricas de sistema) + despacho de comandos do painel bot.
 """
 import os
 import json
 import asyncio
 import time
+import subprocess
 
+import psutil
 from pyrogram import Client
 from utils.helpers import reiniciar_processo
 
@@ -19,8 +16,8 @@ _CMD_FILE    = "_panel_cmd.json"
 _RESULT_FILE = "_panel_result.json"
 _STATUS_FILE = "_panel_status.json"
 
-_HEARTBEAT_INTERVAL = 30   # segundos entre escritas de status
-_POLL_INTERVAL      = 3    # segundos entre checagens de comando
+_HEARTBEAT_INTERVAL = 15
+_POLL_INTERVAL      = 2
 
 
 def _write_json(path: str, data: dict) -> None:
@@ -37,35 +34,47 @@ def _write_result(ts: int, status: str, data: str) -> None:
 
 async def _on_start(client: Client) -> None:
     """Hook chamado por main.py após carregar todos os plugins."""
-    asyncio.create_task(_panel_loop(client))
+    asyncio.create_task(_heartbeat_loop(client))
+    asyncio.create_task(_command_loop(client))
 
 
-async def _panel_loop(client: Client) -> None:
-    last_heartbeat = 0.0
-
+async def _heartbeat_loop(client: Client) -> None:
     while True:
-        now = time.time()
+        try:
+            from plugins import account as _acc
+            afk_ativo = getattr(_acc, "AFK_ATIVO", False)
+        except Exception:
+            afk_ativo = False
 
-        # ── Heartbeat de status ───────────────────────────────────────────────
-        if now - last_heartbeat >= _HEARTBEAT_INTERVAL:
-            try:
-                from plugins import account as _acc
-                afk_ativo = getattr(_acc, "AFK_ATIVO", False)
-            except Exception:
-                afk_ativo = False
+        try:
+            vm   = psutil.virtual_memory()
+            disk = psutil.disk_usage("/")
+            cpu  = psutil.cpu_percent(interval=None)
+            ram_used_mb  = vm.used  // 1024 // 1024
+            ram_total_mb = vm.total // 1024 // 1024
+        except Exception:
+            cpu = ram_used_mb = ram_total_mb = 0
+            vm = disk = None
 
-            _write_json(_STATUS_FILE, {
-                "online":   True,
-                "versao":   getattr(client, "VERSAO", "?"),
-                "uptime_s": now - getattr(client, "tempo_inicio", now),
-                "afk":      afk_ativo,
-                "prefixo":  getattr(client, "PREFIXO", ","),
-                "lang":     getattr(client, "LANG", "pt"),
-                "ts":       int(now),
-            })
-            last_heartbeat = now
+        _write_json(_STATUS_FILE, {
+            "ts":           int(time.time()),
+            "online":       True,
+            "versao":       getattr(client, "VERSAO", "?"),
+            "uptime_s":     time.time() - getattr(client, "tempo_inicio", time.time()),
+            "afk":          afk_ativo,
+            "prefixo":      getattr(client, "PREFIXO", ","),
+            "lang":         getattr(client, "LANG", "pt"),
+            "cpu_pct":      round(cpu, 1),
+            "ram_pct":      round(vm.percent, 1) if vm else 0,
+            "ram_used_mb":  ram_used_mb,
+            "ram_total_mb": ram_total_mb,
+            "disk_pct":     round(disk.percent, 1) if disk else 0,
+        })
+        await asyncio.sleep(_HEARTBEAT_INTERVAL)
 
-        # ── Leitura de comandos ───────────────────────────────────────────────
+
+async def _command_loop(client: Client) -> None:
+    while True:
         if os.path.exists(_CMD_FILE):
             try:
                 with open(_CMD_FILE, encoding="utf-8") as f:
@@ -91,13 +100,9 @@ async def _panel_loop(client: Client) -> None:
                 return
 
             elif action == "update":
-                import subprocess
                 _write_result(ts, "ok", "Atualizando e reiniciando...")
                 await asyncio.sleep(1)
-                subprocess.run(
-                    ["git", "reset", "--hard", "origin/main"],
-                    capture_output=True,
-                )
+                subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True)
                 reiniciar_processo()
                 return
 

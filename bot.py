@@ -18,9 +18,14 @@ Funcionalidades:
 import json
 import time
 import os
+import sys
 import asyncio
 from datetime import datetime
 from pathlib import Path
+
+# Garante que caminhos relativos (config.json, plugins/, etc.) funcionem
+# independente do diretório de onde o script foi chamado
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 from telegram import Update, InlineKeyboardButton as Btn, InlineKeyboardMarkup as Markup
 from telegram.ext import (
@@ -522,14 +527,21 @@ def _launch_companion_userbot() -> None:
     """Sobe main.py junto se bot.py não foi iniciado por ele."""
     if os.environ.get("PANEL_CHILD"):
         return
-    if not os.path.exists("main.py"):
-        return
     import subprocess
+    _dir    = os.path.dirname(os.path.abspath(__file__))
+    main_py = os.path.join(_dir, "main.py")
+    if not os.path.exists(main_py):
+        print(f"⚠️ main.py não encontrado em {main_py}")
+        return
     env = os.environ.copy()
     env["PANEL_CHILD"] = "1"
     try:
-        subprocess.Popen([sys.executable, "main.py", "--debug"], env=env)
-        print("⚙️ main.py iniciado como companion.")
+        proc = subprocess.Popen(
+            [sys.executable, main_py, "--debug"],
+            env=env,
+            cwd=_dir,
+        )
+        print(f"⚙️ main.py iniciado (PID {proc.pid}).")
     except Exception as e:
         print(f"⚠️ Falha ao iniciar main.py: {e}")
 

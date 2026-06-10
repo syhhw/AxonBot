@@ -862,15 +862,41 @@ async def on_new_member(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
 async def cmd_note(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if not await _is_group_admin(update, ctx):
         return await update.message.reply_text("⛔ Apenas aliados de Kira podem registrar decretos.")
-    partes = update.message.text.split(None, 2)
-    if len(partes) < 3:
-        return await update.message.reply_text("⚠️ Use: /note [nome] [texto]")
+
+    msg   = update.message
+    reply = msg.reply_to_message
+    partes = (msg.text or "").split(None, 2)
+
+    if len(partes) < 2:
+        return await msg.reply_text(
+            "⚠️ Use: /note [nome] [texto]  ou responda a uma imagem com /note [nome]"
+        )
+
+    name = partes[1].lower()
+    note_data: dict = {}
+
+    # Salvando a partir de resposta a uma foto
+    if reply and reply.photo:
+        note_data["type"]    = "photo"
+        note_data["file_id"] = reply.photo[-1].file_id
+        # Texto: argumento do comando tem prioridade; senão usa legenda da foto original
+        text = partes[2] if len(partes) > 2 else (reply.caption or "")
+        if text:
+            note_data["text"] = text
+    else:
+        # Nota de texto puro
+        if len(partes) < 3:
+            return await msg.reply_text(
+                "⚠️ Use: /note [nome] [texto]  ou responda a uma imagem com /note [nome]"
+            )
+        note_data["text"] = partes[2]
+
     gid   = _gid(update.effective_chat.id)
     notes = _get_notes()
-    notes.setdefault(gid, {})[partes[1].lower()] = partes[2]
+    notes.setdefault(gid, {})[name] = note_data
     _save_notes(notes)
-    await update.message.reply_text(
-        f"📜 Decreto <code>{partes[1].lower()}</code> registrado no Death Note.",
+    await msg.reply_text(
+        f"📜 Decreto <code>{name}</code> registrado no Death Note.",
         parse_mode=ParseMode.HTML,
     )
 
@@ -909,8 +935,25 @@ async def on_note_request(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
     gid  = _gid(update.effective_chat.id)
     name = m.group(1).lower()
     note = _get_notes().get(gid, {}).get(name)
-    if note:
+    if not note:
+        return
+
+    # Compatibilidade com notas salvas no formato antigo (string pura)
+    if isinstance(note, str):
         await msg.reply_text(note, parse_mode=ParseMode.HTML)
+        return
+
+    note_text = note.get("text") or ""
+    file_id   = note.get("file_id")
+
+    if file_id and note.get("type") == "photo":
+        await msg.reply_photo(
+            file_id,
+            caption=note_text if note_text else None,
+            parse_mode=ParseMode.HTML if note_text else None,
+        )
+    else:
+        await msg.reply_text(note_text, parse_mode=ParseMode.HTML)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # FILTROS

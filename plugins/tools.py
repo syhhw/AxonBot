@@ -573,48 +573,54 @@ async def cmd_clone(client, message):
     """Clona nome, bio e foto de perfil de um usuário."""
     user, _, _ = await resolver_alvo(client, message)
     if not user:
-        return await message.edit_text(tr(f"⚠️ Responda a alguém ou use `{prefixo(client)}clone @user`", f"⚠️ Reply to someone or use `{prefixo(client)}clone @user`"))
-        
+        return await message.edit_text(tr(
+            f"⚠️ Responda a alguém ou use `{prefixo(client)}clone @user`",
+            f"⚠️ Reply to someone or use `{prefixo(client)}clone @user`"
+        ))
+
     msg = await message.edit_text(tr("🎭 **Iniciando clonagem...**", "🎭 **Starting clone...**"))
-    
+
+    # Salva estado original apenas na primeira clonagem
     backup = carregar("clone_backup.json", {})
     if not backup.get("cloned"):
-        me = await client.get_me()
+        me      = await client.get_me()
         me_full = await client.get_chat("me")
-        backup = {
-            "cloned": True,
-            "first_name": me.first_name or "",
-            "last_name": me.last_name or "",
-            "bio": me_full.bio or "",
-            "photos_added": 0
+        backup  = {
+            "cloned":          True,
+            "first_name":      me.first_name or "",
+            "last_name":       me.last_name  or "",
+            "bio":             me_full.bio   or "",
+            "added_photo_ids": [],
         }
         salvar("clone_backup.json", backup)
-        
-    target = await client.get_users(user.id)
+
+    target      = await client.get_users(user.id)
     target_full = await client.get_chat(user.id)
-    
     first = target.first_name or ""
-    last = target.last_name or ""
-    bio = target_full.bio[:70] if target_full.bio else ""
-    
+    last  = target.last_name  or ""
+    bio   = target_full.bio[:70] if target_full.bio else ""
+
     try:
         await client.update_profile(first_name=first, last_name=last, bio=bio)
     except Exception as e:
-        return await msg.edit_text(tr(f"❌ Erro ao atualizar perfil: `{e}`", f"❌ Error updating profile: `{e}`"))
-        
+        return await msg.edit_text(tr(
+            f"❌ Erro ao atualizar perfil: `{e}`",
+            f"❌ Error updating profile: `{e}`"
+        ))
+
     if target.photo:
         await msg.edit_text(tr("🎭 **Baixando foto de perfil...**", "🎭 **Downloading profile photo...**"))
         photo_path = None
 
-        # Tentativa 1: foto em alta qualidade (pode falhar se perfil restrito)
+        # Tentativa 1: foto em alta qualidade via get_profile_photos
         try:
             photos = [p async for p in client.get_profile_photos(user.id, limit=1)]
             if photos:
-                photo_path = await client.download_media(photos[0])
+                photo_path = await client.download_media(photos[0].file_id)
         except Exception:
             pass
 
-        # Tentativa 2: miniatura visível no chat (sempre acessível quando .photo existe)
+        # Tentativa 2: thumbnail sempre acessível via ChatPhoto
         if not photo_path:
             try:
                 photo_path = await client.download_media(target.photo.big_file_id)
@@ -625,7 +631,7 @@ async def cmd_clone(client, message):
             try:
                 await client.set_profile_photo(photo=photo_path)
 
-                # Garante visibilidade pública independente das configurações da conta
+                # Garante visibilidade pública
                 from pyrogram import raw as _raw
                 await client.invoke(
                     _raw.functions.account.SetPrivacyRules(
@@ -634,8 +640,16 @@ async def cmd_clone(client, message):
                     )
                 )
 
-                backup["photos_added"] = backup.get("photos_added", 0) + 1
-                salvar("clone_backup.json", backup)
+                # Salva o file_id exato da foto recém-adicionada para deletar no reverter
+                try:
+                    novas = [p async for p in client.get_profile_photos("me", limit=1)]
+                    if novas:
+                        fid = novas[0].file_id
+                        if fid not in backup["added_photo_ids"]:
+                            backup["added_photo_ids"].append(fid)
+                            salvar("clone_backup.json", backup)
+                except Exception:
+                    pass
             except Exception:
                 pass
             finally:
@@ -643,8 +657,11 @@ async def cmd_clone(client, message):
                     os.remove(photo_path)
                 except Exception:
                     pass
-                
-    await msg.edit_text(tr(f"✅ **Clone de `{first}` ativado!**\nUse `{prefixo(client)}reverter` para voltar ao normal.", f"✅ **Cloned `{first}`!**\nUse `{prefixo(client)}revert` to restore original profile."))
+
+    await msg.edit_text(tr(
+        f"✅ **Clone de `{first}` ativado!**\nUse `{prefixo(client)}reverter` para voltar ao normal.",
+        f"✅ **Cloned `{first}`!**\nUse `{prefixo(client)}revert` to restore original profile."
+    ))
 
 
 @Client.on_message(cmd_filter("reverter") & filters.me)
@@ -665,16 +682,19 @@ async def cmd_reverter(client, message):
     except Exception:
         pass
         
-    added = backup.get("photos_added", 0)
-    if added > 0:
+    added_ids = backup.get("added_photo_ids", [])
+    if added_ids:
         try:
-            photos = []
-            async for p in client.get_chat_photos("me", limit=added):
-                photos.append(p.file_id)
-            if photos:
-                await client.delete_profile_photos(photos)
+            to_delete = []
+            async for p in client.get_profile_photos("me", limit=len(added_ids) + 5):
+                if p.file_id in added_ids:
+                    to_delete.append(p.file_id)
+                if len(to_delete) == len(added_ids):
+                    break
+            if to_delete:
+                await client.delete_profile_photos(to_delete)
         except Exception:
             pass
-            
+
     salvar("clone_backup.json", {})
     await msg.edit_text(tr("✅ **Perfil original restaurado com sucesso!**", "✅ **Original profile restored successfully!**"))

@@ -227,13 +227,28 @@ async def _resolve_target(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> tup
         return u.id, u.first_name, True
 
     args = ctx.args
-    if args:
-        identifier = args[0].lstrip("@")
-        try:
-            u = await ctx.bot.get_chat(identifier)
-            return u.id, u.first_name or identifier, False
-        except Exception:
-            pass
+    if not args:
+        return None, "", False
+
+    raw = args[0].lstrip("@")
+    chat_id = update.effective_chat.id
+
+    # 1) get_chat_member no grupo atual — resolve qualquer membro/banido do grupo
+    try:
+        target = int(raw) if raw.isdigit() else f"@{raw}"
+        member = await ctx.bot.get_chat_member(chat_id, target)
+        u = member.user
+        return u.id, u.first_name or raw, False
+    except Exception:
+        pass
+
+    # 2) get_chat global — funciona se o bot já viu o usuário antes
+    try:
+        u = await ctx.bot.get_chat(raw)
+        return u.id, u.first_name or raw, False
+    except Exception:
+        pass
+
     return None, "", False
 
 

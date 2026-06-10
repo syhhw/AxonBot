@@ -120,6 +120,8 @@ def _get_blacklist()  -> dict: return _load("blacklist.json")
 def _save_blacklist(d)-> None: _save("blacklist.json", d)
 def _get_warns()      -> dict: return _load("warns.json")
 def _save_warns(d)    -> None: _save("warns.json", d)
+def _get_bans()       -> dict: return _load("bans.json")
+def _save_bans(d)     -> None: _save("bans.json", d)
 
 # ── IPC ─────────────────────────────────────────────────────────────────────────
 def _read_status() -> dict:
@@ -448,6 +450,7 @@ async def cmd_help(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         "• /unwarn — Aviso revogado\n"
         "• /warns — Consultar registros\n"
         "• /resetwarns — Apagar registros\n"
+        "• /banidos — Consultar o Death Note do grupo\n"
         "• /pin /unpin — Fixar / remover decretos\n\n"
         "<b>🏛️ Governança</b> <i>(admins):</i>\n"
         "• /setwelcome [texto] — Mensagem de chegada\n"
@@ -526,6 +529,15 @@ async def cmd_ban(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     reason = _reason(ctx, via_reply)
     try:
         await ctx.bot.ban_chat_member(update.effective_chat.id, uid)
+        # Registra no Death Note
+        gid  = _gid(update.effective_chat.id)
+        bans = _get_bans()
+        bans.setdefault(gid, {})[str(uid)] = {
+            "name":   name,
+            "reason": reason,
+            "ts":     int(time.time()),
+        }
+        _save_bans(bans)
         await update.message.reply_text(
             f"📓 <b>Sentença: CULPADO.</b>\n\n"
             f"O nome de <b>{name}</b> (<code>{uid}</code>) foi escrito no Death Note.\n"
@@ -545,6 +557,11 @@ async def cmd_unban(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         return await update.message.reply_text("⚠️ Responda à mensagem do alvo ou informe @username / ID.")
     try:
         await ctx.bot.unban_chat_member(update.effective_chat.id, uid, only_if_banned=True)
+        # Remove do Death Note
+        gid  = _gid(update.effective_chat.id)
+        bans = _get_bans()
+        bans.get(gid, {}).pop(str(uid), None)
+        _save_bans(bans)
         await update.message.reply_text(
             f"⚖️ <b>Kira concedeu clemência.</b>\n\n"
             f"<b>{name}</b> (<code>{uid}</code>) foi libertado do Death Note.\n"
@@ -710,6 +727,51 @@ async def cmd_resetwarns(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None
         f"🗑️ Os registros de <b>{name}</b> foram apagados do Death Note.",
         parse_mode=ParseMode.HTML,
     )
+
+
+async def cmd_banidos(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    gid   = _gid(update.effective_chat.id)
+    bans  = _get_bans().get(gid, {})
+
+    if not bans:
+        return await update.message.reply_text(
+            "📓 O Death Note deste grupo está vazio.\n"
+            "<i>Nenhuma alma foi sentenciada ainda.</i>",
+            parse_mode=ParseMode.HTML,
+        )
+
+    linhas = []
+    for i, (uid, info) in enumerate(bans.items(), 1):
+        ts  = info.get("ts", 0)
+        dt  = datetime.fromtimestamp(ts).strftime("%d/%m/%Y %H:%M") if ts else "—"
+        linhas.append(
+            f"<b>{i}.</b> {info.get('name', 'Desconhecido')} · <code>{uid}</code>\n"
+            f"   └ {info.get('reason', '—')} · <i>{dt}</i>"
+        )
+
+    # Quebra em páginas de 20 se necessário para não estourar o limite do Telegram
+    paginas: list[str] = []
+    bloco: list[str] = []
+    tamanho = 0
+    for linha in linhas:
+        if tamanho + len(linha) > 3500:
+            paginas.append("\n\n".join(bloco))
+            bloco, tamanho = [], 0
+        bloco.append(linha)
+        tamanho += len(linha)
+    if bloco:
+        paginas.append("\n\n".join(bloco))
+
+    header = (
+        f"📓 <b>Death Note — Sentenciados</b>\n"
+        f"<i>{len(bans)} alma(s) registrada(s) neste grupo.</i>\n"
+        f"{'━' * 22}\n\n"
+    )
+
+    for idx, pagina in enumerate(paginas):
+        suffix = f"\n\n<i>Página {idx + 1}/{len(paginas)}</i>" if len(paginas) > 1 else ""
+        texto  = (header if idx == 0 else "") + pagina + suffix
+        await update.message.reply_text(texto, parse_mode=ParseMode.HTML)
 
 
 async def cmd_pin(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1232,6 +1294,7 @@ def main() -> None:
     app.add_handler(CommandHandler("unwarn",     cmd_unwarn))
     app.add_handler(CommandHandler("warns",      cmd_warns))
     app.add_handler(CommandHandler("resetwarns", cmd_resetwarns))
+    app.add_handler(CommandHandler("banidos",    cmd_banidos))
     app.add_handler(CommandHandler("pin",        cmd_pin))
     app.add_handler(CommandHandler("unpin",      cmd_unpin))
 

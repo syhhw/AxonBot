@@ -124,14 +124,14 @@ async def pm_permit_checker(client, message):
                 f"🛡️ **Firewall de Segurança**\n\nMensagens restritas. Para provar que é humano, resolva a conta:\n👉 **{n1} + {n2} = ?**",
                 f"🛡️ **Security Firewall**\n\nRestricted messages. To prove you are human, solve this:\n👉 **{n1} + {n2} = ?**"
             ))
-        except:
+        except Exception:
             pass
         cfg = getattr(client, "config", {})
         log_id = cfg.get("ID_CANAL_LOGS")
         if log_id:
             try:
                 await message.forward(log_id)
-            except:
+            except Exception:
                 pass
         message.stop_propagation()
 

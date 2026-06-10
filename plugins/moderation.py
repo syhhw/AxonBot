@@ -116,13 +116,21 @@ async def cmd_purge(client, message):
     """Apaga todas as mensagens desde a mensagem respondida até o comando."""
     if not message.reply_to_message:
         return await message.edit_text(tr("⚠️ Responda à mensagem inicial para apagar a partir dela.", "⚠️ Reply to the starting message to purge from it."))
-    chat_id = message.chat.id
+    chat_id       = message.chat.id
     msg_id_inicio = message.reply_to_message.id
-    msg_id_fim = message.id
+    msg_id_fim    = message.id
     try:
-        ids = list(range(msg_id_inicio, msg_id_fim + 1))
+        # Coleta IDs reais via get_messages (não assume sequencialidade)
+        ids: list[int] = []
+        async for msg in client.get_chat_history(chat_id, limit=msg_id_fim - msg_id_inicio + 200):
+            if msg_id_inicio <= msg.id <= msg_id_fim:
+                ids.append(msg.id)
+            if msg.id < msg_id_inicio:
+                break
+        if not ids:
+            return await message.edit_text(tr("⚠️ Nenhuma mensagem encontrada no intervalo.", "⚠️ No messages found in range."))
         for i in range(0, len(ids), 100):
-            await client.delete_messages(chat_id, ids[i:i+100])
+            await client.delete_messages(chat_id, ids[i:i + 100])
         aviso = await client.send_message(chat_id, tr(f"🧹 **Purge:** {len(ids)} mensagens apagadas.", f"🧹 **Purge:** {len(ids)} messages deleted."))
         await asyncio.sleep(3)
         await aviso.delete()
@@ -261,7 +269,7 @@ async def cmd_gban(client, message):
                         await asyncio.sleep(1)
                 except FloodWait as e:
                     await asyncio.sleep(e.value)
-                except:
+                except Exception:
                     pass
     await auditoria(client, "GBAN", user, message.chat, motivo or "Banimento Global", msg_orig)
     await aviso.edit_text(tr(
@@ -340,7 +348,7 @@ async def cmd_feds(client, message):
         try:
             chat = await client.get_chat(fid)
             txt += f"• **{chat.title}** (`{fid}`)\n"
-        except:
+        except Exception:
             txt += tr(f"• `{fid}` (inacessível)\n", f"• `{fid}` (inaccessible)\n")
     await message.edit_text(txt)
 

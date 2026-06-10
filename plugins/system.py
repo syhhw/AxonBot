@@ -63,8 +63,8 @@ async def cmd_versao(client, message):
     atras = atras or "0"
     status = tr("✅ atualizado", "✅ up to date") if atras == "0" else tr(f"🔄 {atras} commit(s) atrás", f"🔄 {atras} commit(s) behind")
     await message.edit_text(tr(
-        f"📦 **Userbot Pro v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remoto: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Último commit local: _{msg_local or 'n/a'}_\n👤 Autor: `{autor_local or 'n/a'}`",
-        f"📦 **Userbot Pro v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remote: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Last local commit: _{msg_local or 'n/a'}_\n👤 Author: `{autor_local or 'n/a'}`"
+        f"📦 **Userbot Pro v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remoto: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Último commit local: `{msg_local or 'n/a'}`\n👤 Autor: `{autor_local or 'n/a'}`",
+        f"📦 **Userbot Pro v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remote: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Last local commit: `{msg_local or 'n/a'}`\n👤 Author: `{autor_local or 'n/a'}`"
     ))
 
 
@@ -458,8 +458,7 @@ async def cmd_desligar(client, message):
                 f"├ ⚙️ Terminated remotely via command\n"
                 f"└ 🕐 `{ts}`",
             ))
-        except:
+        except Exception:
             pass
-            
-    # Mata o processo instantaneamente (Garante fechamento no Windows e Linux)
+
     os._exit(0)

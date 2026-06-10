@@ -13,21 +13,28 @@ except ImportError:
     HAS_GEMINI = False
 
 
+_MODEL_CACHE: dict[str, str] = {}
+
+
 def _criar_cliente(api_key: str):
     return genai.Client(api_key=api_key)
 
 
 def obter_modelo_otimizado(api_key: str) -> str:
-    """Descobre o melhor modelo flash disponível para a chave do usuário."""
+    """Descobre o melhor modelo flash disponível para a chave (resultado cacheado)."""
+    if api_key in _MODEL_CACHE:
+        return _MODEL_CACHE[api_key]
     client = _criar_cliente(api_key)
     try:
         for m in client.models.list():
             name = m.name.replace("models/", "")
             if "flash" in name.lower():
+                _MODEL_CACHE[api_key] = name
                 return name
     except Exception:
         pass
-    return "gemini-2.0-flash"
+    _MODEL_CACHE[api_key] = "gemini-2.0-flash"
+    return _MODEL_CACHE[api_key]
 
 
 @Client.on_message(cmd_filter("perguntar") & filters.me)

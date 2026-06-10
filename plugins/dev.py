@@ -35,9 +35,14 @@ async def cmd_term(client, message):
         if len(res) > 4000:
             with open("term_output.txt", "w", encoding="utf-8") as f:
                 f.write(res)
-            await message.delete()
-            await client.send_document(message.chat.id, "term_output.txt", caption=f"💻 `$ {cmd}`")
-            os.remove("term_output.txt")
+            try:
+                await message.delete()
+                await client.send_document(message.chat.id, "term_output.txt", caption=f"💻 `$ {cmd}`")
+            finally:
+                try:
+                    os.remove("term_output.txt")
+                except Exception:
+                    pass
         else:
             await message.edit_text(f"💻 `$ {cmd}`\n\n```text\n{res}\n```")
     except Exception as e:
@@ -73,9 +78,14 @@ async def cmd_eval(client, message):
     if len(out) > 4000:
         with open("eval_output.txt", "w", encoding="utf-8") as f:
             f.write(out)
-        await message.delete()
-        await client.send_document(message.chat.id, "eval_output.txt", caption="🐍 **Eval Output**")
-        os.remove("eval_output.txt")
+        try:
+            await message.delete()
+            await client.send_document(message.chat.id, "eval_output.txt", caption="🐍 **Eval Output**")
+        finally:
+            try:
+                os.remove("eval_output.txt")
+            except Exception:
+                pass
     else:
         await message.edit_text(f"🐍 **Eval Output**\n\n```python\n{out}\n```")
 
@@ -87,7 +97,8 @@ async def cmd_install(client, message):
     if len(partes) < 2:
         return await message.edit_text(tr(f"⚠️ Use: `{p}instalar [url do .py]`", f"⚠️ Use: `{p}install [url to .py]`"))
     url = partes[1].strip()
-    filename = url.split("/")[-1] if url.endswith(".py") else "plugin_baixado.py"
+    raw_name = url.split("/")[-1].split("?")[0]
+    filename = os.path.basename(raw_name) if raw_name.endswith(".py") else "plugin_baixado.py"
     filepath = os.path.join("plugins", filename)
     
     msg = await message.edit_text(tr("📥 **Baixando plugin...**", "📥 **Downloading plugin...**"))
@@ -117,7 +128,10 @@ async def cmd_uninstall(client, message):
         return await message.edit_text(tr(f"❌ Plugin `{filename}` não encontrado.", f"❌ Plugin `{filename}` not found."))
     if filename in ["system.py", "menu.py", "dev.py", "tools.py", "moderation.py", "account.py"]:
         return await message.edit_text(tr("⚠️ Não é recomendado apagar plugins principais do sistema.", "⚠️ Not recommended to delete core plugins."))
-    os.remove(filepath)
+    try:
+        os.remove(filepath)
+    except Exception as e:
+        return await message.edit_text(tr(f"❌ Erro ao apagar: `{e}`", f"❌ Error deleting: `{e}`"))
     await message.edit_text(tr(f"🗑️ **Plugin `{filename}` apagado!**\nReiniciando o bot...", f"🗑️ **Plugin `{filename}` deleted!**\nRestarting bot..."))
     await asyncio.sleep(2)
     reiniciar_processo()

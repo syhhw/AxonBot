@@ -60,9 +60,14 @@ if "--background" not in sys.argv and "--debug" not in sys.argv:
                 )
             _stop_cmd = "taskkill /F /IM pythonw.exe"
         else:
-            _cmd = f"nohup {sys.executable} {_script} --background > {_log} 2>&1 &"
+            import subprocess
             _stop_cmd = "kill $(pgrep -f 'python.*main.py')"
-            os.system(_cmd)
+            with open(_log, "a") as _f:
+                subprocess.Popen(
+                    [sys.executable, _script, "--background"],
+                    stdout=_f, stderr=_f, stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
         print(f"\n{VERDE}✅ Bot iniciado em segundo plano!{RESET}")
         print(f"   Log em: {_log}")
         print(f"   Para parar: {AMARELO}{_stop_cmd}{RESET}\n")

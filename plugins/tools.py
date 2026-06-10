@@ -199,7 +199,7 @@ async def cmd_type(client, message):
         try:
             await message.edit_text(f"{digitado}▌")
             await asyncio.sleep(random.uniform(0.04, 0.15))
-        except:
+        except Exception:
             pass
     await message.edit_text(digitado)
 
@@ -219,7 +219,7 @@ async def cmd_ghost(client, message):
     await asyncio.sleep(tempo)
     try:
         await message.delete()
-    except:
+    except Exception:
         pass
 
 
@@ -233,7 +233,7 @@ async def cmd_fake(client, message):
     tipo = partes[1].strip().lower()
     try:
         await message.delete()
-    except:
+    except Exception:
         pass
     if tipo == "audio":
         acao = enums.ChatAction.RECORD_AUDIO
@@ -245,7 +245,7 @@ async def cmd_fake(client, message):
         try:
             await client.send_chat_action(message.chat.id, acao)
             await asyncio.sleep(5)
-        except:
+        except Exception:
             break
 
 

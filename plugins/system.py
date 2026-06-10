@@ -72,31 +72,66 @@ async def cmd_versao(client, message):
 async def cmd_atualizar(client, message):
     """
     Auto-update via GitHub.
-      ,atualizar        → sempre usa git reset --hard origin/main (sem conflitos)
-      ,atualizar forcar → mesmo comportamento (mantido por compatibilidade)
+      ,atualizar           → atualiza a branch atual detectada automaticamente
+      ,atualizar [branch]  → troca para a branch informada e atualiza
     """
     versao_local = getattr(client, "VERSAO", "?")
     update_flag  = getattr(client, "UPDATE_FLAG", ".update_pending.json")
 
     if not _e_repositorio_git():
         return await message.edit_text(tr(
-            "❌ **Pasta não é um repositório Git.**\nClone o repositório com:\n`git clone https://github.com/SEU_USER/userbot.git`",
-            "❌ **Folder is not a Git repository.**\nClone the repository with:\n`git clone https://github.com/YOUR_USER/userbot.git`"
+            "❌ **Pasta não é um repositório Git.**",
+            "❌ **Folder is not a Git repository.**"
         ))
+
+    partes = message.text.split()
+    # ignora "forcar" (compatibilidade), trata qualquer outro arg como nome de branch
+    branch_alvo = partes[1] if len(partes) > 1 and partes[1] != "forcar" else None
 
     msg = await message.edit_text(tr("🔄 **Buscando atualizações no GitHub...**", "🔄 **Checking for updates on GitHub...**"))
 
-    # Fetch para atualizar as refs remotas
-    cod, _, err = _git("fetch", "origin", timeout=30)
+    # Fetch de todas as refs remotas
+    cod, _, err = _git("fetch", "--all", timeout=30)
     if cod != 0:
-        return await msg.edit_text(tr(f"❌ **Falha no `git fetch`:**\n```\n{err[:300]}\n```", f"❌ **Failed `git fetch`:**\n```\n{err[:300]}\n```"))
+        return await msg.edit_text(tr(
+            f"❌ **Falha no `git fetch`:**\n```\n{err[:300]}\n```",
+            f"❌ **Failed `git fetch`:**\n```\n{err[:300]}\n```"
+        ))
 
-    _, branch, _ = _git("rev-parse", "--abbrev-ref", "HEAD")
-    branch = branch or "main"
+    # Branch atual
+    _, branch_atual, _ = _git("rev-parse", "--abbrev-ref", "HEAD")
+    branch_atual = branch_atual or "main"
 
+    branch = branch_alvo or branch_atual
+
+    # Verifica se a branch remota existe
+    cod_rem, _, _ = _git("rev-parse", "--verify", f"origin/{branch}", timeout=5)
+    if cod_rem != 0:
+        return await msg.edit_text(tr(
+            f"❌ Branch `{branch}` não encontrada no remote.",
+            f"❌ Branch `{branch}` not found on remote."
+        ))
+
+    # Troca de branch se necessário
+    if branch != branch_atual:
+        await msg.edit_text(tr(
+            f"🔀 **Trocando para branch `{branch}`...**",
+            f"🔀 **Switching to branch `{branch}`...**"
+        ))
+        # Tenta checkout local; se não existir cria rastreando origin
+        cod_co, _, err_co = _git("checkout", branch)
+        if cod_co != 0:
+            cod_co, _, err_co = _git("checkout", "-b", branch, f"origin/{branch}")
+        if cod_co != 0:
+            return await msg.edit_text(tr(
+                f"❌ **Falha ao trocar de branch:**\n```\n{err_co[:300]}\n```",
+                f"❌ **Failed to switch branch:**\n```\n{err_co[:300]}\n```"
+            ))
+
+    # Verifica quantos commits atrás
     _, atras, _ = _git("rev-list", "--count", f"HEAD..origin/{branch}")
     atras = atras or "0"
-    if atras == "0":
+    if atras == "0" and branch == branch_atual:
         return await msg.edit_text(tr(
             f"✅ **Userbot já está na versão mais recente!**\n📦 v{versao_local} | branch `{branch}`",
             f"✅ **Userbot is already up to date!**\n📦 v{versao_local} | branch `{branch}`"
@@ -107,17 +142,19 @@ async def cmd_atualizar(client, message):
     requirements_mudou = any("requirements.txt" in a for a in arquivos)
 
     await msg.edit_text(tr(
-        f"⬇️ **Aplicando atualização** ({len(arquivos)} arquivo(s))...\n🔀 Modo: `RESET HARD → origin/{branch}`",
-        f"⬇️ **Applying update** ({len(arquivos)} file(s))...\n🔀 Mode: `RESET HARD → origin/{branch}`"
+        f"⬇️ **Aplicando atualização** ({len(arquivos)} arquivo(s))...\n🔀 `RESET HARD → origin/{branch}`",
+        f"⬇️ **Applying update** ({len(arquivos)} file(s))...\n🔀 `RESET HARD → origin/{branch}`"
     ))
 
-    # Usa sempre reset --hard para evitar conflitos de diverging branches
     cod, _, err = _git("reset", "--hard", f"origin/{branch}")
     if cod != 0:
-        return await msg.edit_text(tr(f"❌ **Falha ao aplicar atualização:**\n```\n{err[:400]}\n```", f"❌ **Update failed:**\n```\n{err[:400]}\n```"))
+        return await msg.edit_text(tr(
+            f"❌ **Falha ao aplicar atualização:**\n```\n{err[:400]}\n```",
+            f"❌ **Update failed:**\n```\n{err[:400]}\n```"
+        ))
 
     _, commit_hash, _ = _git("rev-parse", "--short", "HEAD")
-    _, commit_msg, _ = _git("log", "-1", "--pretty=%s")
+    _, commit_msg, _  = _git("log", "-1", "--pretty=%s")
     _, commit_autor, _ = _git("log", "-1", "--pretty=%an")
 
     if requirements_mudou:
@@ -128,7 +165,10 @@ async def cmd_atualizar(client, message):
                 capture_output=True, text=True, timeout=180
             )
         except Exception as e:
-            await msg.edit_text(tr(f"⚠️ Update aplicado, mas falhou ao atualizar libs: `{e}`", f"⚠️ Update applied, but failed to update libs: `{e}`"))
+            await msg.edit_text(tr(
+                f"⚠️ Update aplicado, mas falhou ao atualizar libs: `{e}`",
+                f"⚠️ Update applied, but failed to update libs: `{e}`"
+            ))
             await asyncio.sleep(2)
 
     try:
@@ -144,8 +184,6 @@ async def cmd_atualizar(client, message):
 
     await msg.edit_text(tr("✅ **Atualização concluída! Reiniciando...**", "✅ **Update complete! Restarting...**"))
     await asyncio.sleep(2)
-
-    # Reinicia de forma limpa (sem múltiplos SIGINT)
     reiniciar_processo()
 
 

@@ -130,29 +130,47 @@ async def cmd_dl(client, message):
     tmp_dir = tempfile.gettempdir()
     arquivo = None
 
-    def baixar_video():
+    def baixar():
         opts = {
+            # Vídeo mp4; imagens e áudios caem no fallback 'best'
             'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            'outtmpl': os.path.join(tmp_dir, 'vid_%(id)s.%(ext)s'),
+            'outtmpl': os.path.join(tmp_dir, 'dl_%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
             'max_filesize': 1500 * 1024 * 1024,
         }
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            if 'requested_downloads' in info:
-                path = info['requested_downloads'][0]['filepath']
-            else:
-                path = ydl.prepare_filename(info)
+            # requested_downloads tem o caminho real pós-merge/conversão
+            rds = info.get('requested_downloads') or []
+            path = rds[0]['filepath'] if rds else ydl.prepare_filename(info)
+            # Garante que o arquivo existe; se não, procura por qualquer arquivo gerado
+            if not os.path.exists(path):
+                base = os.path.join(tmp_dir, f"dl_{info.get('id', '')}")
+                for ext in ('.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp', '.mp3', '.m4a'):
+                    candidate = base + ext
+                    if os.path.exists(candidate):
+                        path = candidate
+                        break
             return path, info.get('title', 'Video')
 
     try:
-        arquivo, titulo = await asyncio.to_thread(baixar_video)
+        arquivo, titulo = await asyncio.to_thread(baixar)
+        if not os.path.exists(arquivo):
+            raise FileNotFoundError("Arquivo não encontrado após download.")
+
         await msg.edit_text(tr("☁️ **Enviando para o Telegram...**", "☁️ **Uploading to Telegram...**"))
-        await client.send_video(
-            message.chat.id, arquivo,
-            caption=tr(f"🎥 **{titulo}**\n🔗 Link original", f"🎥 **{titulo}**\n🔗 Original link")
-        )
+
+        ext     = os.path.splitext(arquivo)[1].lower()
+        caption = tr(f"📥 **{titulo}**", f"📥 **{titulo}**")
+
+        if ext in ('.jpg', '.jpeg', '.png', '.webp', '.gif'):
+            await client.send_photo(message.chat.id, arquivo, caption=caption)
+        elif ext in ('.mp3', '.m4a', '.ogg', '.opus', '.flac', '.wav'):
+            await client.send_audio(message.chat.id, arquivo, caption=caption)
+        else:
+            await client.send_video(message.chat.id, arquivo, caption=caption)
+
         await msg.delete()
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro ao baixar:\n`{str(e)[:300]}`", f"❌ Download error:\n`{str(e)[:300]}`"))

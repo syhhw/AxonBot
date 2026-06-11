@@ -46,7 +46,7 @@ def prefixo(client) -> str:
 
 
 async def listen(client, chat_id: int, timeout: int = 30):
-    """Aguarda a próxima mensagem de chat_id sem pyromod."""
+    """Aguarda a próxima mensagem enviada pelo próprio dono no chat."""
     loop = asyncio.get_event_loop()
     fut = loop.create_future()
 
@@ -54,7 +54,8 @@ async def listen(client, chat_id: int, timeout: int = 30):
         if not fut.done():
             fut.set_result(msg)
 
-    h = MessageHandler(_handler, filters.chat(chat_id))
+    # filters.me garante que só a resposta do dono da conta aciona o listen
+    h = MessageHandler(_handler, filters.chat(chat_id) & filters.me)
     client.add_handler(h, group=-100)
     try:
         return await asyncio.wait_for(asyncio.shield(fut), timeout=timeout)
@@ -176,10 +177,15 @@ async def resolver_alvo(client, message):
         if len(partes) > 2:
             motivo = partes[2]
         try:
-            user_obj = await client.get_users(
-                alvo if alvo.startswith("@") else int(alvo)
-            )
-        except (ValueError, Exception):
+            # Aceita @user, user (sem @), ou ID numérico
+            if alvo.lstrip("-").isdigit():
+                query = int(alvo)
+            elif alvo.startswith("@"):
+                query = alvo
+            else:
+                query = f"@{alvo}"
+            user_obj = await client.get_users(query)
+        except Exception:
             return None, None, None
 
     return user_obj, motivo, msg_origem

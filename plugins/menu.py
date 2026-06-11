@@ -13,15 +13,18 @@ from utils.i18n import COMMAND_ALIASES
 
 
 _MODULO_ORDER = [
-    "system.py", "moderation.py", "tools.py", "kang.py",
-    "account.py", "downloader.py", "ai.py", "dev.py",
+    "system.py", "alive.py", "moderation.py", "locks.py", "tools.py", "kang.py",
+    "account.py", "downloader.py", "ai.py", "info.py", "dev.py",
     "notes.py", "welcome.py", "chatfilters.py", "triggers.py",
     "antiflood.py", "sed.py", "tagall.py", "drive.py",
 ]
 
 _NOMES_PT = {
     "system.py":      "🖥️ Sistema",
+    "alive.py":       "⚡ Status",
     "moderation.py":  "👮 Moderação",
+    "locks.py":       "🔒 Travas do Grupo",
+    "info.py":        "🔎 Info & Pesquisa",
     "drive.py":       "📂 Google Drive",
     "tools.py":       "🛠️ Ferramentas",
     "account.py":     "👤 Conta & AFK",
@@ -39,7 +42,10 @@ _NOMES_PT = {
 }
 _NOMES_EN = {
     "system.py":      "🖥️ System",
+    "alive.py":       "⚡ Status",
     "moderation.py":  "👮 Moderation",
+    "locks.py":       "🔒 Group Locks",
+    "info.py":        "🔎 Info & Search",
     "drive.py":       "📂 Google Drive",
     "tools.py":       "🛠️ Tools",
     "account.py":     "👤 Account & AFK",
@@ -75,6 +81,9 @@ _ALIAS = {
     "antiflood": "antiflood.py",
     "sed": "sed.py",
     "tagall": "tagall.py",     "mencionar": "tagall.py",
+    "alive": "alive.py",       "status": "alive.py",
+    "travas": "locks.py",      "locks": "locks.py",       "travar": "locks.py",
+    "info": "info.py",         "github": "info.py",       "filme": "info.py",
 }
 
 

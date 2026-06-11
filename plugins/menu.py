@@ -236,21 +236,16 @@ async def cmd_menu(client, message):
         deletar_depois(message, 60)
         return
 
-    # Fallback: tabela de conteúdo com chips (até 6 comandos por módulo)
-    _SHOW = 6
+    # Fallback: tabela de conteúdo com todos os comandos por módulo
     secoes_toc = []
     for filename, comandos in modulos:
         titulo = _nome_modulo(filename, lang)
         n      = len(comandos)
         chips  = []
-        for c in comandos[:_SHOW]:
+        for c in comandos:
             nome_cmd = COMMAND_ALIASES.get(c["cmd"], c["cmd"]) if lang == "en" else c["cmd"]
             chips.append(f"`{p}{nome_cmd}`")
-        resto  = n - _SHOW
-        linha_cmds = "  " + "  ".join(chips)
-        if resto > 0:
-            linha_cmds += tr(f"  _+{resto} mais_", f"  _+{resto} more_")
-        secoes_toc.append(f"**{titulo}** ({n})\n{linha_cmds}")
+        secoes_toc.append(f"**{titulo}** ({n})\n  " + "  ".join(chips))
 
     await message.edit_text(
         header + "\n\n".join(secoes_toc) + footer,

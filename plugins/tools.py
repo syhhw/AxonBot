@@ -583,14 +583,20 @@ async def cmd_clone(client, message):
     # Salva estado original apenas na primeira clonagem
     backup = carregar("clone_backup.json", {})
     if not backup.get("cloned"):
+        from pyrogram import raw as _raw
         me      = await client.get_me()
         me_full = await client.get_chat("me")
 
-        # Registra todas as fotos JÁ existentes antes de clonar
+        # Registra IDs raw das fotos já existentes antes de clonar
         fotos_antes = []
         try:
-            async for p in client.get_profile_photos("me", limit=50):
-                fotos_antes.append(p.file_unique_id)
+            me_peer = await client.resolve_peer("me")
+            res = await client.invoke(
+                _raw.functions.photos.GetUserPhotos(
+                    user_id=me_peer, offset=0, max_id=0, limit=50
+                )
+            )
+            fotos_antes = [p.id for p in res.photos]
         except Exception:
             pass
 
@@ -599,7 +605,7 @@ async def cmd_clone(client, message):
             "first_name":         me.first_name or "",
             "last_name":          me.last_name  or "",
             "bio":                me_full.bio   or "",
-            "fotos_antes_clone":  fotos_antes,   # UIDs das fotos que existiam antes
+            "fotos_antes_clone":  fotos_antes,
         }
         salvar("clone_backup.json", backup)
 
@@ -686,19 +692,36 @@ async def cmd_reverter(client, message):
     except Exception as e:
         await msg.edit_text(tr(f"⚠️ Erro ao restaurar nome/bio: `{e}`", f"⚠️ Error restoring name/bio: `{e}`"))
 
-    # Deleta fotos adicionadas pelo clone: qualquer foto que NÃO existia antes
+    # Deleta fotos adicionadas pelo clone via raw API (mesmo princípio do
+    # Telethon: photos.DeletePhotos com InputPhoto direto, sem file_id)
     fotos_antes = set(backup.get("fotos_antes_clone", []))
     to_delete   = []
     try:
-        async for p in client.get_profile_photos("me", limit=50):
-            if p.file_unique_id not in fotos_antes:
-                to_delete.append(p.file_id)
+        from pyrogram import raw as _raw
+        me_peer = await client.resolve_peer("me")
+        res = await client.invoke(
+            _raw.functions.photos.GetUserPhotos(
+                user_id=me_peer, offset=0, max_id=0, limit=50
+            )
+        )
+        for p in res.photos:
+            if p.id not in fotos_antes:
+                to_delete.append(
+                    _raw.types.InputPhoto(
+                        id=p.id,
+                        access_hash=p.access_hash,
+                        file_reference=p.file_reference,
+                    )
+                )
     except Exception as e:
         await msg.edit_text(tr(f"⚠️ Erro ao listar fotos: `{e}`", f"⚠️ Error listing photos: `{e}`"))
+        salvar("clone_backup.json", {})
+        return
 
     if to_delete:
         try:
-            await client.delete_profile_photos(to_delete)
+            from pyrogram import raw as _raw
+            await client.invoke(_raw.functions.photos.DeletePhotos(id=to_delete))
         except Exception as e:
             await msg.edit_text(tr(f"⚠️ Erro ao apagar foto clonada: `{e}`", f"⚠️ Error deleting cloned photo: `{e}`"))
             salvar("clone_backup.json", {})

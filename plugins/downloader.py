@@ -93,16 +93,18 @@ def _baixar_instaloader(url: str, tmp_dir: str):
     )
 
 
+_IS_TIKTOK = re.compile(r'tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com', re.I)
+
+
 def _baixar_ytdlp(url: str, tmp_dir: str):
     """Download via yt-dlp com múltiplos formatos de fallback."""
     base_opts = {
-        # best[ext=mp4] seleciona arquivo único (não precisa de FFmpeg para merge)
-        'format':        'best[ext=mp4]/best[ext=webm]/best',
-        'outtmpl':       os.path.join(tmp_dir, 'dl_%(id)s.%(ext)s'),
-        'quiet':         True,
-        'no_warnings':   True,
-        'max_filesize':  1500 * 1024 * 1024,
-        'http_headers':  {
+        'format':       'best[ext=mp4]/best[ext=webm]/best',
+        'outtmpl':      os.path.join(tmp_dir, 'dl_%(id)s.%(ext)s'),
+        'quiet':        True,
+        'no_warnings':  True,
+        'max_filesize': 1500 * 1024 * 1024,
+        'http_headers': {
             'User-Agent': (
                 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) '
                 'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
@@ -110,11 +112,19 @@ def _baixar_ytdlp(url: str, tmp_dir: str):
         },
     }
 
-    # Tentativa 1: vídeo/imagem com formato único (sem merge FFmpeg)
-    # Tentativa 2: sem restrição de formato (pega qualquer coisa, inclusive imagens)
+    # Opções extras para TikTok — contorna bloqueios de API
+    if _IS_TIKTOK.search(url):
+        base_opts['http_headers']['User-Agent'] = (
+            'com.zhiliaoapp.musically/2022600030 '
+            '(Linux; U; Android 9; en_US; Pixel 4; Build/PI;tt-ok/3.12.13.1)'
+        )
+        base_opts['extractor_args'] = {
+            'tiktok': {'api_hostname': 'api22-normal-c-useast2a.tiktok.com'},
+        }
+
     tentativas = [
         base_opts,
-        {**base_opts, 'format': None},
+        {**base_opts, 'format': None},   # sem restrição — pega imagens também
     ]
     _ERROS_FORMATO = (
         'no video', 'no formats', 'requested format not available',

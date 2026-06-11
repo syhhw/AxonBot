@@ -585,12 +585,21 @@ async def cmd_clone(client, message):
     if not backup.get("cloned"):
         me      = await client.get_me()
         me_full = await client.get_chat("me")
-        backup  = {
-            "cloned":          True,
-            "first_name":      me.first_name or "",
-            "last_name":       me.last_name  or "",
-            "bio":             me_full.bio   or "",
-            "added_photo_ids": [],
+
+        # Registra todas as fotos JÁ existentes antes de clonar
+        fotos_antes = []
+        try:
+            async for p in client.get_profile_photos("me", limit=50):
+                fotos_antes.append(p.file_unique_id)
+        except Exception:
+            pass
+
+        backup = {
+            "cloned":             True,
+            "first_name":         me.first_name or "",
+            "last_name":          me.last_name  or "",
+            "bio":                me_full.bio   or "",
+            "fotos_antes_clone":  fotos_antes,   # UIDs das fotos que existiam antes
         }
         salvar("clone_backup.json", backup)
 
@@ -639,20 +648,13 @@ async def cmd_clone(client, message):
                         rules=[_raw.types.InputPrivacyValueAllowAll()],
                     )
                 )
-
-                # Salva o file_unique_id da foto adicionada (estável entre sessões)
-                try:
-                    novas = [p async for p in client.get_profile_photos("me", limit=1)]
-                    if novas:
-                        fuid = novas[0].file_unique_id
-                        known = backup.setdefault("added_photo_unique_ids", [])
-                        if fuid not in known:
-                            known.append(fuid)
-                            salvar("clone_backup.json", backup)
-                except Exception:
-                    pass
-            except Exception:
-                pass
+            except Exception as e:
+                await msg.edit_text(tr(
+                    f"⚠️ Nome/bio clonados, mas erro na foto: `{e}`",
+                    f"⚠️ Name/bio cloned, but photo error: `{e}`"
+                ))
+                salvar("clone_backup.json", {})
+                return
             finally:
                 try:
                     os.remove(photo_path)
@@ -671,33 +673,36 @@ async def cmd_reverter(client, message):
     backup = carregar("clone_backup.json", {})
     if not backup.get("cloned"):
         return await message.edit_text(tr("⚠️ Você não está clonando ninguém no momento.", "⚠️ You are not cloning anyone right now."))
-        
+
     msg = await message.edit_text(tr("🔄 **Revertendo para o perfil original...**", "🔄 **Reverting to original profile...**"))
-    
+
+    # Restaura nome e bio
     try:
         await client.update_profile(
             first_name=backup.get("first_name", ""),
-            last_name=backup.get("last_name", ""),
-            bio=backup.get("bio", "")
+            last_name=backup.get("last_name",  ""),
+            bio=backup.get("bio",              "")
         )
-    except Exception:
-        pass
-        
-    # file_unique_id é estável entre sessões; usamos ele para identificar
-    # a foto clonada e buscamos o file_id atual para deletar
-    added_uids = backup.get("added_photo_unique_ids", [])
-    if added_uids:
+    except Exception as e:
+        await msg.edit_text(tr(f"⚠️ Erro ao restaurar nome/bio: `{e}`", f"⚠️ Error restoring name/bio: `{e}`"))
+
+    # Deleta fotos adicionadas pelo clone: qualquer foto que NÃO existia antes
+    fotos_antes = set(backup.get("fotos_antes_clone", []))
+    to_delete   = []
+    try:
+        async for p in client.get_profile_photos("me", limit=50):
+            if p.file_unique_id not in fotos_antes:
+                to_delete.append(p.file_id)
+    except Exception as e:
+        await msg.edit_text(tr(f"⚠️ Erro ao listar fotos: `{e}`", f"⚠️ Error listing photos: `{e}`"))
+
+    if to_delete:
         try:
-            to_delete = []
-            async for p in client.get_profile_photos("me", limit=len(added_uids) + 10):
-                if p.file_unique_id in added_uids:
-                    to_delete.append(p.file_id)
-                if len(to_delete) == len(added_uids):
-                    break
-            if to_delete:
-                await client.delete_profile_photos(to_delete)
-        except Exception:
-            pass
+            await client.delete_profile_photos(to_delete)
+        except Exception as e:
+            await msg.edit_text(tr(f"⚠️ Erro ao apagar foto clonada: `{e}`", f"⚠️ Error deleting cloned photo: `{e}`"))
+            salvar("clone_backup.json", {})
+            return
 
     salvar("clone_backup.json", {})
     await msg.edit_text(tr("✅ **Perfil original restaurado com sucesso!**", "✅ **Original profile restored successfully!**"))

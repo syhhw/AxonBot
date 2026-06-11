@@ -69,19 +69,28 @@ def _baixar_instaloader(url: str, tmp_dir: str):
         save_metadata=False,
         compress_json=False,
         post_metadata_txt_pattern="",
+        dirname_pattern=post_dir,
+        filename_pattern="{shortcode}",
     )
     post = instaloader.Post.from_shortcode(L.context, shortcode)
     L.download_post(post, target=post_dir)
 
     titulo = (post.caption or shortcode)[:100].strip().splitlines()[0] if post.caption else shortcode
 
-    # Prioriza mp4; se não houver, pega a primeira imagem disponível
-    for ext in ('.mp4', '.jpg', '.jpeg', '.png', '.webp'):
-        files = sorted(glob.glob(os.path.join(post_dir, f'*{ext}')))
-        if files:
-            return files[0], titulo
+    # Busca recursiva — instaloader pode criar subpastas
+    _MEDIA = ('.mp4', '.jpg', '.jpeg', '.png', '.webp')
+    for root, _, files in os.walk(post_dir):
+        for f in sorted(files):
+            if os.path.splitext(f)[1].lower() in _MEDIA:
+                return os.path.join(root, f), titulo
 
-    raise FileNotFoundError("Nenhum arquivo de mídia encontrado após download com instaloader.")
+    # Debug: mostra o que foi criado para facilitar diagnóstico
+    todos = []
+    for root, _, files in os.walk(post_dir):
+        todos.extend(files)
+    raise FileNotFoundError(
+        f"Sem mídia após instaloader. Arquivos criados: {todos[:8] or 'nenhum'}"
+    )
 
 
 def _baixar_ytdlp(url: str, tmp_dir: str):

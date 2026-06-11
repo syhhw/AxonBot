@@ -205,21 +205,26 @@ async def cmd_menu(client, message):
     if not modulos:
         return await message.edit_text(tr("⚠️ Nenhum comando encontrado.", "⚠️ No commands found."))
 
-    versao  = getattr(client, "VERSAO", "1.0")
-    n_mods  = len(modulos)
-    total_s = tr(
-        f"`{total_cmds}` cmds em `{n_mods}` módulos",
-        f"`{total_cmds}` cmds in `{n_mods}` modules",
-    )
-    header = (
+    versao = getattr(client, "VERSAO", "1.0")
+    n_mods = len(modulos)
+
+    header = tr(
         f"⚡ **USERBOT PRO v{versao}**\n"
-        f"├ 🔧 **{tr('Prefixo', 'Prefix')}:** `{p}`\n"
-        f"└ 📦 {total_s}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"├ 🔧 Prefixo: `{p}`\n"
+        f"├ 📦 {total_cmds} comandos  ·  {n_mods} módulos\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
+        f"⚡ **USERBOT PRO v{versao}**\n"
+        f"├ 🔧 Prefix: `{p}`\n"
+        f"├ 📦 {total_cmds} commands  ·  {n_mods} modules\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
     )
     footer = tr(
-        f"\n\n💡 `{p}menu [módulo]` para descrição completa — ex: `{p}menu drive`",
-        f"\n\n💡 `{p}menu [module]` for full details — e.g. `{p}menu drive`",
+        f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💡 `{p}menu [módulo]` — detalhes completos\n"
+        f"   Ex: `{p}menu mod`  `{p}menu dl`  `{p}menu ia`",
+        f"\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💡 `{p}menu [module]` — full details\n"
+        f"   Ex: `{p}menu mod`  `{p}menu dl`  `{p}menu ai`",
     )
 
     # Tenta a versão detalhada (com descrições curtas)
@@ -231,17 +236,21 @@ async def cmd_menu(client, message):
         deletar_depois(message, 60)
         return
 
-    # Fallback: tabela de conteúdo com chips dos primeiros 4 comandos por módulo
+    # Fallback: tabela de conteúdo com chips (até 6 comandos por módulo)
+    _SHOW = 6
     secoes_toc = []
     for filename, comandos in modulos:
         titulo = _nome_modulo(filename, lang)
         n      = len(comandos)
         chips  = []
-        for c in comandos[:4]:
+        for c in comandos[:_SHOW]:
             nome_cmd = COMMAND_ALIASES.get(c["cmd"], c["cmd"]) if lang == "en" else c["cmd"]
             chips.append(f"`{p}{nome_cmd}`")
-        suffix = f" +{n - 4}" if n > 4 else ""
-        secoes_toc.append(f"**{titulo}** ({n})\n  {' '.join(chips)}{suffix}")
+        resto  = n - _SHOW
+        linha_cmds = "  " + "  ".join(chips)
+        if resto > 0:
+            linha_cmds += tr(f"  _+{resto} mais_", f"  _+{resto} more_")
+        secoes_toc.append(f"**{titulo}** ({n})\n{linha_cmds}")
 
     await message.edit_text(
         header + "\n\n".join(secoes_toc) + footer,

@@ -640,13 +640,14 @@ async def cmd_clone(client, message):
                     )
                 )
 
-                # Salva o file_id exato da foto recém-adicionada para deletar no reverter
+                # Salva o file_unique_id da foto adicionada (estável entre sessões)
                 try:
                     novas = [p async for p in client.get_profile_photos("me", limit=1)]
                     if novas:
-                        fid = novas[0].file_id
-                        if fid not in backup["added_photo_ids"]:
-                            backup["added_photo_ids"].append(fid)
+                        fuid = novas[0].file_unique_id
+                        known = backup.setdefault("added_photo_unique_ids", [])
+                        if fuid not in known:
+                            known.append(fuid)
                             salvar("clone_backup.json", backup)
                 except Exception:
                     pass
@@ -682,14 +683,16 @@ async def cmd_reverter(client, message):
     except Exception:
         pass
         
-    added_ids = backup.get("added_photo_ids", [])
-    if added_ids:
+    # file_unique_id é estável entre sessões; usamos ele para identificar
+    # a foto clonada e buscamos o file_id atual para deletar
+    added_uids = backup.get("added_photo_unique_ids", [])
+    if added_uids:
         try:
             to_delete = []
-            async for p in client.get_profile_photos("me", limit=len(added_ids) + 5):
-                if p.file_id in added_ids:
+            async for p in client.get_profile_photos("me", limit=len(added_uids) + 10):
+                if p.file_unique_id in added_uids:
                     to_delete.append(p.file_id)
-                if len(to_delete) == len(added_ids):
+                if len(to_delete) == len(added_uids):
                     break
             if to_delete:
                 await client.delete_profile_photos(to_delete)

@@ -1,11 +1,12 @@
 """
 plugins/downloader.py
-Baixador universal de vídeos usando yt-dlp (YouTube, Instagram, TikTok, etc.)
-Comandos:
+Baixador universal usando yt-dlp + instaloader (fallback para Instagram).
   ,dlinfo [link] — mostra título, duração, canal e tamanho estimado
-  ,dl [link]     — baixa e envia o vídeo
+  ,dl [link]     — baixa e envia o arquivo (vídeo, imagem ou áudio)
 """
 import os
+import re
+import glob
 import tempfile
 import asyncio
 from pyrogram import filters, Client
@@ -16,6 +17,14 @@ try:
     HAS_YTDLP = True
 except ImportError:
     HAS_YTDLP = False
+
+try:
+    import instaloader
+    HAS_INSTALOADER = True
+except ImportError:
+    HAS_INSTALOADER = False
+
+_IG_RE = re.compile(r'instagram\.com/(?:p|reel|tv|reels)/([A-Za-z0-9_-]+)', re.I)
 
 
 def _formatar_duracao(segundos: int) -> str:
@@ -37,11 +46,102 @@ def _formatar_tamanho(bytes_: int) -> str:
 
 
 def _obter_tamanho_estimado(info: dict) -> int:
-    """Tenta estimar o tamanho do melhor formato mp4 disponível."""
     for fmt in reversed(info.get("formats", [])):
         if fmt.get("ext") == "mp4" and fmt.get("filesize"):
             return fmt["filesize"]
     return info.get("filesize_approx", 0) or 0
+
+
+def _baixar_instaloader(url: str, tmp_dir: str):
+    """Fallback para Instagram usando instaloader (fotos, reels, carrosséis)."""
+    m = _IG_RE.search(url)
+    if not m:
+        raise ValueError("Shortcode do Instagram não encontrado na URL.")
+    shortcode = m.group(1)
+    post_dir  = os.path.join(tmp_dir, f"ig_{shortcode}")
+    os.makedirs(post_dir, exist_ok=True)
+
+    L = instaloader.Instaloader(
+        download_videos=True,
+        download_video_thumbnails=False,
+        download_geotags=False,
+        download_comments=False,
+        save_metadata=False,
+        compress_json=False,
+        post_metadata_txt_pattern="",
+    )
+    post = instaloader.Post.from_shortcode(L.context, shortcode)
+    L.download_post(post, target=post_dir)
+
+    titulo = (post.caption or shortcode)[:100].strip().splitlines()[0] if post.caption else shortcode
+
+    # Prioriza mp4; se não houver, pega a primeira imagem disponível
+    for ext in ('.mp4', '.jpg', '.jpeg', '.png', '.webp'):
+        files = sorted(glob.glob(os.path.join(post_dir, f'*{ext}')))
+        if files:
+            return files[0], titulo
+
+    raise FileNotFoundError("Nenhum arquivo de mídia encontrado após download com instaloader.")
+
+
+def _baixar_ytdlp(url: str, tmp_dir: str):
+    """Download via yt-dlp com múltiplos formatos de fallback."""
+    base_opts = {
+        # best[ext=mp4] seleciona arquivo único (não precisa de FFmpeg para merge)
+        'format':        'best[ext=mp4]/best[ext=webm]/best',
+        'outtmpl':       os.path.join(tmp_dir, 'dl_%(id)s.%(ext)s'),
+        'quiet':         True,
+        'no_warnings':   True,
+        'max_filesize':  1500 * 1024 * 1024,
+        'http_headers':  {
+            'User-Agent': (
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) '
+                'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
+            ),
+        },
+    }
+
+    # Tentativa 1: vídeo/imagem com formato único (sem merge FFmpeg)
+    # Tentativa 2: sem restrição de formato (pega qualquer coisa, inclusive imagens)
+    tentativas = [
+        base_opts,
+        {**base_opts, 'format': None},
+    ]
+    _ERROS_FORMATO = (
+        'no video', 'no formats', 'requested format not available',
+        'there is no video', 'no media', 'unable to extract',
+    )
+
+    info = None
+    ultimo_erro = None
+    for opts in tentativas:
+        _opts = {k: v for k, v in opts.items() if v is not None}
+        try:
+            with yt_dlp.YoutubeDL(_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+            break
+        except Exception as e:
+            ultimo_erro = e
+            if any(k in str(e).lower() for k in _ERROS_FORMATO):
+                continue
+            raise
+
+    if info is None:
+        raise ultimo_erro or ValueError("Nenhum formato disponível.")
+
+    rds  = info.get('requested_downloads') or []
+    path = rds[0]['filepath'] if rds else None
+
+    if not path or not os.path.exists(path):
+        base = os.path.join(tmp_dir, f"dl_{info.get('id', '')}")
+        for _ext in ('.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp', '.mp3', '.m4a'):
+            candidate = base + _ext
+            if os.path.exists(candidate):
+                path = candidate
+                break
+
+    return path, info.get('title', 'Video')
+
 
 @Client.on_message(cmd_filter("dlinfo") & filters.me)
 async def cmd_dlinfo(client, message):
@@ -52,10 +152,7 @@ async def cmd_dlinfo(client, message):
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(
-            f"⚠️ Use: `{p}dlinfo [link]`",
-            f"⚠️ Use: `{p}dlinfo [link]`"
-        ))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}dlinfo [link]`", f"⚠️ Use: `{p}dlinfo [link]`"))
 
     url = partes[1].strip()
     await message.edit_text(tr("🔍 **Analisando link...**", "🔍 **Analyzing link...**"))
@@ -80,7 +177,6 @@ async def cmd_dlinfo(client, message):
     tamanho   = _formatar_tamanho(_obter_tamanho_estimado(info))
     thumb     = info.get("thumbnail")
     plataform = info.get("extractor_key", "?")
-
     views_str = f"{views:,}" if views else "?"
 
     caption = tr(
@@ -112,70 +208,42 @@ async def cmd_dlinfo(client, message):
 
 @Client.on_message(cmd_filter("dl") & filters.me)
 async def cmd_dl(client, message):
-    """Baixa um vídeo de quase qualquer rede social (Instagram, TikTok, YouTube)."""
-    if not HAS_YTDLP:
-        return await message.edit_text(tr("❌ Biblioteca `yt-dlp` não instalada.", "❌ `yt-dlp` library not installed."))
+    """Baixa mídia de redes sociais (Instagram, TikTok, YouTube, etc.)."""
+    if not HAS_YTDLP and not HAS_INSTALOADER:
+        return await message.edit_text(tr("❌ `yt-dlp` não instalado.", "❌ `yt-dlp` not installed."))
 
     p = prefixo(client)
     partes = message.text.split(None, 1)
     if len(partes) < 2:
-        return await message.edit_text(tr(f"⚠️ Use: `{p}dl [link do vídeo]`", f"⚠️ Use: `{p}dl [video link]`"))
+        return await message.edit_text(tr(f"⚠️ Use: `{p}dl [link]`", f"⚠️ Use: `{p}dl [link]`"))
 
     url = partes[1].strip()
     msg = await message.edit_text(tr(
-        "📥 **Analisando link e baixando...**\nIsso pode demorar dependendo do tamanho.",
-        "📥 **Analyzing link and downloading...**\nThis might take a while depending on size."
+        "📥 **Baixando...**\nIsso pode demorar dependendo do tamanho.",
+        "📥 **Downloading...**\nThis might take a while depending on size."
     ))
 
     tmp_dir = tempfile.gettempdir()
     arquivo = None
+    is_instagram = bool(_IG_RE.search(url))
 
     def baixar():
-        base_opts = {
-            'outtmpl': os.path.join(tmp_dir, 'dl_%(id)s.%(ext)s'),
-            'quiet': True,
-            'no_warnings': True,
-            'max_filesize': 1500 * 1024 * 1024,
-        }
-        # Tenta primeiro com seletor de vídeo mp4; se falhar por "sem vídeo"
-        # (posts de imagem no Instagram, etc.), retenta sem restrição de formato.
-        tentativas = [
-            {**base_opts, 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'},
-            base_opts,
-        ]
-        _SEM_VIDEO = ('no video', 'no formats', 'requested format not available',
-                      'there is no video')
-
-        info = None
-        for opts in tentativas:
+        # Para Instagram: tenta yt-dlp primeiro; se falhar, usa instaloader
+        # Para demais plataformas: só yt-dlp
+        if HAS_YTDLP:
             try:
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    info = ydl.extract_info(url, download=True)
-                break
+                return _baixar_ytdlp(url, tmp_dir)
             except Exception as e:
-                if any(k in str(e).lower() for k in _SEM_VIDEO):
-                    continue
+                if is_instagram and HAS_INSTALOADER:
+                    return _baixar_instaloader(url, tmp_dir)
                 raise
-
-        if info is None:
-            raise ValueError("Nenhum formato disponível para este link.")
-
-        rds  = info.get('requested_downloads') or []
-        path = rds[0]['filepath'] if rds else None
-
-        if not path or not os.path.exists(path):
-            base = os.path.join(tmp_dir, f"dl_{info.get('id', '')}")
-            for _ext in ('.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp', '.mp3', '.m4a'):
-                candidate = base + _ext
-                if os.path.exists(candidate):
-                    path = candidate
-                    break
-
-        return path, info.get('title', 'Video')
+        if is_instagram and HAS_INSTALOADER:
+            return _baixar_instaloader(url, tmp_dir)
+        raise RuntimeError("Nenhum downloader disponível.")
 
     try:
         arquivo, titulo = await asyncio.to_thread(baixar)
-        if not os.path.exists(arquivo):
+        if not arquivo or not os.path.exists(arquivo):
             raise FileNotFoundError("Arquivo não encontrado após download.")
 
         await msg.edit_text(tr("☁️ **Enviando para o Telegram...**", "☁️ **Uploading to Telegram...**"))

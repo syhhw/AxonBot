@@ -12,5 +12,6 @@ aiofiles
 aiohttp
 google-genai
 yt-dlp
+instaloader
 python-telegram-bot>=20.0
 apscheduler

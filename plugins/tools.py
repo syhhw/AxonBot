@@ -643,7 +643,7 @@ async def cmd_clone(client, message):
                 # Garante visibilidade pública
                 from pyrogram import raw as _raw
                 await client.invoke(
-                    _raw.functions.account.SetPrivacyRules(
+                    _raw.functions.account.SetPrivacy(
                         key=_raw.types.InputPrivacyKeyProfilePhoto(),
                         rules=[_raw.types.InputPrivacyValueAllowAll()],
                     )

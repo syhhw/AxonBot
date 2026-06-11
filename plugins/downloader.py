@@ -1,6 +1,6 @@
 """
 plugins/downloader.py
-Baixador universal usando yt-dlp + instaloader (fallback para Instagram).
+Baixador universal: tikwm API (TikTok), yt-dlp, instaloader (Instagram).
   ,dlinfo [link] — mostra título, duração, canal e tamanho estimado
   ,dl [link]     — baixa e envia o arquivo (vídeo, imagem ou áudio)
 """
@@ -9,6 +9,7 @@ import re
 import glob
 import tempfile
 import asyncio
+import aiohttp
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, tr
 
@@ -93,7 +94,44 @@ def _baixar_instaloader(url: str, tmp_dir: str):
     )
 
 
-_IS_TIKTOK = re.compile(r'tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com', re.I)
+_IS_TIKTOK    = re.compile(r'tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com', re.I)
+_TIKWM_API    = "https://www.tikwm.com/api/"
+
+
+async def _baixar_tiktok_api(url: str, tmp_dir: str):
+    """Baixa TikTok via tikwm.com (não precisa de cookies nem de yt-dlp)."""
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as sess:
+        async with sess.post(
+            _TIKWM_API,
+            data={"url": url, "hd": "1"},
+            headers={"User-Agent": "Mozilla/5.0"},
+        ) as resp:
+            data = await resp.json(content_type=None)
+
+    if data.get("code") != 0:
+        raise ValueError(f"tikwm: {data.get('msg', 'erro desconhecido')}")
+
+    info      = data["data"]
+    video_url = info.get("hdplay") or info.get("play")
+    titulo    = (info.get("title") or "TikTok Video")[:100]
+
+    if not video_url:
+        raise ValueError("tikwm: sem URL de vídeo na resposta.")
+
+    path = os.path.join(tmp_dir, f"tiktok_{info.get('id', 'video')}.mp4")
+    dl_timeout = aiohttp.ClientTimeout(total=300)
+    async with aiohttp.ClientSession(timeout=dl_timeout) as sess:
+        async with sess.get(
+            video_url,
+            headers={"Referer": "https://www.tiktok.com/"},
+        ) as resp:
+            resp.raise_for_status()
+            with open(path, "wb") as f:
+                async for chunk in resp.content.iter_chunked(65536):
+                    f.write(chunk)
+
+    return path, titulo
 
 
 def _baixar_ytdlp(url: str, tmp_dir: str):
@@ -242,26 +280,36 @@ async def cmd_dl(client, message):
         "📥 **Downloading...**\nThis might take a while depending on size."
     ))
 
-    tmp_dir = tempfile.gettempdir()
-    arquivo = None
+    tmp_dir      = tempfile.gettempdir()
+    arquivo      = None
     is_instagram = bool(_IG_RE.search(url))
+    is_tiktok    = bool(_IS_TIKTOK.search(url))
 
-    def baixar():
-        # Para Instagram: tenta yt-dlp primeiro; se falhar, usa instaloader
-        # Para demais plataformas: só yt-dlp
+    async def resolver():
+        # TikTok: tikwm API (funciona em IPs de servidor sem cookies)
+        if is_tiktok:
+            try:
+                return await _baixar_tiktok_api(url, tmp_dir)
+            except Exception:
+                pass  # fallback para yt-dlp
+
+        # yt-dlp para tudo mais (e fallback do TikTok)
         if HAS_YTDLP:
             try:
-                return _baixar_ytdlp(url, tmp_dir)
-            except Exception as e:
+                return await asyncio.to_thread(_baixar_ytdlp, url, tmp_dir)
+            except Exception:
                 if is_instagram and HAS_INSTALOADER:
-                    return _baixar_instaloader(url, tmp_dir)
+                    return await asyncio.to_thread(_baixar_instaloader, url, tmp_dir)
                 raise
+
+        # instaloader só como último recurso para Instagram
         if is_instagram and HAS_INSTALOADER:
-            return _baixar_instaloader(url, tmp_dir)
-        raise RuntimeError("Nenhum downloader disponível.")
+            return await asyncio.to_thread(_baixar_instaloader, url, tmp_dir)
+
+        raise RuntimeError("Nenhum downloader disponível para este link.")
 
     try:
-        arquivo, titulo = await asyncio.to_thread(baixar)
+        arquivo, titulo = await resolver()
         if not arquivo or not os.path.exists(arquivo):
             raise FileNotFoundError("Arquivo não encontrado após download.")
 

@@ -131,28 +131,47 @@ async def cmd_dl(client, message):
     arquivo = None
 
     def baixar():
-        opts = {
-            # Vídeo mp4; imagens e áudios caem no fallback 'best'
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        base_opts = {
             'outtmpl': os.path.join(tmp_dir, 'dl_%(id)s.%(ext)s'),
             'quiet': True,
             'no_warnings': True,
             'max_filesize': 1500 * 1024 * 1024,
         }
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            # requested_downloads tem o caminho real pós-merge/conversão
-            rds = info.get('requested_downloads') or []
-            path = rds[0]['filepath'] if rds else ydl.prepare_filename(info)
-            # Garante que o arquivo existe; se não, procura por qualquer arquivo gerado
-            if not os.path.exists(path):
-                base = os.path.join(tmp_dir, f"dl_{info.get('id', '')}")
-                for ext in ('.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp', '.mp3', '.m4a'):
-                    candidate = base + ext
-                    if os.path.exists(candidate):
-                        path = candidate
-                        break
-            return path, info.get('title', 'Video')
+        # Tenta primeiro com seletor de vídeo mp4; se falhar por "sem vídeo"
+        # (posts de imagem no Instagram, etc.), retenta sem restrição de formato.
+        tentativas = [
+            {**base_opts, 'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'},
+            base_opts,
+        ]
+        _SEM_VIDEO = ('no video', 'no formats', 'requested format not available',
+                      'there is no video')
+
+        info = None
+        for opts in tentativas:
+            try:
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                break
+            except Exception as e:
+                if any(k in str(e).lower() for k in _SEM_VIDEO):
+                    continue
+                raise
+
+        if info is None:
+            raise ValueError("Nenhum formato disponível para este link.")
+
+        rds  = info.get('requested_downloads') or []
+        path = rds[0]['filepath'] if rds else None
+
+        if not path or not os.path.exists(path):
+            base = os.path.join(tmp_dir, f"dl_{info.get('id', '')}")
+            for _ext in ('.mp4', '.webm', '.mkv', '.jpg', '.jpeg', '.png', '.webp', '.mp3', '.m4a'):
+                candidate = base + _ext
+                if os.path.exists(candidate):
+                    path = candidate
+                    break
+
+        return path, info.get('title', 'Video')
 
     try:
         arquivo, titulo = await asyncio.to_thread(baixar)

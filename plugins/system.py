@@ -464,14 +464,16 @@ async def cmd_sysinfo(client, message):
 async def cmd_processos(client, message):
     """Lista os 5 processos que mais consomem CPU."""
     deletar_depois(message, 45)
-    procs = sorted(
-        psutil.process_iter(['pid', 'name', 'cpu_percent']),
-        key=lambda x: x.info['cpu_percent'] or 0,
-        reverse=True
-    )[:5]
+    coletados = []
+    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent']):
+        try:
+            coletados.append(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+    procs = sorted(coletados, key=lambda x: x.info.get('cpu_percent') or 0, reverse=True)[:5]
     txt = tr("🔍 **Top 5 Processos (CPU)**\n\n", "🔍 **Top 5 Processes (CPU)**\n\n")
     for p in procs:
-        txt += f"• `{p.info['name']}` | PID `{p.info['pid']}` | CPU `{p.info['cpu_percent']}%`\n"
+        txt += f"• `{p.info.get('name','?')}` | PID `{p.info.get('pid','?')}` | CPU `{p.info.get('cpu_percent', 0)}%`\n"
     await message.edit_text(txt)
 
 @Client.on_message(cmd_filter("desligar") & filters.me)

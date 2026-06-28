@@ -46,6 +46,16 @@ async def cmd_github(client, message):
                         f"❌ `{query}` não encontrado no GitHub.",
                         f"❌ `{query}` not found on GitHub.",
                     ))
+                if resp.status == 403:
+                    return await message.edit_text(tr(
+                        "❌ Rate limit da API do GitHub atingido. Tente novamente em alguns minutos.",
+                        "❌ GitHub API rate limit exceeded. Try again in a few minutes.",
+                    ))
+                if resp.status != 200:
+                    return await message.edit_text(tr(
+                        f"❌ Erro HTTP `{resp.status}` ao consultar o GitHub.",
+                        f"❌ HTTP `{resp.status}` error from GitHub API.",
+                    ))
                 data = await resp.json()
     except Exception as e:
         return await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))

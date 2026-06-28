@@ -7,8 +7,10 @@ import re
 import asyncio
 import random
 import textwrap
+import tempfile
 import aiohttp
 from datetime import date as _date
+from urllib.parse import quote_plus
 
 from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
@@ -193,6 +195,11 @@ async def cmd_type(client, message):
     if len(partes) < 2:
         return await message.edit_text(tr(f"⚠️ Use: `{p}type [texto]`", f"⚠️ Use: `{p}type [text]`"))
     texto = partes[1]
+    if len(texto) > 200:
+        return await message.edit_text(tr(
+            "⚠️ Texto muito longo. Máximo: **200 caracteres**.",
+            "⚠️ Text too long. Max: **200 characters**."
+        ))
     digitado = ""
     for ch in texto:
         digitado += ch
@@ -213,7 +220,7 @@ async def cmd_ghost(client, message):
         return await message.edit_text(tr(f"⚠️ Use: `{p}ghost [segundos] [texto]`", f"⚠️ Use: `{p}ghost [seconds] [text]`"))
     if not partes[1].isdigit():
         return await message.edit_text(tr(f"⚠️ Tempo inválido. Ex: `{p}ghost 10 Olá`", f"⚠️ Invalid time. Ex: `{p}ghost 10 Hello`"))
-    tempo = int(partes[1])
+    tempo = min(int(partes[1]), 3600)  # máximo 1 hora
     texto = partes[2]
     await message.edit_text(tr(f"👻 **[Autodestrutiva em {tempo}s]**\n\n{texto}", f"👻 **[Self-destructing in {tempo}s]**\n\n{texto}"))
     await asyncio.sleep(tempo)
@@ -295,7 +302,7 @@ async def cmd_voz(client, message):
         return await message.edit_text(tr(f"⚠️ Use: `{p}voz [sotaque] [texto]`\nEx: `{p}voz pt Fala gajo!`", f"⚠️ Use: `{p}voice [accent] [text]`\nEx: `{p}voice en Hello friend!`"))
         
     await message.edit_text(tr("🎙️ **Gerando áudio...**", "🎙️ **Generating audio...**"))
-    arquivo = "voz_temp.ogg"
+    arquivo = os.path.join(tempfile.gettempdir(), f"voz_{message.id}.ogg")
     try:
         def gerar_tts():
             tts = gTTS(text=texto, lang=lang, tld=tld)
@@ -332,7 +339,7 @@ async def cmd_print(client, message):
     if not message.reply_to_message:
         return await message.edit_text(tr("⚠️ Responda à mensagem para gerar o print.", "⚠️ Reply to a message to generate the screenshot."))
     await message.edit_text(tr("📸 **Gerando print...**", "📸 **Generating screenshot...**"))
-    arquivo = "print_temp.png"
+    arquivo = os.path.join(tempfile.gettempdir(), f"print_{message.id}.png")
     try:
         texto = message.reply_to_message.text or message.reply_to_message.caption or tr("[Mídia sem texto]", "[Media without text]")
         autor = tr("Usuário", "User")
@@ -366,7 +373,7 @@ async def cmd_encurtar(client, message):
     await message.edit_text(tr("🔗 **Encurtando...**", "🔗 **Shortening...**"))
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"https://tinyurl.com/api-create.php?url={url}") as r:
+            async with session.get(f"https://tinyurl.com/api-create.php?url={quote_plus(url)}") as r:
                 texto_url = await r.text()
         await message.edit_text(tr(f"🔗 **Encurtado:**\n`{texto_url}`", f"🔗 **Shortened:**\n`{texto_url}`"))
     except Exception as e:

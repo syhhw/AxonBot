@@ -16,6 +16,10 @@ AFK_ATIVO  = False
 AFK_MOTIVO = ""
 AFK_INICIO: float = 0.0
 CAPTCHA_PENDENTE = {}
+_AFK_ULTIMO_REPLY: dict[int, float] = {}
+_AFK_COOLDOWN = 60          # segundos entre auto-respostas AFK para o mesmo usuário
+_LOG_PM_COOLDOWN: dict[int, float] = {}
+_LOG_PM_COOLDOWN_S = 300    # log de PM: apenas 1x por usuário a cada 5 minutos
 
 
 def _tempo_afk() -> str:
@@ -77,6 +81,8 @@ async def cmd_unafk(client, message):
 async def cmd_permit(client, message):
     """Autoriza um usuário a enviar mensagens privadas."""
     if message.reply_to_message:
+        if not message.reply_to_message.from_user:
+            return await message.edit_text(tr("⚠️ Não foi possível identificar o usuário.", "⚠️ Could not identify the user."))
         uid = message.reply_to_message.from_user.id
     elif message.chat.type == enums.ChatType.PRIVATE:
         uid = message.chat.id
@@ -159,22 +165,25 @@ async def auto_unafk(client, message):
 @Client.on_message((filters.private | filters.mentioned) & ~filters.me)
 async def monitor_central(client, message):
     """Monitora menções, PVs, perda de admin e faz auto-upload de arquivos."""
-    cfg = getattr(client, "config", {})
+    cfg    = getattr(client, "config", {})
     log_id = cfg.get("ID_CANAL_LOGS")
-    if not log_id:
-        return
-    if message.chat and message.chat.id == log_id:
+
+    # Resolve sender logo de início (usado em múltiplos blocos abaixo)
+    sender     = message.from_user
+    uid_sender = sender.id if sender else 0
+
+    if log_id and message.chat and message.chat.id == log_id:
         return
 
     ts = datetime.now().strftime("%d/%m/%Y %H:%M")
 
-    # Verifica perda de admin
-    if message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
+    # Verifica perda de admin (apenas em grupos)
+    if log_id and message.chat.type in [enums.ChatType.GROUP, enums.ChatType.SUPERGROUP]:
         cache = carregar("admin_cache.json", {})
-        cid = str(message.chat.id)
+        cid   = str(message.chat.id)
         if cid in cache and cache[cid].get("era_admin"):
             is_admin_atual = await verificar_admin(client, message.chat.id)
-            if cache[cid].get("era_admin") and not is_admin_atual:
+            if not is_admin_atual:
                 try:
                     await client.send_message(log_id, tr_log(
                         f"⚠️ **PERDA DE CARGO**\n"
@@ -193,30 +202,43 @@ async def monitor_central(client, message):
                 cache[cid]["era_admin"] = False
                 salvar("admin_cache.json", cache)
 
-    # Auto-resposta AFK
+    # Auto-resposta AFK (com cooldown por usuário para evitar spam)
     global AFK_ATIVO, AFK_MOTIVO
     if AFK_ATIVO:
-        try:
-            await message.reply_text(tr(
-                f"💤 **Estou AFK há {_tempo_afk()}**\n└ 📝 Motivo: `{AFK_MOTIVO}`",
-                f"💤 **I've been AFK for {_tempo_afk()}**\n└ 📝 Reason: `{AFK_MOTIVO}`"
-            ))
-        except Exception:
-            pass
+        agora_afk = time.time()
+        if agora_afk - _AFK_ULTIMO_REPLY.get(uid_sender, 0) >= _AFK_COOLDOWN:
+            _AFK_ULTIMO_REPLY[uid_sender] = agora_afk
+            try:
+                await message.reply_text(tr(
+                    f"💤 **Estou AFK há {_tempo_afk()}**\n└ 📝 Motivo: `{AFK_MOTIVO}`",
+                    f"💤 **I've been AFK for {_tempo_afk()}**\n└ 📝 Reason: `{AFK_MOTIVO}`"
+                ))
+            except Exception:
+                pass
+
+    if not log_id:
+        return  # sem canal de logs, não há mais nada a fazer
+
+    is_pm = message.chat.type == enums.ChatType.PRIVATE
+
+    # Rate-limit do log para PMs: só encaminha a primeira mensagem de cada
+    # remetente a cada 5 minutos — evita spam no canal quando alguém manda
+    # várias mensagens seguidas.
+    if is_pm:
+        agora_log = time.time()
+        if agora_log - _LOG_PM_COOLDOWN.get(uid_sender, 0) < _LOG_PM_COOLDOWN_S:
+            return
+        _LOG_PM_COOLDOWN[uid_sender] = agora_log
 
     # Cabeçalho de contexto + forward para o canal de logs
-    sender = message.from_user
     if sender:
         nome     = sender.first_name or "?"
-        uid      = sender.id
-        mention  = f"[{nome}](tg://user?id={uid})"
+        mention  = f"[{nome}](tg://user?id={uid_sender})"
         user_tag = f" • @{sender.username}" if sender.username else ""
     else:
         mention  = tr_log("Desconhecido", "Unknown")
         user_tag = ""
 
-    is_pm      = message.chat.type == enums.ChatType.PRIVATE
-    is_mention = message.mentioned
     tipo_icon  = "💬" if is_pm else "📣"
     tipo_label = tr_log(
         "Mensagem Privada" if is_pm else "Menção em Grupo",

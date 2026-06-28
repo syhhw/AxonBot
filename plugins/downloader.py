@@ -7,6 +7,7 @@ Baixador universal: tikwm API (TikTok), yt-dlp, instaloader (Instagram).
 import os
 import re
 import glob
+import shutil
 import tempfile
 import asyncio
 import aiohttp
@@ -186,8 +187,8 @@ def _baixar_ytdlp(url: str, tmp_dir: str):
     if info is None:
         raise ultimo_erro or ValueError("Nenhum formato disponível.")
 
-    rds  = info.get('requested_downloads') or []
-    path = rds[0]['filepath'] if rds else None
+    rds  = [r for r in (info.get('requested_downloads') or []) if r]
+    path = rds[0].get('filepath') if rds else None
 
     if not path or not os.path.exists(path):
         base = os.path.join(tmp_dir, f"dl_{info.get('id', '')}")
@@ -280,7 +281,7 @@ async def cmd_dl(client, message):
         "📥 **Downloading...**\nThis might take a while depending on size."
     ))
 
-    tmp_dir      = tempfile.gettempdir()
+    tmp_dir      = tempfile.mkdtemp(prefix="ubdl_")
     arquivo      = None
     is_instagram = bool(_IG_RE.search(url))
     is_tiktok    = bool(_IS_TIKTOK.search(url))
@@ -329,8 +330,4 @@ async def cmd_dl(client, message):
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro ao baixar:\n`{str(e)[:300]}`", f"❌ Download error:\n`{str(e)[:300]}`"))
     finally:
-        if arquivo and os.path.exists(arquivo):
-            try:
-                os.remove(arquivo)
-            except Exception:
-                pass
+        shutil.rmtree(tmp_dir, ignore_errors=True)

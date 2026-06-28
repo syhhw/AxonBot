@@ -41,6 +41,11 @@ async def _unmute_after(client, chat_id: int, user_id: int, delay: int = 60):
 @Client.on_message(cmd_filter("setflood") & filters.me)
 async def cmd_setflood(client, message):
     """Define o limite de mensagens/5s e a duração do mute para este grupo."""
+    if message.chat.type.name not in ("GROUP", "SUPERGROUP"):
+        return await message.edit_text(tr(
+            "❌ Antiflood só funciona em grupos.",
+            "❌ Antiflood only works in groups."
+        ))
     p = prefixo(client)
     partes = message.text.split(None, 2)
 
@@ -91,6 +96,11 @@ async def cmd_setflood(client, message):
 @Client.on_message(cmd_filter("noflood") & filters.me)
 async def cmd_noflood(client, message):
     """Desativa o antiflood neste grupo."""
+    if message.chat.type.name not in ("GROUP", "SUPERGROUP"):
+        return await message.edit_text(tr(
+            "❌ Antiflood só funciona em grupos.",
+            "❌ Antiflood only works in groups."
+        ))
     dados = carregar(_chave(message.chat.id), {})
     dados["ativo"] = False
     salvar(_chave(message.chat.id), dados)
@@ -103,6 +113,11 @@ async def cmd_noflood(client, message):
 @Client.on_message(cmd_filter("flood") & filters.me)
 async def cmd_floodstatus(client, message):
     """Mostra o status atual do antiflood neste grupo."""
+    if message.chat.type.name not in ("GROUP", "SUPERGROUP"):
+        return await message.edit_text(tr(
+            "❌ Antiflood só funciona em grupos.",
+            "❌ Antiflood only works in groups."
+        ))
     p = prefixo(client)
     dados = carregar(_chave(message.chat.id), {})
     if not dados or not dados.get("ativo"):

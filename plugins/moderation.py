@@ -301,7 +301,7 @@ async def cmd_fban(client, message):
             await client.send_message(fid, f"/fban {user_id} {motivo}")
             sucesso += 1
             await asyncio.sleep(0.5)
-        except:
+        except Exception:
             pass
     await message.edit_text(tr(
         f"☢️ **FBAN concluído.**\n👤 Alvo: `{user_id}`\n📝 Motivo: `{motivo}`\n📡 Federações: `{sucesso}`",

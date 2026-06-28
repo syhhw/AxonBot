@@ -177,13 +177,14 @@ async def cmd_kang(client, message):
     emoji   = "⭐"
 
     partes = message.text.split(None, 1)
-    if len(partes) > 1:
-        emoji = partes[1].strip()
+    user_emoji = partes[1].strip() if len(partes) > 1 else None
 
     if reply.sticker:
         is_anim  = reply.sticker.is_animated
         is_video = reply.sticker.is_video
-        emoji    = reply.sticker.emoji or emoji
+        emoji    = user_emoji or reply.sticker.emoji or "⭐"
+    else:
+        emoji = user_emoji or "⭐"
 
     # ── InputDocument ──────────────────────────────────────────────────────────
     try:
@@ -320,7 +321,7 @@ async def cmd_packinfo(client, message):
         if getattr(sset, "animated", False):
             tipo = tr("Animado", "Animated")
         elif getattr(sset, "videos", False):
-            tipo = "Vídeo" if tr("", "") == "" else "Video"
+            tipo = tr("Vídeo", "Video")
         else:
             tipo = tr("Estático", "Static")
         linhas.append(f"• **[{name}]({url})** — {tipo}, `{count}` stickers")

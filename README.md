@@ -13,7 +13,7 @@
 
 ---
 
-# 🇺🇸 AXONBOT v2.4 — English
+# 🇺🇸 AXONBOT v1.0 — English
 
 **AxonBot** is an advanced personal assistant for Telegram built with [Pyrogram](https://docs.pyrogram.org/). It runs directly on your account, automating tasks, moderating groups, cloning stickers, integrating AI, and backing up files to Google Drive — all from a simple command in the chat.
 
@@ -238,7 +238,7 @@ This project is for educational purposes only. AxonBot usage is not officially s
 
 ---
 
-# 🇧🇷 AXONBOT v2.4 — Português
+# 🇧🇷 AXONBOT v1.0 — Português
 
 O **AxonBot** é um assistente pessoal avançado para Telegram construído com [Pyrogram](https://docs.pyrogram.org/). Ele roda diretamente na sua conta, automatizando tarefas, moderando grupos, clonando figurinhas, integrando IA e fazendo backup no Google Drive — tudo por um comando simples no chat.
 
@@ -464,5 +464,5 @@ Este projeto é apenas para fins educacionais. O uso de userbots não é oficial
 ---
 
 <div align="center">
-  Desenvolvido com ❤️ &nbsp;|&nbsp; <b>AxonBot v2.4</b>
+  Desenvolvido com ❤️ &nbsp;|&nbsp; <b>AxonBot v1.0</b>
 </div>

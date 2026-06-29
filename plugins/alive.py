@@ -29,24 +29,38 @@ def _uptime(inicio: float) -> str:
 
 
 def _build_text(me, inicio, versao, p) -> str:
+    py  = sys.version.split()[0]
+    pyro = pyrogram.__version__
+    so  = f"{platform.system()} {platform.release()}"
+    ut  = _uptime(inicio)
     return tr(
-        f"⚡ **USERBOT ONLINE**\n\n"
-        f"├ 👤 **Dono:** [{me.first_name}](tg://user?id={me.id})\n"
-        f"├ ⏱️ **Uptime:** `{_uptime(inicio)}`\n"
-        f"├ 📦 **Versão:** `v{versao}`\n"
-        f"├ 🔧 **Prefixo:** `{p}`\n"
-        f"├ 🐍 **Python:** `{sys.version.split()[0]}`\n"
-        f"├ ⚙️ **Pyrogram:** `{pyrogram.__version__}`\n"
-        f"└ 💻 **SO:** `{platform.system()} {platform.release()}`",
+        f"╔══「 ⚡ **USERBOT** 」\n"
+        f"║\n"
+        f"║  👤 **{me.first_name}** está online!\n"
+        f"║\n"
+        f"╠══「 📊 **Sistema** 」\n"
+        f"║  ├ ⏱ Uptime » `{ut}`\n"
+        f"║  ├ 📦 Versão » `v{versao}`\n"
+        f"║  ├ 🔧 Prefixo » `{p}`\n"
+        f"║  ├ 🐍 Python » `{py}`\n"
+        f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
+        f"║  └ 💻 SO » `{so}`\n"
+        f"║\n"
+        f"╚══「 🤖 **Userbot ativo e funcional** 」",
 
-        f"⚡ **USERBOT ONLINE**\n\n"
-        f"├ 👤 **Owner:** [{me.first_name}](tg://user?id={me.id})\n"
-        f"├ ⏱️ **Uptime:** `{_uptime(inicio)}`\n"
-        f"├ 📦 **Version:** `v{versao}`\n"
-        f"├ 🔧 **Prefix:** `{p}`\n"
-        f"├ 🐍 **Python:** `{sys.version.split()[0]}`\n"
-        f"├ ⚙️ **Pyrogram:** `{pyrogram.__version__}`\n"
-        f"└ 💻 **OS:** `{platform.system()} {platform.release()}`",
+        f"╔══「 ⚡ **USERBOT** 」\n"
+        f"║\n"
+        f"║  👤 **{me.first_name}** is online!\n"
+        f"║\n"
+        f"╠══「 📊 **System** 」\n"
+        f"║  ├ ⏱ Uptime » `{ut}`\n"
+        f"║  ├ 📦 Version » `v{versao}`\n"
+        f"║  ├ 🔧 Prefix » `{p}`\n"
+        f"║  ├ 🐍 Python » `{py}`\n"
+        f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
+        f"║  └ 💻 OS » `{so}`\n"
+        f"║\n"
+        f"╚══「 🤖 **Userbot active and running** 」",
     )
 
 

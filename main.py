@@ -193,8 +193,9 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 IDENTIDADE DO PROJETO
 # ══════════════════════════════════════════════════════════════════════════════
-__VERSAO__ = "1.0"
-UPDATE_FLAG = ".update_pending.json"
+__VERSAO__     = "1.0"
+UPDATE_FLAG    = ".update_pending.json"
+UPDATE_BRANCH  = "AxonBot"
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 LOGS COLORIDOS NO TERMINAL
@@ -282,8 +283,9 @@ app.drive        = drive
 app.tempo_inicio = time.time()
 app.PREFIXO      = PREFIXO
 app.LANG         = LANGUAGE
-app.VERSAO       = __VERSAO__
-app.UPDATE_FLAG  = UPDATE_FLAG
+app.VERSAO        = __VERSAO__
+app.UPDATE_FLAG   = UPDATE_FLAG
+app.UPDATE_BRANCH = UPDATE_BRANCH
 
 # ── Companion bot ─────────────────────────────────────────────────────────────
 def _launch_companion_bot() -> None:

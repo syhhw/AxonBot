@@ -75,8 +75,9 @@ async def cmd_atualizar(client, message):
       ,atualizar           → atualiza a branch atual detectada automaticamente
       ,atualizar [branch]  → troca para a branch informada e atualiza
     """
-    versao_local = getattr(client, "VERSAO", "?")
-    update_flag  = getattr(client, "UPDATE_FLAG", ".update_pending.json")
+    versao_local   = getattr(client, "VERSAO", "?")
+    update_flag    = getattr(client, "UPDATE_FLAG", ".update_pending.json")
+    update_branch  = getattr(client, "UPDATE_BRANCH", None)
 
     if not _e_repositorio_git():
         return await message.edit_text(tr(
@@ -98,11 +99,11 @@ async def cmd_atualizar(client, message):
             f"❌ **Failed `git fetch`:**\n```\n{err[:300]}\n```"
         ))
 
-    # Branch atual
+    # Branch atual — prefere UPDATE_BRANCH definida em main.py
     _, branch_atual, _ = _git("rev-parse", "--abbrev-ref", "HEAD")
-    branch_atual = branch_atual or "main"
+    branch_atual = (branch_atual or "").strip() or update_branch or "main"
 
-    branch = branch_alvo or branch_atual
+    branch = branch_alvo or update_branch or branch_atual
 
     # Verifica se a branch remota existe
     cod_rem, _, _ = _git("rev-parse", "--verify", f"origin/{branch}", timeout=5)

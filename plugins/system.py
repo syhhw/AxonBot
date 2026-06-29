@@ -188,6 +188,58 @@ async def cmd_atualizar(client, message):
     reiniciar_processo()
 
 
+@Client.on_message(cmd_filter("branch") & filters.me)
+async def cmd_branch(client, message):
+    """Troca a branch local e reinicia. ,branch <nome>"""
+    partes = message.text.split(None, 1)
+    if len(partes) < 2:
+        _, atual, _ = _git("rev-parse", "--abbrev-ref", "HEAD")
+        return await message.edit_text(tr(
+            f"📌 Branch atual: `{atual.strip()}`\nUso: `,branch <nome>`",
+            f"📌 Current branch: `{atual.strip()}`\nUsage: `,branch <name>`",
+        ))
+
+    nova = partes[1].strip()
+    msg  = await message.edit_text(tr(
+        f"🔄 **Trocando para branch `{nova}`...**",
+        f"🔄 **Switching to branch `{nova}`...**",
+    ))
+
+    if not _e_repositorio_git():
+        return await msg.edit_text(tr("❌ Pasta não é um repositório Git.", "❌ Not a git repository."))
+
+    cod, _, err = _git("fetch", "--all", timeout=30)
+    if cod != 0:
+        return await msg.edit_text(tr(f"❌ Falha no fetch:\n```{err[:300]}```", f"❌ Fetch failed:\n```{err[:300]}```"))
+
+    cod_check, _, _ = _git("rev-parse", "--verify", f"origin/{nova}", timeout=5)
+    if cod_check != 0:
+        return await msg.edit_text(tr(
+            f"❌ Branch `{nova}` não existe no remote.",
+            f"❌ Branch `{nova}` does not exist on remote.",
+        ))
+
+    # checkout local se existir, senão cria rastreando origin
+    cod_co, _, err_co = _git("checkout", nova)
+    if cod_co != 0:
+        cod_co, _, err_co = _git("checkout", "-b", nova, f"origin/{nova}")
+    if cod_co != 0:
+        return await msg.edit_text(tr(
+            f"❌ Falha ao trocar branch:\n```{err_co[:300]}```",
+            f"❌ Failed to switch branch:\n```{err_co[:300]}```",
+        ))
+
+    # força HEAD == origin/<nova>
+    _git("reset", "--hard", f"origin/{nova}")
+
+    await msg.edit_text(tr(
+        f"✅ **Branch trocada para `{nova}`! Reiniciando...**",
+        f"✅ **Switched to branch `{nova}`! Restarting...**",
+    ))
+    await asyncio.sleep(2)
+    reiniciar_processo()
+
+
 @Client.on_message(cmd_filter("restart") & filters.me)
 async def cmd_restart(client, message):
     """Reinicia o bot."""

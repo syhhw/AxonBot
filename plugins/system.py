@@ -68,7 +68,7 @@ async def cmd_versao(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("atualizar") & filters.me)
+@Client.on_message((cmd_filter("atualizar") | cmd_filter("update")) & filters.me)
 async def cmd_atualizar(client, message):
     """
     Auto-update via GitHub.

@@ -15,7 +15,8 @@ from utils.i18n import COMMAND_ALIASES
 _MODULO_ORDER = [
     "system.py", "alive.py", "moderation.py", "purge.py", "locks.py", "tools.py",
     "kang.py", "account.py", "profile.py", "downloader.py", "ai.py", "info.py",
-    "paste.py", "dev.py", "notes.py", "welcome.py", "chatfilters.py", "triggers.py",
+    "paste.py", "carbon.py", "stats.py", "id.py", "dev.py",
+    "notes.py", "welcome.py", "chatfilters.py", "triggers.py",
     "antiflood.py", "sed.py", "tagall.py", "drive.py",
 ]
 
@@ -35,6 +36,9 @@ _NOMES_PT = {
     "dev.py":         "⚙️ Desenvolvedor",
     "downloader.py":  "⬇️ Downloader",
     "paste.py":       "📋 Paste",
+    "carbon.py":      "🎨 Carbon",
+    "stats.py":       "📊 Estatísticas",
+    "id.py":          "🆔 IDs",
     "triggers.py":    "⚡ Gatilhos",
     "chatfilters.py": "🔍 Filtros do Chat",
     "notes.py":       "📋 Notas",
@@ -59,6 +63,9 @@ _NOMES_EN = {
     "dev.py":         "⚙️ Developer",
     "downloader.py":  "⬇️ Downloader",
     "paste.py":       "📋 Paste",
+    "carbon.py":      "🎨 Carbon",
+    "stats.py":       "📊 Stats",
+    "id.py":          "🆔 IDs",
     "triggers.py":    "⚡ Triggers",
     "chatfilters.py": "🔍 Chat Filters",
     "notes.py":       "📋 Notes",
@@ -71,6 +78,7 @@ _NOMES_EN = {
 # Palavras-chave → arquivo do módulo (para `,menu <termo>`)
 _ALIAS = {
     "sistema": "system.py",    "system": "system.py",
+    "atualizar": "system.py",  "update": "system.py",
     "mod": "moderation.py",    "moderação": "moderation.py",   "moderation": "moderation.py",
     "moderacao": "moderation.py",
     "ferramentas": "tools.py", "tools": "tools.py",
@@ -95,6 +103,9 @@ _ALIAS = {
     "perfil": "profile.py",    "profile": "profile.py",        "setname": "profile.py",
     "setbio": "profile.py",    "setpfp": "profile.py",         "delpfp": "profile.py",
     "paste": "paste.py",
+    "carbon": "carbon.py",
+    "stats": "stats.py",       "estatísticas": "stats.py",
+    "id": "id.py",
 }
 
 

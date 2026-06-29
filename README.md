@@ -51,8 +51,8 @@ Runs natively on **Windows**, **Linux** (Ubuntu/Debian/servers), and **Android**
 ### Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/syhhw/userbot.git
-cd userbot
+git clone https://github.com/syhhw/AxonBot.git
+cd AxonBot
 ```
 
 ### Step 2 — Run the interactive setup
@@ -276,8 +276,8 @@ Funciona nativamente no **Windows**, **Linux** (Ubuntu/Debian/servidores) e **An
 ### Passo 1 — Clone o repositório
 
 ```bash
-git clone https://github.com/syhhw/userbot.git
-cd userbot
+git clone https://github.com/syhhw/AxonBot.git
+cd AxonBot
 ```
 
 ### Passo 2 — Execute o setup interativo

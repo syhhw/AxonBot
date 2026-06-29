@@ -10,7 +10,7 @@ import sqlite3
 import logging
 from typing import Any
 
-logger = logging.getLogger("UserbotDB")
+logger = logging.getLogger("AxonBotDB")
 
 DB_PATH = "userbot.db"
 _FILE_KEYS = frozenset({"config.json", ".update_pending.json", ".deps_updated.json"})

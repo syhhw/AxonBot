@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://img.shields.io/badge/Telegram-Userbot-blue?style=for-the-badge&logo=telegram" alt="Telegram Userbot">
+  <img src="https://img.shields.io/badge/Telegram-AxonBot-blue?style=for-the-badge&logo=telegram" alt="Telegram AxonBot">
   <img src="https://img.shields.io/badge/Python-3.10+-yellow?style=for-the-badge&logo=python" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/Pyrogram-v2.0+-green?style=for-the-badge" alt="Pyrogram">
   <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Termux-lightgrey?style=for-the-badge" alt="Platforms">
@@ -13,9 +13,9 @@
 
 ---
 
-# 🇺🇸 USERBOT PRO v2.3 — English
+# 🇺🇸 AXONBOT v2.4 — English
 
-**Userbot Pro** is an advanced personal assistant for Telegram built with [Pyrogram](https://docs.pyrogram.org/). It runs directly on your account, automating tasks, moderating groups, cloning stickers, integrating AI, and backing up files to Google Drive — all from a simple command in the chat.
+**AxonBot** is an advanced personal assistant for Telegram built with [Pyrogram](https://docs.pyrogram.org/). It runs directly on your account, automating tasks, moderating groups, cloning stickers, integrating AI, and backing up files to Google Drive — all from a simple command in the chat.
 
 Runs natively on **Windows**, **Linux** (Ubuntu/Debian/servers), and **Android** (Termux). No virtual environment needed.
 
@@ -234,13 +234,13 @@ When an unknown user messages you in private, the bot intercepts and sends a **m
 
 ## ⚠️ Disclaimer
 
-This project is for educational purposes only. Userbot usage is not officially supported by Telegram's Terms of Service. Heavy automation or spam may result in account restrictions. **Use responsibly.**
+This project is for educational purposes only. AxonBot usage is not officially supported by Telegram's Terms of Service. Heavy automation or spam may result in account restrictions. **Use responsibly.**
 
 ---
 
-# 🇧🇷 USERBOT PRO v2.3 — Português
+# 🇧🇷 AXONBOT v2.4 — Português
 
-O **Userbot Pro** é um assistente pessoal avançado para Telegram construído com [Pyrogram](https://docs.pyrogram.org/). Ele roda diretamente na sua conta, automatizando tarefas, moderando grupos, clonando figurinhas, integrando IA e fazendo backup no Google Drive — tudo por um comando simples no chat.
+O **AxonBot** é um assistente pessoal avançado para Telegram construído com [Pyrogram](https://docs.pyrogram.org/). Ele roda diretamente na sua conta, automatizando tarefas, moderando grupos, clonando figurinhas, integrando IA e fazendo backup no Google Drive — tudo por um comando simples no chat.
 
 Funciona nativamente no **Windows**, **Linux** (Ubuntu/Debian/servidores) e **Android** (Termux). Sem ambiente virtual obrigatório.
 
@@ -464,5 +464,5 @@ Este projeto é apenas para fins educacionais. O uso de userbots não é oficial
 ---
 
 <div align="center">
-  Desenvolvido com ❤️ &nbsp;|&nbsp; <b>Userbot Pro v2.3</b>
+  Desenvolvido com ❤️ &nbsp;|&nbsp; <b>AxonBot v2.4</b>
 </div>

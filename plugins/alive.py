@@ -34,7 +34,7 @@ def _build_text(me, inicio, versao, p) -> str:
     so  = f"{platform.system()} {platform.release()}"
     ut  = _uptime(inicio)
     return tr(
-        f"╔══「 ⚡ **USERBOT** 」\n"
+        f"╔══「 ⚡ **AXONBOT** 」\n"
         f"║\n"
         f"║  👤 **{me.first_name}** está online!\n"
         f"║\n"
@@ -46,9 +46,9 @@ def _build_text(me, inicio, versao, p) -> str:
         f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
         f"║  └ 💻 SO » `{so}`\n"
         f"║\n"
-        f"╚══「 🤖 **Userbot ativo e funcional** 」",
+        f"╚══「 🤖 **AxonBot ativo e funcional** 」",
 
-        f"╔══「 ⚡ **USERBOT** 」\n"
+        f"╔══「 ⚡ **AXONBOT** 」\n"
         f"║\n"
         f"║  👤 **{me.first_name}** is online!\n"
         f"║\n"
@@ -60,7 +60,7 @@ def _build_text(me, inicio, versao, p) -> str:
         f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
         f"║  └ 💻 OS » `{so}`\n"
         f"║\n"
-        f"╚══「 🤖 **Userbot active and running** 」",
+        f"╚══「 🤖 **AxonBot active and running** 」",
     )
 
 

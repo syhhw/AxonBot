@@ -219,11 +219,11 @@ async def cmd_menu(client, message):
     n_mods = len(modulos)
 
     header = tr(
-        f"⚡ **USERBOT PRO v{versao}**\n"
+        f"⚡ **AXONBOT v{versao}**\n"
         f"├ 🔧 Prefixo: `{p}`\n"
         f"├ 📦 {total_cmds} comandos  ·  {n_mods} módulos\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
-        f"⚡ **USERBOT PRO v{versao}**\n"
+        f"⚡ **AXONBOT v{versao}**\n"
         f"├ 🔧 Prefix: `{p}`\n"
         f"├ 📦 {total_cmds} commands  ·  {n_mods} modules\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n",

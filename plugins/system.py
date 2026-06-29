@@ -48,8 +48,8 @@ async def cmd_versao(client, message):
     versao_local = getattr(client, "VERSAO", "?")
     if not _e_repositorio_git():
         return await message.edit_text(tr(
-            f"📦 **Userbot Pro v{versao_local}**\n⚠️ Pasta não é um repositório Git — atualização automática desativada.",
-            f"📦 **Userbot Pro v{versao_local}**\n⚠️ Folder is not a Git repository — auto-update disabled."
+            f"📦 **AxonBot v{versao_local}**\n⚠️ Pasta não é um repositório Git — atualização automática desativada.",
+            f"📦 **AxonBot v{versao_local}**\n⚠️ Folder is not a Git repository — auto-update disabled."
         ))
     await message.edit_text(tr("🔍 **Consultando GitHub...**", "🔍 **Querying GitHub...**"))
     _git("fetch", "origin", timeout=20)
@@ -63,8 +63,8 @@ async def cmd_versao(client, message):
     atras = atras or "0"
     status = tr("✅ atualizado", "✅ up to date") if atras == "0" else tr(f"🔄 {atras} commit(s) atrás", f"🔄 {atras} commit(s) behind")
     await message.edit_text(tr(
-        f"📦 **Userbot Pro v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remoto: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Último commit local: `{msg_local or 'n/a'}`\n👤 Autor: `{autor_local or 'n/a'}`",
-        f"📦 **Userbot Pro v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remote: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Last local commit: `{msg_local or 'n/a'}`\n👤 Author: `{autor_local or 'n/a'}`"
+        f"📦 **AxonBot v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remoto: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Último commit local: `{msg_local or 'n/a'}`\n👤 Autor: `{autor_local or 'n/a'}`",
+        f"📦 **AxonBot v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remote: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Last local commit: `{msg_local or 'n/a'}`\n👤 Author: `{autor_local or 'n/a'}`"
     ))
 
 
@@ -133,8 +133,8 @@ async def cmd_atualizar(client, message):
     atras = atras or "0"
     if atras == "0" and branch == branch_atual:
         return await msg.edit_text(tr(
-            f"✅ **Userbot já está na versão mais recente!**\n📦 v{versao_local} | branch `{branch}`",
-            f"✅ **Userbot is already up to date!**\n📦 v{versao_local} | branch `{branch}`"
+            f"✅ **AxonBot já está na versão mais recente!**\n📦 v{versao_local} | branch `{branch}`",
+            f"✅ **AxonBot is already up to date!**\n📦 v{versao_local} | branch `{branch}`"
         ))
 
     _, diff_arquivos, _ = _git("diff", "--name-only", f"HEAD..origin/{branch}")
@@ -197,11 +197,11 @@ async def cmd_restart(client, message):
         try:
             ts = datetime.now().strftime("%d/%m/%Y %H:%M")
             await client.send_message(log_id, tr_log(
-                f"🔄 **USERBOT REINICIANDO**\n"
+                f"🔄 **AXONBOT REINICIANDO**\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
                 f"├ ⚙️ Reiniciado via comando\n"
                 f"└ 🕐 `{ts}`",
-                f"🔄 **USERBOT RESTARTING**\n"
+                f"🔄 **AXONBOT RESTARTING**\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
                 f"├ ⚙️ Restarted via command\n"
                 f"└ 🕐 `{ts}`",
@@ -435,7 +435,7 @@ async def cmd_sysinfo(client, message):
     )
 
     texto = (
-        tr("💻 **Neofetch — Userbot Pro**\n\n", "💻 **Neofetch — Userbot Pro**\n\n") +
+        tr("💻 **Neofetch — AxonBot**\n\n", "💻 **Neofetch — AxonBot**\n\n") +
         f"```text\n"
         f"OS       : {os_info}\n"
         f"Kernel   : {kernel}\n"
@@ -454,7 +454,7 @@ async def cmd_sysinfo(client, message):
         f"─────────────────────────────\n"
         f"Python   : {py_ver}\n"
         f"Pyrogram : {pyro_ver}\n"
-        f"Userbot  : v{versao}\n"
+        f"AxonBot  : v{versao}\n"
         f"```"
     )
     await message.edit_text(texto)
@@ -489,11 +489,11 @@ async def cmd_desligar(client, message):
         try:
             ts = datetime.now().strftime("%d/%m/%Y %H:%M")
             await client.send_message(log_id, tr_log(
-                f"🛑 **USERBOT OFFLINE**\n"
+                f"🛑 **AXONBOT OFFLINE**\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
                 f"├ ⚙️ Encerrado remotamente via comando\n"
                 f"└ 🕐 `{ts}`",
-                f"🛑 **USERBOT OFFLINE**\n"
+                f"🛑 **AXONBOT OFFLINE**\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
                 f"├ ⚙️ Terminated remotely via command\n"
                 f"└ 🕐 `{ts}`",

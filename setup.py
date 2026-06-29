@@ -1,5 +1,5 @@
 """
-🚀 USERBOT PRO v2.3 — setup.py
+🚀 AXONBOT v2.3 — setup.py
 Configurador interativo cross-platform: Windows, Linux (Ubuntu/Debian), Termux Android.
 Sem venv obrigatório — instala direto no Python do sistema com as flags certas.
 """
@@ -52,7 +52,7 @@ def _pip_flags() -> list:
 # ══════════════════════════════════════════════════════════════════════════════
 def cabecalho():
     print(f"\n{AZUL}{NEGRITO}╔══════════════════════════════════════════════════╗{RESET}")
-    print(f"{AZUL}{NEGRITO}║   🚀  USERBOT PRO v2.3 — SETUP INTERATIVO        ║{RESET}")
+    print(f"{AZUL}{NEGRITO}║   🚀  AXONBOT v2.3 — SETUP INTERATIVO        ║{RESET}")
     print(f"{AZUL}{NEGRITO}╚══════════════════════════════════════════════════╝{RESET}\n")
     print(f"  {CIANO}Plataforma : {RESET}{_nome_plataforma()}")
     print(f"  {CIANO}Python     : {RESET}{sys.version.split()[0]} ({sys.executable})")

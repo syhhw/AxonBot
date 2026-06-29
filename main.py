@@ -1,5 +1,5 @@
 """
-🚀 USERBOT PRO v2.3 - main.py
+🚀 AXONBOT v2.3 - main.py
 Núcleo central que carrega configurações, conecta ao Google Drive
 e inicializa o cliente Pyrogram com os plugins.
 
@@ -81,7 +81,7 @@ if "--background" not in sys.argv and "--debug" not in sys.argv:
 def _verificar_primeiro_uso():
     if not os.path.exists("config.json"):
         print(f"\n{AZUL}{NEGRITO}╔════════════════════════════════════════════╗{RESET}")
-        print(f"{AZUL}{NEGRITO}║   🚀 USERBOT PRO — PRIMEIRO USO DETECTADO  ║{RESET}")
+        print(f"{AZUL}{NEGRITO}║   🚀 AXONBOT — PRIMEIRO USO DETECTADO  ║{RESET}")
         print(f"{AZUL}{NEGRITO}╚════════════════════════════════════════════╝{RESET}\n")
         print(f"  {AMARELO}⚠️  config.json não encontrado.{RESET}")
         print(f"  {AMARELO}    É necessário configurar o bot antes de iniciá-lo.{RESET}\n")
@@ -212,7 +212,7 @@ _file_handler.setFormatter(
 )
 logging.getLogger().addHandler(_file_handler)
 
-logger = logging.getLogger("UserbotCore")
+logger = logging.getLogger("AxonBotCore")
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -355,7 +355,7 @@ def _carregar_plugins():
 
 async def iniciar():
     asyncio.get_event_loop().set_exception_handler(manipulador_erros)
-    logger.info(f"🚀 INICIANDO USERBOT PRO v{__VERSAO__}...")
+    logger.info(f"🚀 INICIANDO AXONBOT v{__VERSAO__}...")
     await app.start()
     _carregar_plugins()
 
@@ -395,7 +395,7 @@ async def iniciar():
                 lista_libs = "\n".join([f"📦 `{lib}`" for lib in libs_instaladas])
                 await app.send_message(
                     config["ID_CANAL_LOGS"],
-                    f"🛠️ **AUTO-REPAIR DETECTADO:**\n\nDetectei que bibliotecas vitais estavam faltando e as instalei automaticamente antes de dar boot:\n{lista_libs}\n\n🚀 **Userbot v{__VERSAO__} ONLINE!**"
+                    f"🛠️ **AUTO-REPAIR DETECTADO:**\n\nDetectei que bibliotecas vitais estavam faltando e as instalei automaticamente antes de dar boot:\n{lista_libs}\n\n🚀 **AxonBot v{__VERSAO__} ONLINE!**"
                 )
             except Exception as e:
                 logger.warning(f"⚠️ Falha ao notificar libs instaladas: {e}")
@@ -407,7 +407,7 @@ async def iniciar():
         else:
             await app.send_message(
                 config["ID_CANAL_LOGS"],
-                f"🟢 **USERBOT ONLINE**\n\n"
+                f"🟢 **AXONBOT ONLINE**\n\n"
                 f"├ **Versão:** `v{__VERSAO__}`\n"
                 f"├ **Prefixo:** `{PREFIXO}`\n"
                 f"└ **Drive:** {'✅ Conectado' if drive else '❌ Offline'}\n"
@@ -416,14 +416,14 @@ async def iniciar():
     except Exception as e:
         logger.warning(f"⚠️ Falha ao avisar no canal de logs: {e}")
 
-    logger.info(f"✅ USERBOT ONLINE | Prefixo: '{PREFIXO}' | Aguardando comandos...")
+    logger.info(f"✅ AXONBOT ONLINE | Prefixo: '{PREFIXO}' | Aguardando comandos...")
     await idle()
     try:
-        await app.send_message(config["ID_CANAL_LOGS"], "🛑 **USERBOT OFFLINE**\nO processo foi encerrado de forma segura.")
+        await app.send_message(config["ID_CANAL_LOGS"], "🛑 **AXONBOT OFFLINE**\nO processo foi encerrado de forma segura.")
     except Exception:
         pass
     await app.stop()
-    logger.info("👋 Userbot encerrado.")
+    logger.info("👋 AxonBot encerrado.")
 
 
 if __name__ == "__main__":

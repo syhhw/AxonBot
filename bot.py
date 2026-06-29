@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-bot.py — Kira Antispam · Gerenciamento de grupos + painel de manutenção do Userbot Pro.
+bot.py — Kira Antispam · Gerenciamento de grupos + painel de manutenção do AxonBot.
 
 Uso:    python bot.py
 Requer: BOT_TOKEN e DONO_ID definidos em config.json
@@ -269,7 +269,7 @@ def _txt_main() -> str:
     ic     = "🟢" if online else "🔴"
     return (
         f"<b>📓 Kira — Painel de Controle</b>\n"
-        f"<i>Userbot Pro v{versao}</i>\n\n"
+        f"<i>AxonBot v{versao}</i>\n\n"
         f"└ {ic} {'Online' if online else 'Offline'} · <code>{hora}</code>"
     )
 

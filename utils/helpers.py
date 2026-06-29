@@ -17,7 +17,7 @@ from pyrogram.handlers import MessageHandler
 from utils.db import salvar, carregar       # re-export
 from utils.i18n import tr, tr_log, get_lang, COMMAND_ALIASES
 
-logger = logging.getLogger("UserbotHelper")
+logger = logging.getLogger("AxonBotHelper")
 
 __all__ = [
     # re-exports de utils.db

@@ -82,6 +82,7 @@ _ALIAS = {
     "sed": "sed.py",
     "tagall": "tagall.py",     "mencionar": "tagall.py",
     "alive": "alive.py",       "status": "alive.py",
+    "setalivephoto": "alive.py", "delalivephoto": "alive.py",
     "travas": "locks.py",      "locks": "locks.py",       "travar": "locks.py",
     "info": "info.py",         "github": "info.py",       "filme": "info.py",
 }

@@ -95,8 +95,105 @@ def _baixar_instaloader(url: str, tmp_dir: str):
     )
 
 
-_IS_TIKTOK    = re.compile(r'tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com', re.I)
-_TIKWM_API    = "https://www.tikwm.com/api/"
+_IS_TIKTOK = re.compile(r'tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com', re.I)
+_IS_FACEBOOK = re.compile(r'facebook\.com|fb\.watch|fb\.com', re.I)
+_TIKWM_API = "https://www.tikwm.com/api/"
+
+_DL_UA = (
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
+)
+_DL_HDRS = {
+    'User-Agent':      _DL_UA,
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Sec-GPC':         '1',
+}
+
+
+async def _baixar_saveinsta(url: str, tmp_dir: str):
+    """
+    Download Instagram via saveinsta.to (proxies Instagram CDN, no auth needed).
+    Flow: GET page → extract k_exp/k_token → get JWT cftoken → POST ajaxSearch → parse dl link.
+    """
+    m = _IG_RE.search(url)
+    if not m:
+        raise ValueError("Instagram shortcode not found")
+    shortcode = m.group(1)
+
+    timeout = aiohttp.ClientTimeout(total=30)
+    async with aiohttp.ClientSession(timeout=timeout) as sess:
+        # Step 1: extract k_exp and k_token from homepage JS
+        async with sess.get('https://saveinsta.to/en/highlights', headers=_DL_HDRS) as r:
+            if r.status != 200:
+                raise ValueError(f"saveinsta.to GET {r.status}")
+            page = await r.text()
+
+        mo = re.search(r'<script[^>]*>var\s+k_url_search="[^"]+"(.*?)</script>', page, re.DOTALL)
+        if not mo:
+            raise ValueError("saveinsta.to: JS token block not found")
+        script = mo.group(1)
+        k_exp   = re.search(r'k_exp\s*=\s*"([^"]+)"', script)
+        k_token = re.search(r'k_token\s*=\s*"([^"]+)"', script)
+        if not k_exp or not k_token:
+            raise ValueError("saveinsta.to: k_exp/k_token not found")
+        k_exp, k_token = k_exp.group(1), k_token.group(1)
+
+        # Step 2: get JWT cftoken
+        post_hdrs = {**_DL_HDRS, 'X-Requested-With': 'XMLHttpRequest',
+                     'Content-Type': 'application/x-www-form-urlencoded',
+                     'Origin': 'https://saveinsta.to'}
+        async with sess.post('https://saveinsta.to/api/userverify',
+                             headers=post_hdrs, data={'url': url}) as r:
+            data2 = await r.json(content_type=None)
+        cftoken = data2.get('token', '')
+        if not cftoken:
+            raise ValueError("saveinsta.to: cftoken not returned")
+
+        # Step 3: get download HTML
+        async with sess.post('https://saveinsta.to/api/ajaxSearch',
+                             headers={**post_hdrs, 'Referer': 'https://saveinsta.to/en/highlights'},
+                             data={'k_exp': k_exp, 'k_token': k_token, 'q': url,
+                                   't': 'media', 'lang': 'en', 'v': 'v2', 'cftoken': cftoken}) as r:
+            data3 = await r.json(content_type=None)
+
+    if data3.get('status') != 'ok':
+        raise ValueError(f"saveinsta.to: bad status {data3.get('status')}")
+
+    media_html = data3.get('data', '')
+
+    # Find video download URLs: <div class="download-items__btn"> (not dl-thumb)
+    video_url = None
+    for btn in re.findall(r'<div class="download-items__btn">(.*?)</div>', media_html, re.DOTALL):
+        href = re.search(r'href="(https://dl\.snapcdn\.app[^"]+)"', btn)
+        if href:
+            video_url = href.group(1)
+            break
+
+    if not video_url:
+        # Fallback: any snapcdn URL that isn't labeled as thumbnail
+        snap_urls = re.findall(r'href="(https://dl\.snapcdn\.app[^"]+)"', media_html)
+        for u in snap_urls:
+            idx = media_html.find(u)
+            context = media_html[max(0, idx-300):idx]
+            if 'Thumbnail' not in context and 'thumbnail' not in context:
+                video_url = u
+                break
+
+    if not video_url:
+        raise ValueError("saveinsta.to: no video download URL found")
+
+    path = os.path.join(tmp_dir, f"ig_{shortcode}.mp4")
+    dl_timeout = aiohttp.ClientTimeout(total=300)
+    async with aiohttp.ClientSession(timeout=dl_timeout) as sess:
+        async with sess.get(video_url, headers={**_DL_HDRS, 'Referer': 'https://saveinsta.to/'}) as r:
+            r.raise_for_status()
+            with open(path, 'wb') as f:
+                async for chunk in r.content.iter_chunked(65536):
+                    f.write(chunk)
+
+    return path, shortcode
+
+
 
 
 async def _baixar_tiktok_api(url: str, tmp_dir: str):
@@ -287,27 +384,44 @@ async def cmd_dl(client, message):
     is_tiktok    = bool(_IS_TIKTOK.search(url))
 
     async def resolver():
-        # TikTok: tikwm API (funciona em IPs de servidor sem cookies)
+        # ── TikTok: tikwm API ────────────────────────────────────────────────
         if is_tiktok:
             try:
                 return await _baixar_tiktok_api(url, tmp_dir)
             except Exception:
-                pass  # fallback para yt-dlp
+                pass  # fallback to yt-dlp
 
-        # yt-dlp para tudo mais (e fallback do TikTok)
-        if HAS_YTDLP:
+        # ── Instagram: saveinsta.to → yt-dlp → instaloader (no auth) ─────────
+        if is_instagram:
+            ig_errors = []
+
             try:
-                return await asyncio.to_thread(_baixar_ytdlp, url, tmp_dir)
-            except Exception:
-                if is_instagram and HAS_INSTALOADER:
+                return await _baixar_saveinsta(url, tmp_dir)
+            except Exception as _e:
+                ig_errors.append(f"saveinsta: {_e}")
+
+            if HAS_YTDLP:
+                try:
+                    return await asyncio.to_thread(_baixar_ytdlp, url, tmp_dir)
+                except Exception as _e:
+                    ig_errors.append(f"yt-dlp: {_e}")
+
+            if HAS_INSTALOADER:
+                try:
                     return await asyncio.to_thread(_baixar_instaloader, url, tmp_dir)
-                raise
+                except Exception as _e:
+                    ig_errors.append(f"instaloader: {_e}")
 
-        # instaloader só como último recurso para Instagram
-        if is_instagram and HAS_INSTALOADER:
-            return await asyncio.to_thread(_baixar_instaloader, url, tmp_dir)
+            raise ValueError(
+                "All Instagram download methods failed:\n" +
+                "\n".join(f"• {e}" for e in ig_errors)
+            )
 
-        raise RuntimeError("Nenhum downloader disponível para este link.")
+        # ── yt-dlp (YouTube, Facebook, Twitter, and other platforms) ─────────
+        if HAS_YTDLP:
+            return await asyncio.to_thread(_baixar_ytdlp, url, tmp_dir)
+
+        raise RuntimeError("No downloader available for this link.")
 
     try:
         arquivo, titulo = await resolver()

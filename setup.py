@@ -29,12 +29,28 @@ _IS_ANDROID = os.path.exists("/system/build.prop") or "TERMUX_VERSION" in os.env
 _IS_WINDOWS = platform.system() == "Windows"
 _IS_LINUX   = platform.system() == "Linux" and not _IS_ANDROID
 
+def _nome_distro_linux() -> str:
+    """Lê /etc/os-release para exibir o nome amigável da distro.
+
+    platform.linux_distribution() foi removido no Python 3.8+, e este
+    projeto exige 3.10+, então nunca existiria — lendo os-release direto.
+    """
+    try:
+        with open("/etc/os-release", encoding="utf-8") as f:
+            for linha in f:
+                if linha.startswith("PRETTY_NAME="):
+                    return linha.split("=", 1)[1].strip().strip('"')
+    except Exception:
+        pass
+    return platform.version()[:30]
+
+
 def _nome_plataforma() -> str:
     if _IS_ANDROID:
         return "📱 Android (Termux)"
     if _IS_WINDOWS:
         return f"🪟 Windows {platform.release()}"
-    return f"🐧 Linux ({platform.linux_distribution()[0] if hasattr(platform, 'linux_distribution') else platform.version()[:30]})"
+    return f"🐧 Linux ({_nome_distro_linux()})"
 
 def _python_cmd() -> str:
     """Retorna o comando python correto para este sistema."""
@@ -105,7 +121,10 @@ LIBS = [
     ("aiohttp",         "aiohttp"),
     ("google.genai",    "google-genai"),
     ("yt_dlp",          "yt-dlp"),
+    ("instaloader",     "instaloader"),
     ("pydrive2",        "PyDrive2"),
+    ("telegram",        "python-telegram-bot>=20.0"),
+    ("apscheduler",     "apscheduler"),
 ]
 
 

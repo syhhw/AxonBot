@@ -1,9 +1,12 @@
 """
 plugins/moderation.py
-Comandos de moderação: ban, unban, mute, unmute, del, purge, admins, zombies, gban, fban, addfed, delfed, feds
+Comandos de moderação: ban, unban, mute, unmute, admins, zombies, gban, fban, addfed, delfed, feds
+(,del e ,purge ficam em plugins/purge.py)
 """
+import logging
 import asyncio
 from datetime import datetime
+logger = logging.getLogger("AxonBot.moderation")
 
 from pyrogram import filters, enums, Client
 from pyrogram.types import ChatPermissions
@@ -99,45 +102,6 @@ async def cmd_unmute(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("del") & filters.me)
-async def cmd_del(client, message):
-    """Apaga a mensagem respondida (e o comando)."""
-    if not message.reply_to_message:
-        return await message.delete()
-    try:
-        await message.reply_to_message.delete()
-        await message.delete()
-    except Exception:
-        pass
-
-
-@Client.on_message(cmd_filter("purge") & filters.me)
-async def cmd_purge(client, message):
-    """Apaga todas as mensagens desde a mensagem respondida até o comando."""
-    if not message.reply_to_message:
-        return await message.edit_text(tr("⚠️ Responda à mensagem inicial para apagar a partir dela.", "⚠️ Reply to the starting message to purge from it."))
-    chat_id       = message.chat.id
-    msg_id_inicio = message.reply_to_message.id
-    msg_id_fim    = message.id
-    try:
-        # Coleta IDs reais via get_messages (não assume sequencialidade)
-        ids: list[int] = []
-        async for msg in client.get_chat_history(chat_id, limit=msg_id_fim - msg_id_inicio + 200):
-            if msg_id_inicio <= msg.id <= msg_id_fim:
-                ids.append(msg.id)
-            if msg.id < msg_id_inicio:
-                break
-        if not ids:
-            return await message.edit_text(tr("⚠️ Nenhuma mensagem encontrada no intervalo.", "⚠️ No messages found in range."))
-        for i in range(0, len(ids), 100):
-            await client.delete_messages(chat_id, ids[i:i + 100])
-        aviso = await client.send_message(chat_id, tr(f"🧹 **Purge:** {len(ids)} mensagens apagadas.", f"🧹 **Purge:** {len(ids)} messages deleted."))
-        await asyncio.sleep(3)
-        await aviso.delete()
-    except Exception as e:
-        await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-
-
 @Client.on_message(cmd_filter("admins") & filters.me)
 async def cmd_admins(client, message):
     """Lista todos os administradores do grupo."""
@@ -213,8 +177,8 @@ async def cmd_zombies(client, message):
 
     try:
         await resp.delete()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[moderation.py] ignorado: {e}")
 
     if not confirmado:
         await msg.edit_text(tr("🚫 **Operação cancelada.**", "🚫 **Operation cancelled.**"))
@@ -234,8 +198,8 @@ async def cmd_zombies(client, message):
             removidos += 1
         except FloodWait as e:
             await asyncio.sleep(e.value)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[moderation.py] ignorado: {e}")
 
     await msg.edit_text(tr(
         f"🧟 **Limpeza concluída!**\n\n"
@@ -269,8 +233,8 @@ async def cmd_gban(client, message):
                         await asyncio.sleep(1)
                 except FloodWait as e:
                     await asyncio.sleep(e.value)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[moderation.py] ignorado: {e}")
     await auditoria(client, "GBAN", user, message.chat, motivo or "Banimento Global", msg_orig)
     await aviso.edit_text(tr(
         f"☢️ **GBAN concluído!**\n👤 Alvo: {user.first_name} (`{user.id}`)\n🔨 Banido em `{sucesso}` grupos.",
@@ -301,8 +265,8 @@ async def cmd_fban(client, message):
             await client.send_message(fid, f"/fban {user_id} {motivo}")
             sucesso += 1
             await asyncio.sleep(0.5)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[moderation.py] ignorado: {e}")
     await message.edit_text(tr(
         f"☢️ **FBAN concluído.**\n👤 Alvo: `{user_id}`\n📝 Motivo: `{motivo}`\n📡 Federações: `{sucesso}`",
         f"☢️ **FBAN completed.**\n👤 Target: `{user_id}`\n📝 Reason: `{motivo}`\n📡 Federations: `{sucesso}`"
@@ -403,8 +367,8 @@ async def cmd_fixar(client, message):
                 f"└ 🕐 `{ts}`",
             ))
             await alvo.forward(log_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[moderation.py] ignorado: {e}")
 
     deletar_depois(message, 10)
 

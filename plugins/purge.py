@@ -9,9 +9,12 @@ Créditos: ,purge/,del são comandos padrão do ecossistema de userbots
 Telegram (Man-Userbot e forks).
 """
 import asyncio
+import logging
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, tr
+
+logger = logging.getLogger("AxonBot.purge")
 
 
 @Client.on_message(cmd_filter("purge") & filters.me)
@@ -24,43 +27,54 @@ async def cmd_purge(client, message):
             "⚠️ Reply to a message to start the purge.",
         ))
 
-    await message.delete()
-
     chat_id   = message.chat.id
     start_id  = reply.id
     end_id    = message.id
-    count     = 0
-    batch     = []
 
-    async for msg in client.get_chat_history(chat_id):
-        if msg.id < start_id:
-            break
-        if msg.id > end_id:
-            continue
-        batch.append(msg.id)
-        count += 1
-        if len(batch) == 100:
+    try:
+        await message.delete()
+
+        count = 0
+        batch = []
+
+        async for msg in client.get_chat_history(chat_id):
+            if msg.id < start_id:
+                break
+            if msg.id > end_id:
+                continue
+            batch.append(msg.id)
+            count += 1
+            if len(batch) == 100:
+                await client.delete_messages(chat_id, batch)
+                batch.clear()
+
+        if batch:
             await client.delete_messages(chat_id, batch)
-            batch.clear()
 
-    if batch:
-        await client.delete_messages(chat_id, batch)
-
-    notice = await client.send_message(chat_id, tr(
-        f"🗑️ **Purge concluído** — `{count}` mensagens apagadas.",
-        f"🗑️ **Purge complete** — `{count}` messages deleted.",
-    ))
-    await asyncio.sleep(3)
-    await notice.delete()
+        notice = await client.send_message(chat_id, tr(
+            f"🗑️ **Purge concluído** — `{count}` mensagens apagadas.",
+            f"🗑️ **Purge complete** — `{count}` messages deleted.",
+        ))
+        await asyncio.sleep(3)
+        await notice.delete()
+    except Exception as e:
+        logger.warning(f"[purge.py] falha no purge: {e}")
+        try:
+            await client.send_message(chat_id, tr(f"❌ Erro no purge: `{e}`", f"❌ Purge error: `{e}`"))
+        except Exception as e2:
+            logger.debug(f"[purge.py] ignorado: {e2}")
 
 
 @Client.on_message(cmd_filter("del") & filters.me)
 async def cmd_del(client, message):
     """Apaga a mensagem respondida e o comando."""
     reply = message.reply_to_message
-    await message.delete()
-    if reply:
-        await reply.delete()
+    try:
+        await message.delete()
+        if reply:
+            await reply.delete()
+    except Exception as e:
+        logger.debug(f"[purge.py] ignorado: {e}")
 
 
 @Client.on_message(cmd_filter("purgeme") & filters.me)

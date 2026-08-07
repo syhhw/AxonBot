@@ -1,6 +1,9 @@
 """
 plugins/account.py
 Comandos de conta e monitoramento: afk, unafk, permit + handlers passivos (pm_permit, auto_unafk, monitor)
+
+Créditos: ,afk é um padrão popularizado por TeamUltroid (Ultroid) no
+ecossistema de userbots Telegram.
 """
 import os
 import time

@@ -1,17 +1,20 @@
 """
 plugins/menu.py
-  ,menu          — lista todos os módulos com seus comandos e descrições.
-  ,menu [módulo] — detalhes de um módulo específico (descrições completas).
+  ,menu          — índice compacto de categorias (nome + quantidade de comandos).
+  ,menu [módulo] — detalhes de um módulo específico (lista com descrições).
 
 Lê os comandos direto do utils.commands.REGISTRY (preenchido quando cada
 plugin carrega, via o decorator @cmd) em vez de reabrir e reparsear cada
 arquivo .py a cada chamada.
+
+Nota: teclado inline (reply_markup) não é usado aqui de propósito — no
+Telegram, reply_markup só é aceito em mensagens enviadas por conta de
+bot; numa conta de usuário (userbot) o servidor aceita a edição do texto
+e descarta o teclado silenciosamente. Testado ao vivo em PV e grupo.
 """
 import logging
 logger = logging.getLogger("AxonBot.menu")
 
-from pyrogram import filters, Client
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from utils.helpers import prefixo, deletar_depois, tr, DEL_LONGO
 from utils.commands import cmd, REGISTRY
 from utils.i18n import COMMAND_ALIASES
@@ -157,34 +160,6 @@ def _build_modulo_section(filename: str, comandos, p: str, lang: str,
     return f"**{titulo}** ({n})\n" + "\n".join(linhas)
 
 
-def _home_header(total_cmds: int, n_mods: int, p: str) -> str:
-    return tr(
-        f"⚡ **AXONBOT**\n"
-        f"├ 🔧 Prefixo: `{p}`\n"
-        f"└ 📦 {total_cmds} comandos  ·  {n_mods} módulos\n\n"
-        f"Escolha uma categoria abaixo 👇",
-        f"⚡ **AXONBOT**\n"
-        f"├ 🔧 Prefix: `{p}`\n"
-        f"└ 📦 {total_cmds} commands  ·  {n_mods} modules\n\n"
-        f"Pick a category below 👇",
-    )
-
-
-def _home_keyboard(arquivos: list[str], lang: str) -> InlineKeyboardMarkup:
-    botoes = [
-        InlineKeyboardButton(_nome_modulo(fn, lang), callback_data=f"menu:{fn}")
-        for fn in arquivos
-    ]
-    linhas = [botoes[i:i + 2] for i in range(0, len(botoes), 2)]
-    return InlineKeyboardMarkup(linhas)
-
-
-def _categoria_keyboard(lang: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton(tr("⬅️ Voltar", "⬅️ Back"), callback_data="menu:home")
-    ]])
-
-
 def _arquivos_ordenados() -> list[str]:
     return sorted(
         (f for f in REGISTRY if f != "menu.py"),
@@ -194,12 +169,12 @@ def _arquivos_ordenados() -> list[str]:
 
 @cmd("menu")
 async def cmd_menu(client, message):
-    """Exibe categorias em botões. ,menu [módulo] para detalhe direto em texto."""
+    """Índice de categorias. ,menu [módulo] mostra os comandos de uma delas."""
     p      = prefixo(client)
     lang   = getattr(client, "LANG", "pt")
     partes = message.text.split(None, 1)
 
-    # ── Atalho: detalhe de um módulo específico direto em texto ──────────────
+    # ── Detalhe de um módulo específico ──────────────────────────────────────
     if len(partes) > 1:
         query    = partes[1].strip()
         filename = _resolver_modulo(query)
@@ -210,52 +185,33 @@ async def cmd_menu(client, message):
                 f"❌ Module `{query}` not found.\nUse `{p}menu` to see all.",
             ))
         text = _build_modulo_section(filename, comandos, p, lang, desc_len=50)
-        await message.edit_text(text, disable_web_page_preview=True, reply_markup=_categoria_keyboard(lang))
+        await message.edit_text(text, disable_web_page_preview=True)
         deletar_depois(message, DEL_LONGO)
         return
 
-    # ── Padrão: grade de botões por categoria ─────────────────────────────────
+    # ── Padrão: índice compacto — uma linha por categoria ─────────────────────
     arquivos   = [f for f in _arquivos_ordenados() if REGISTRY.get(f)]
     total_cmds = sum(len(REGISTRY[f]) for f in arquivos)
 
     if not arquivos:
         return await message.edit_text(tr("⚠️ Nenhum comando encontrado.", "⚠️ No commands found."))
 
-    await message.edit_text(
-        _home_header(total_cmds, len(arquivos), p),
-        reply_markup=_home_keyboard(arquivos, lang),
+    linhas = [f"  {_nome_modulo(fn, lang)} — `{len(REGISTRY[fn])}`" for fn in arquivos]
+
+    texto = tr(
+        f"⚡ **AXONBOT**\n"
+        f"├ 🔧 Prefixo: `{p}`\n"
+        f"└ 📦 {total_cmds} comandos  ·  {len(arquivos)} módulos\n\n"
+        + "\n".join(linhas) +
+        f"\n\n💡 `{p}menu [módulo]` — detalhes\n"
+        f"   Ex: `{p}menu mod`  `{p}menu dl`  `{p}menu ia`",
+
+        f"⚡ **AXONBOT**\n"
+        f"├ 🔧 Prefix: `{p}`\n"
+        f"└ 📦 {total_cmds} commands  ·  {len(arquivos)} modules\n\n"
+        + "\n".join(linhas) +
+        f"\n\n💡 `{p}menu [module]` — full details\n"
+        f"   Ex: `{p}menu mod`  `{p}menu dl`  `{p}menu ai`",
     )
+    await message.edit_text(texto, disable_web_page_preview=True)
     deletar_depois(message, DEL_LONGO)
-
-
-@Client.on_callback_query(filters.regex(r"^menu:"))
-async def menu_callback(client, callback_query):
-    """Navegação do ,menu por botões — só o próprio dono da conta pode interagir."""
-    me = await client.get_me()
-    if callback_query.from_user.id != me.id:
-        return await callback_query.answer(
-            tr("🚫 Esse menu não é seu.", "🚫 This menu isn't yours."), show_alert=True
-        )
-
-    p      = prefixo(client)
-    lang   = getattr(client, "LANG", "pt")
-    alvo   = callback_query.data.split(":", 1)[1]
-
-    if alvo == "home":
-        arquivos   = [f for f in _arquivos_ordenados() if REGISTRY.get(f)]
-        total_cmds = sum(len(REGISTRY[f]) for f in arquivos)
-        await callback_query.message.edit_text(
-            _home_header(total_cmds, len(arquivos), p),
-            reply_markup=_home_keyboard(arquivos, lang),
-        )
-        return await callback_query.answer()
-
-    comandos = REGISTRY.get(alvo)
-    if not comandos:
-        return await callback_query.answer(tr("⚠️ Módulo vazio.", "⚠️ Empty module."), show_alert=True)
-
-    text = _build_modulo_section(alvo, comandos, p, lang, desc_len=50)
-    await callback_query.message.edit_text(
-        text, disable_web_page_preview=True, reply_markup=_categoria_keyboard(lang)
-    )
-    await callback_query.answer()

@@ -12,19 +12,11 @@ import pyrogram
 logger = logging.getLogger("AxonBot.alive")
 
 from pyrogram import filters, Client
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from utils.helpers import prefixo, deletar_depois, tr, carregar, salvar, DEL_LONGO
 from utils.commands import cmd
 
 _ALIVE_KEY = "alive_media.json"
 _REPO_URL  = "https://github.com/syhhw/AxonBot"
-
-
-def _alive_botoes() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton(tr("📦 Repositório", "📦 Repository"), url=_REPO_URL),
-        InlineKeyboardButton(tr("🔄 Atualizações", "🔄 Updates"), url=f"{_REPO_URL}/commits"),
-    ]])
 
 
 def _uptime(inicio: float) -> str:
@@ -54,7 +46,8 @@ def _build_text(me, inicio, versao, p) -> str:
         f"║  ├ 🐍 Python » `{py}`\n"
         f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
         f"║  └ 💻 SO » `{so}`\n"
-        f"╚═══════════════════",
+        f"╚═══════════════════\n"
+        f"[📦 Repositório]({_REPO_URL})",
 
         f"╔══「 ⚡ **AXONBOT** 」\n"
         f"╠══「 📊 **System** 」\n"
@@ -64,7 +57,8 @@ def _build_text(me, inicio, versao, p) -> str:
         f"║  ├ 🐍 Python » `{py}`\n"
         f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
         f"║  └ 💻 OS » `{so}`\n"
-        f"╚═══════════════════",
+        f"╚═══════════════════\n"
+        f"[📦 Repository]({_REPO_URL})",
     )
 
 
@@ -81,25 +75,23 @@ async def cmd_alive(client, message):
     file_id   = media_cfg.get("file_id")
     media_type = media_cfg.get("type")  # "photo" or "animation"
 
-    botoes = _alive_botoes()
-
     if file_id:
         await message.delete()
         try:
             if media_type == "animation":
                 sent = await client.send_animation(
-                    message.chat.id, file_id, caption=txt, reply_markup=botoes
+                    message.chat.id, file_id, caption=txt
                 )
             else:
                 sent = await client.send_photo(
-                    message.chat.id, file_id, caption=txt, reply_markup=botoes
+                    message.chat.id, file_id, caption=txt
                 )
             deletar_depois(sent, DEL_LONGO)
             return
         except Exception as e:
             logger.debug(f"[alive.py] ignorado: {e}")  # fall through to text if media fails
 
-    await message.edit_text(txt, disable_web_page_preview=True, reply_markup=botoes)
+    await message.edit_text(txt, disable_web_page_preview=True)
     deletar_depois(message, DEL_LONGO)
 
 

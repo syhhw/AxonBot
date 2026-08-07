@@ -26,11 +26,20 @@ import time
 import os
 import sys
 import re
+import logging
 import asyncio
 from datetime import datetime
 from pathlib import Path
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | KiraBot | %(message)s",
+    datefmt="%H:%M:%S",
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logger = logging.getLogger("KiraBot")
 
 from utils import sysinfo
 from utils.db import salvar as db_salvar, carregar as db_carregar
@@ -655,7 +664,7 @@ async def cmd_ban(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             f"<i>Que a justiça de Kira seja eterna.</i>",
             parse_mode=ParseMode.HTML,
         )
-    except BadRequest as e:
+    except (BadRequest, Forbidden) as e:
         await update.message.reply_text(f"❌ Falha ao executar sentença: {e}")
 
 
@@ -678,7 +687,7 @@ async def cmd_unban(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             f"<i>Que não ouse cruzar o caminho da justiça novamente.</i>",
             parse_mode=ParseMode.HTML,
         )
-    except BadRequest as e:
+    except (BadRequest, Forbidden) as e:
         await update.message.reply_text(f"❌ Falha ao revogar sentença: {e}")
 
 
@@ -698,7 +707,7 @@ async def cmd_kick(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             f"└ Motivo: {reason}",
             parse_mode=ParseMode.HTML,
         )
-    except BadRequest as e:
+    except (BadRequest, Forbidden) as e:
         await update.message.reply_text(f"❌ Falha ao executar expulsão: {e}")
 
 
@@ -730,7 +739,7 @@ async def cmd_mute(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             f"<i>Apenas os dignos têm o direito de falar no Novo Mundo.</i>",
             parse_mode=ParseMode.HTML,
         )
-    except BadRequest as e:
+    except (BadRequest, Forbidden) as e:
         await update.message.reply_text(f"❌ Falha ao impor silêncio: {e}")
 
 
@@ -747,7 +756,7 @@ async def cmd_unmute(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             f"<b>{name}</b> pode falar novamente — <i>por enquanto.</i>",
             parse_mode=ParseMode.HTML,
         )
-    except BadRequest as e:
+    except (BadRequest, Forbidden) as e:
         await update.message.reply_text(f"❌ Falha ao restaurar voz: {e}")
 
 
@@ -892,7 +901,7 @@ async def cmd_pin(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         await ctx.bot.pin_chat_message(update.effective_chat.id, update.message.reply_to_message.message_id)
         await update.message.reply_text("📌 Decreto fixado por Kira.")
-    except BadRequest as e:
+    except (BadRequest, Forbidden) as e:
         await update.message.reply_text(f"❌ Falha ao fixar decreto: {e}")
 
 
@@ -905,7 +914,7 @@ async def cmd_unpin(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         else:
             await ctx.bot.unpin_chat_message(update.effective_chat.id)
         await update.message.reply_text("📌 Decreto removido.")
-    except BadRequest as e:
+    except (BadRequest, Forbidden) as e:
         await update.message.reply_text(f"❌ Falha ao remover decreto: {e}")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1609,10 +1618,36 @@ def _launch_companion_userbot() -> None:
         print(f"⚠️ Falha ao iniciar main.py: {e}")
 
 
+async def error_handler(update: object, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handler global — sem isso, uma exceção não tratada em qualquer comando
+    morre silenciosamente nos logs e o usuário nunca recebe resposta nenhuma."""
+    logger.error("Erro não tratado ao processar update", exc_info=ctx.error)
+
+    if not isinstance(update, Update):
+        return
+
+    msg = update.effective_message
+    if not msg:
+        return
+
+    if isinstance(ctx.error, Forbidden):
+        texto = "🚫 Sem permissão suficiente pra fazer isso aqui (preciso ser admin com o cargo certo)."
+    elif isinstance(ctx.error, BadRequest):
+        texto = f"⚠️ Pedido inválido: <code>{html.escape(str(ctx.error))}</code>"
+    else:
+        texto = "❌ Algo deu errado ao processar esse comando. Já foi registrado nos logs."
+
+    try:
+        await msg.reply_text(texto, parse_mode=ParseMode.HTML)
+    except Exception:
+        pass
+
+
 def main() -> None:
     print("👁️ Kira Antispam iniciando...")
     _launch_companion_userbot()
     app = Application.builder().token(_TOKEN).build()
+    app.add_error_handler(error_handler)
 
     # Públicos
     app.add_handler(CommandHandler("start",  cmd_start))

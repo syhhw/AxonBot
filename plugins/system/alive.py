@@ -87,9 +87,12 @@ async def cmd_alive(client, message):
                     message.chat.id, file_id, caption=txt
                 )
             deletar_depois(sent, DEL_LONGO)
-            return
         except Exception as e:
-            logger.debug(f"[alive.py] ignorado: {e}")  # fall through to text if media fails
+            logger.debug(f"[alive.py] ignorado: {e}")
+            # message já foi apagada acima — não dá pra "editar" ela, manda nova
+            sent = await client.send_message(message.chat.id, txt, disable_web_page_preview=True)
+            deletar_depois(sent, DEL_LONGO)
+        return
 
     await message.edit_text(txt, disable_web_page_preview=True)
     deletar_depois(message, DEL_LONGO)

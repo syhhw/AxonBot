@@ -210,6 +210,39 @@ def configurar() -> dict:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# 🤖 PAINEL BOT (OPCIONAL)
+# ══════════════════════════════════════════════════════════════════════════════
+def configurar_painel(config: dict) -> dict:
+    print(f"  O Painel é um bot de Telegram separado (não é o userbot) que cuida da")
+    print(f"  infraestrutura da VPS (,update/,restart/,sysinfo/,speed/,term etc, tudo")
+    print(f"  por botão) e faz moderação de grupo como bot próprio.")
+    print(f"  {AMARELO}Você pode pular e configurar depois editando config.json.{RESET}\n")
+
+    usar = perguntar("Deseja configurar o Painel Bot agora? [s/N]", "n").lower()
+    if usar != "s":
+        info("Painel Bot ignorado. O userbot funciona normalmente sem ele.")
+        return config
+
+    info("Crie um bot com @BotFather no Telegram e pegue o token.")
+    token = perguntar("BOT_TOKEN (Enter para pular)", "")
+    if not token:
+        info("Painel Bot ignorado.")
+        return config
+
+    info("Seu ID de usuário do Telegram (só você poderá usar o /painel).")
+    dono_raw = perguntar("DONO_ID (seu user ID numérico)")
+    try:
+        config["DONO_ID"] = int(dono_raw)
+    except ValueError:
+        aviso("DONO_ID inválido — Painel Bot não configurado.")
+        return config
+
+    config["BOT_TOKEN"] = token
+    ok("Painel Bot configurado! Rode `python bot.py` junto com o userbot.")
+    return config
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 📂 GOOGLE DRIVE (OPCIONAL)
 # ══════════════════════════════════════════════════════════════════════════════
 def configurar_drive(config: dict) -> dict:
@@ -294,12 +327,12 @@ def instrucoes_finais():
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 FUNÇÃO PRINCIPAL
 # ══════════════════════════════════════════════════════════════════════════════
-TOTAL_ETAPAS = 4
+TOTAL_ETAPAS = 5
 
 def main():
     cabecalho()
 
-    # ── [1/4] VERIFICAÇÃO DE VERSÃO PYTHON ───────────────────────────────────
+    # ── [1/5] VERIFICAÇÃO DE VERSÃO PYTHON ───────────────────────────────────
     secao(1, TOTAL_ETAPAS, "Verificando requisitos do sistema")
     py = sys.version_info
     if py < (3, 10):
@@ -311,7 +344,7 @@ def main():
         sys.exit(1)
     ok(f"Python {py.major}.{py.minor}.{py.micro} — OK")
 
-    # ── [2/4] DEPENDÊNCIAS ────────────────────────────────────────────────────
+    # ── [2/5] DEPENDÊNCIAS ────────────────────────────────────────────────────
     secao(2, TOTAL_ETAPAS, "Verificando dependências")
     faltando = verificar_libs()
 
@@ -332,7 +365,7 @@ def main():
     else:
         ok("Todas as dependências estão instaladas!")
 
-    # ── [3/4] CONFIGURAÇÃO ────────────────────────────────────────────────────
+    # ── [3/5] CONFIGURAÇÃO ────────────────────────────────────────────────────
     secao(3, TOTAL_ETAPAS, "Configurando credenciais")
 
     if os.path.exists("config.json"):
@@ -344,18 +377,21 @@ def main():
             print(f"     • Prefixo:  '{atual.get('PREFIXO', ',')}'")
             print(f"     • Idioma:   {atual.get('LANGUAGE', 'pt').upper()}")
             print(f"     • Drive:    {'Ativo' if atual.get('ID_PASTA_RAIZ_DRIVE') else 'Inativo'}")
+            print(f"     • Painel:   {'Ativo' if atual.get('BOT_TOKEN') else 'Inativo'}")
         except Exception:
             aviso("config.json parece corrompido.")
         resp = perguntar("Deseja reconfigurar? [s/N]", "n").lower()
         if resp != "s":
             ok("Mantendo configurações atuais.")
 
-            # Pergunta sobre Drive mesmo sem reconfigurar tudo
+            # Pergunta sobre Drive/Painel mesmo sem reconfigurar tudo
             secao(4, TOTAL_ETAPAS, "Google Drive (opcional)")
             try:
                 with open("config.json", "r", encoding="utf-8") as f:
                     config = json.load(f)
                 config = configurar_drive(config)
+                secao(5, TOTAL_ETAPAS, "Painel Bot (opcional)")
+                config = configurar_painel(config)
                 with open("config.json", "w", encoding="utf-8") as f:
                     json.dump(config, f, indent=4, ensure_ascii=False)
             except Exception:
@@ -372,12 +408,19 @@ def main():
         erro(f"API_ID e ID do canal devem ser números inteiros. Detalhe: {e}")
         return
 
-    # ── [4/4] GOOGLE DRIVE ────────────────────────────────────────────────────
+    # ── [4/5] GOOGLE DRIVE ────────────────────────────────────────────────────
     secao(4, TOTAL_ETAPAS, "Google Drive (opcional)")
     try:
         config = configurar_drive(config)
     except KeyboardInterrupt:
         info("Drive ignorado.")
+
+    # ── [5/5] PAINEL BOT ───────────────────────────────────────────────────────
+    secao(5, TOTAL_ETAPAS, "Painel Bot (opcional)")
+    try:
+        config = configurar_painel(config)
+    except KeyboardInterrupt:
+        info("Painel Bot ignorado.")
 
     # Salva config.json
     try:

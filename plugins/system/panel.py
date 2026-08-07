@@ -102,9 +102,17 @@ async def _command_loop(client: Client) -> None:
                 return
 
             elif action == "update":
-                _write_result(ts, "ok", "Atualizando e reiniciando...")
+                branch = getattr(client, "UPDATE_BRANCH", None)
+                if not branch:
+                    r = subprocess.run(
+                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                    branch = r.stdout.strip() or "main"
+                _write_result(ts, "ok", f"Atualizando (branch {branch}) e reiniciando...")
                 await asyncio.sleep(1)
-                subprocess.run(["git", "reset", "--hard", "origin/main"], capture_output=True)
+                subprocess.run(["git", "fetch", "origin", branch], capture_output=True, timeout=30)
+                subprocess.run(["git", "reset", "--hard", f"origin/{branch}"], capture_output=True, timeout=30)
                 reiniciar_processo()
                 return
 

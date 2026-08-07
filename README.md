@@ -135,20 +135,15 @@ Type `,menu` in any chat to see all commands grouped by module.
 |:---|:---|
 | `,menu` | List all available commands by module |
 | `,version` | Check local vs remote version on GitHub |
-| `,update` | Pull latest updates from Git and restart |
-| `,restart` | Restart the bot process |
 | `,ping` | Measure bot latency |
 | `,lang [pt/en]` | Switch language |
-| `,sysinfo` | Full neofetch: CPU, GPU, RAM, Swap, Disk, Net |
-| `,speed` | Run internet speed test |
-| `,processes` | List the top 5 CPU-consuming processes |
-| `,shutdown` | Gracefully shut down the bot |
 | `,id` | Get the ID of the chat, a user, or a replied message |
 | `,stats` | Show account stats (groups, channels, contacts, bots) |
-| `,alive` | Show full userbot status (uptime, versions, owner) |
-| `,setalivephoto` / `,delalivephoto` | Set or remove the photo/GIF shown in `,alive` |
+| `,alive` | Show full userbot status (uptime, build, owner) |
 | `,github [user/repo]` | Look up a GitHub user or repository |
 | `,movie [name]` | Look up a movie or TV show (OMDb) |
+
+> VPS/infrastructure management (`update`, `restart`, `sysinfo`, `speed`, `processes`, `shutdown`, `term`) and the `,alive` photo/video/gif live entirely in the **Panel Bot** now — see the Panel Bot section below. The userbot only runs modules and talks to the Telegram API.
 
 ### 👮 Moderation
 | Command | Description |
@@ -245,9 +240,8 @@ Type `,menu` in any chat to see all commands grouped by module.
 | Command | Description |
 |:---|:---|
 | `,eval [code]` | Execute Python code dynamically |
-| `,term [command]` | Run a shell/terminal command and return output |
-| `,install [url]` | Install a `.py` plugin from a URL |
-| `,uninstall [name]` | Remove an installed plugin |
+
+> Shell access (`,term`) and plugin install/removal moved to the Panel Bot's `/painel` — file upload instead of a URL, with a confirm step before deleting.
 
 ### ⚡ Triggers
 | Command | Description |
@@ -275,6 +269,17 @@ Type `,menu` in any chat to see all commands grouped by module.
 5. Download the JSON and save it as **`client_secrets.json`** in the bot's root folder
 6. Run `setup.py` and choose Drive setup — or restart the bot; it will auto-detect the file
 7. On first run with Drive enabled, a browser window will open to authorize — after that it saves automatically to `meu_drive.json`
+
+### Panel Bot
+A separate Telegram **bot** account (`bot.py`, run alongside the userbot) that owns VPS infrastructure and plugin management through a button-based `/painel` — restart, update, sysinfo, speed test, top processes, a shell prompt, plugin install/removal (file upload), and the `,alive` photo/video/gif, all with real inline keyboards. That last part matters: **inline buttons only render for bot accounts**, not for a personal user session — Telegram silently drops `reply_markup` sent by a userbot. So anything interactive belongs here, not in the userbot.
+1. Create a bot with [@BotFather](https://t.me/BotFather) and grab the token
+2. During `setup.py`, choose to configure the Panel Bot and paste the token + your numeric Telegram user ID — or add manually to `config.json`:
+```json
+"BOT_TOKEN": "your-bot-token-here",
+"DONO_ID": 123456789
+```
+3. Run `python bot.py` alongside `main.py` (it's started automatically by the userbot if `BOT_TOKEN` is set)
+4. DM the bot and send `/painel`
 
 ---
 
@@ -412,20 +417,15 @@ Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo
 |:---|:---|
 | `,menu` | Lista todos os comandos disponíveis por módulo |
 | `,versao` | Verifica versão local vs remota no GitHub |
-| `,atualizar` | Baixa as atualizações do Git e reinicia |
-| `,restart` | Reinicia o processo do bot |
 | `,ping` | Mede a latência do bot |
 | `,idioma [pt/en]` | Muda o idioma do bot |
-| `,sysinfo` | Neofetch completo: CPU, GPU, RAM, Swap, Disco, Rede |
-| `,speed` | Testa a velocidade da internet |
-| `,processos` | Lista os 5 processos que mais consomem CPU |
-| `,desligar` | Encerra o bot com segurança |
 | `,id` | Retorna o ID do chat, usuário ou mensagem respondida |
 | `,stats` | Estatísticas da conta (grupos, canais, contatos, bots) |
-| `,alive` | Status completo do userbot (uptime, versões, dono) |
-| `,setalivephoto` / `,delalivephoto` | Define ou remove a foto/gif exibida no `,alive` |
+| `,alive` | Status completo do userbot (uptime, build, dono) |
 | `,github [user/repo]` | Consulta perfil ou repositório no GitHub |
 | `,filme [nome]` | Informações de filme ou série (OMDb) |
+
+> Gerenciamento de VPS/infraestrutura (`atualizar`, `restart`, `sysinfo`, `speed`, `processos`, `desligar`, `term`) e a foto/vídeo/gif do `,alive` agora ficam inteiramente no **Painel Bot** — veja a seção Painel Bot mais abaixo. O userbot só roda os módulos e fala com a API do Telegram.
 
 ### 👮 Moderação
 | Comando | Descrição |
@@ -522,9 +522,8 @@ Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo
 | Comando | Descrição |
 |:---|:---|
 | `,eval [código]` | Executa código Python dinamicamente |
-| `,term [comando]` | Executa um comando no terminal e retorna a saída |
-| `,instalar [url]` | Instala um plugin `.py` a partir de uma URL |
-| `,desinstalar [nome]` | Remove um plugin instalado |
+
+> Acesso a shell (`,term`) e instalação/remoção de plugin foram pro `/painel` do Painel Bot — upload de arquivo em vez de URL, com confirmação antes de apagar.
 
 ### ⚡ Gatilhos
 | Comando | Descrição |
@@ -552,6 +551,17 @@ Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo
 5. Baixe o JSON e salve como **`client_secrets.json`** na pasta raiz do bot
 6. Execute `setup.py` e escolha configurar o Drive — ou reinicie o bot, ele detecta o arquivo automaticamente
 7. Na primeira execução com Drive ativado, uma janela do navegador abrirá para autorizar — depois disso a sessão é salva automaticamente em `meu_drive.json`
+
+### Painel Bot
+Uma conta de **bot** separada do Telegram (`bot.py`, rodada junto com o userbot) que assume a gestão de infraestrutura da VPS e dos plugins através de um `/painel` com botões — restart, update, sysinfo, teste de velocidade, top processos, um prompt de shell, instalação/remoção de plugin (upload de arquivo) e a foto/vídeo/gif do `,alive`, tudo com teclado inline de verdade. Esse último ponto importa: **botão inline só renderiza pra conta de bot**, não pra sessão de usuário pessoal — o Telegram descarta silenciosamente o `reply_markup` enviado por um userbot. Então qualquer coisa interativa fica aqui, não no userbot.
+1. Crie um bot com o [@BotFather](https://t.me/BotFather) e pegue o token
+2. Durante o `setup.py`, escolha configurar o Painel Bot e cole o token + seu ID numérico do Telegram — ou adicione manualmente ao `config.json`:
+```json
+"BOT_TOKEN": "seu-token-aqui",
+"DONO_ID": 123456789
+```
+3. Rode `python bot.py` junto com o `main.py` (ele já é iniciado automaticamente pelo userbot se `BOT_TOKEN` estiver definido)
+4. Mande `/painel` no PV com o bot
 
 ---
 

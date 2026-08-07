@@ -1,8 +1,10 @@
 """
 plugins/alive.py
-  ,alive          — exibe status completo do userbot (uptime, versões, usuário).
-  ,setalivephoto  — define foto, vídeo ou gif exibido no ,alive (responda à mídia).
-  ,delalivephoto  — remove a mídia do ,alive.
+  ,alive — exibe status completo do userbot (uptime, versões, usuário).
+
+Configuração da mídia exibida (foto/vídeo/gif) é feita só pelo painel
+bot agora (/painel → 🖼️ Alive) — escreve na mesma chave via utils.db,
+então aplica na hora, sem precisar reiniciar o userbot.
 """
 import logging
 import time
@@ -12,7 +14,7 @@ import pyrogram
 logger = logging.getLogger("AxonBot.alive")
 
 from pyrogram import filters, Client
-from utils.helpers import prefixo, deletar_depois, tr, carregar, salvar, DEL_LONGO
+from utils.helpers import prefixo, deletar_depois, tr, carregar, DEL_LONGO
 from utils.commands import cmd
 
 _ALIVE_KEY = "alive_media.json"
@@ -97,39 +99,3 @@ async def cmd_alive(client, message):
 
     await message.edit_text(txt, disable_web_page_preview=True)
     deletar_depois(message, DEL_LONGO)
-
-
-@cmd("setalivephoto")
-async def cmd_setalivephoto(client, message):
-    """Define a foto, vídeo ou gif exibido no ,alive. Responda à mídia."""
-    reply = message.reply_to_message
-    alvo  = reply if reply else message
-
-    if alvo.photo:
-        file_id, media_type = alvo.photo.file_id, "photo"
-    elif alvo.animation:
-        file_id, media_type = alvo.animation.file_id, "animation"
-    elif alvo.video:
-        file_id, media_type = alvo.video.file_id, "video"
-    else:
-        return await message.edit_text(tr(
-            "⚠️ Responda a uma **foto**, **vídeo** ou **gif** com este comando.",
-            "⚠️ Reply to a **photo**, **video** or **gif** with this command.",
-        ))
-
-    salvar(_ALIVE_KEY, {"file_id": file_id, "type": media_type})
-    icon = {"animation": "🎞️", "video": "🎬"}.get(media_type, "🖼️")
-    await message.edit_text(tr(
-        f"{icon} **Mídia do ,alive definida!**",
-        f"{icon} **,alive media set!**",
-    ))
-
-
-@cmd("delalivephoto")
-async def cmd_delalivephoto(client, message):
-    """Remove a mídia do ,alive."""
-    salvar(_ALIVE_KEY, {})
-    await message.edit_text(tr(
-        "🗑️ **Mídia do ,alive removida.**",
-        "🗑️ **,alive media removed.**",
-    ))

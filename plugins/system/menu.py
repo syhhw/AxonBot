@@ -86,7 +86,6 @@ _NOMES_EN = {
 # Palavras-chave → arquivo do módulo (para `,menu <termo>`)
 _ALIAS = {
     "sistema": "system.py",    "system": "system.py",
-    "atualizar": "system.py",  "update": "system.py",
     "mod": "moderation.py",    "moderação": "moderation.py",   "moderation": "moderation.py",
     "moderacao": "moderation.py",
     "ferramentas": "tools.py", "tools": "tools.py",
@@ -104,7 +103,6 @@ _ALIAS = {
     "sed": "sed.py",
     "tagall": "tagall.py",     "mencionar": "tagall.py",
     "alive": "alive.py",       "status": "alive.py",
-    "setalivephoto": "alive.py", "delalivephoto": "alive.py",
     "travas": "locks.py",      "locks": "locks.py",            "travar": "locks.py",
     "info": "info.py",         "github": "info.py",            "filme": "info.py",
     "purge": "purge.py",       "del": "purge.py",              "purgeme": "purge.py",

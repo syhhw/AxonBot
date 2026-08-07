@@ -4,6 +4,7 @@ Baixador universal: tikwm API (TikTok), yt-dlp, instaloader (Instagram).
   ,dlinfo [link] — mostra título, duração, canal e tamanho estimado
   ,dl [link]     — baixa e envia o arquivo (vídeo, imagem ou áudio)
 """
+import logging
 import os
 import re
 import glob
@@ -13,6 +14,7 @@ import asyncio
 import aiohttp
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, tr
+logger = logging.getLogger("AxonBot.downloader")
 
 try:
     import yt_dlp
@@ -388,8 +390,8 @@ async def cmd_dl(client, message):
         if is_tiktok:
             try:
                 return await _baixar_tiktok_api(url, tmp_dir)
-            except Exception:
-                pass  # fallback to yt-dlp
+            except Exception as e:
+                logger.debug(f"[downloader.py] ignorado: {e}")  # fallback to yt-dlp
 
         # ── Instagram: saveinsta.to → yt-dlp → instaloader (no auth) ─────────
         if is_instagram:

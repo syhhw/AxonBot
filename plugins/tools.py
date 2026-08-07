@@ -2,6 +2,7 @@
 plugins/tools.py
 Ferramentas e diversão: hack, type, ghost, fake, tr, voz, print, encurtar, ipinfo, clima, specs, clone, reverter
 """
+import logging
 import os
 import re
 import asyncio
@@ -11,6 +12,7 @@ import tempfile
 import aiohttp
 from datetime import date as _date
 from urllib.parse import quote_plus
+logger = logging.getLogger("AxonBot.tools")
 
 from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
@@ -94,8 +96,8 @@ async def cmd_hack(client, message):
         )
         try:
             await message.edit_text(text)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[tools.py] ignorado: {e}")
         await asyncio.sleep(sleep)
 
     # ── FASE 1 — RECONHECIMENTO ───────────────────────────────────────────────
@@ -183,8 +185,8 @@ async def cmd_hack(client, message):
         )
     try:
         await message.edit_text(final)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[tools.py] ignorado: {e}")
 
 
 @Client.on_message(cmd_filter("type") & filters.me)
@@ -206,8 +208,8 @@ async def cmd_type(client, message):
         try:
             await message.edit_text(f"{digitado}▌")
             await asyncio.sleep(random.uniform(0.04, 0.15))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[tools.py] ignorado: {e}")
     await message.edit_text(digitado)
 
 
@@ -226,8 +228,8 @@ async def cmd_ghost(client, message):
     await asyncio.sleep(tempo)
     try:
         await message.delete()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[tools.py] ignorado: {e}")
 
 
 @Client.on_message(cmd_filter("fake") & filters.me)
@@ -240,8 +242,8 @@ async def cmd_fake(client, message):
     tipo = partes[1].strip().lower()
     try:
         await message.delete()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[tools.py] ignorado: {e}")
     if tipo == "audio":
         acao = enums.ChatAction.RECORD_AUDIO
     elif tipo == "video":
@@ -604,8 +606,8 @@ async def cmd_clone(client, message):
                 )
             )
             fotos_antes = [p.id for p in res.photos]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[tools.py] ignorado: {e}")
 
         backup = {
             "cloned":             True,
@@ -639,15 +641,15 @@ async def cmd_clone(client, message):
             photos = [p async for p in client.get_profile_photos(user.id, limit=1)]
             if photos:
                 photo_path = await client.download_media(photos[0].file_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[tools.py] ignorado: {e}")
 
         # Tentativa 2: thumbnail sempre acessível via ChatPhoto
         if not photo_path:
             try:
                 photo_path = await client.download_media(target.photo.big_file_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[tools.py] ignorado: {e}")
 
         if photo_path:
             try:
@@ -671,8 +673,8 @@ async def cmd_clone(client, message):
             finally:
                 try:
                     os.remove(photo_path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[tools.py] ignorado: {e}")
 
     await msg.edit_text(tr(
         f"✅ **Clone de `{first}` ativado!**\nUse `{prefixo(client)}reverter` para voltar ao normal.",

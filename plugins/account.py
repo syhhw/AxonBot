@@ -5,10 +5,12 @@ Comandos de conta e monitoramento: afk, unafk, permit + handlers passivos (pm_pe
 Créditos: ,afk é um padrão popularizado por TeamUltroid (Ultroid) no
 ecossistema de userbots Telegram.
 """
+import logging
 import os
 import time
 import asyncio
 from datetime import datetime
+logger = logging.getLogger("AxonBot.account")
 
 from pyrogram import filters, enums, Client
 from utils.helpers import cmd_filter, prefixo, carregar, salvar, verificar_admin, tr
@@ -156,15 +158,15 @@ async def pm_permit_checker(client, message):
                 f"🛡️ **Firewall de Segurança**\n\nMensagens restritas. Para provar que é humano, resolva a conta:\n👉 **{n1} + {n2} = ?**",
                 f"🛡️ **Security Firewall**\n\nRestricted messages. To prove you are human, solve this:\n👉 **{n1} + {n2} = ?**"
             ))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[account.py] ignorado: {e}")
         cfg = getattr(client, "config", {})
         log_id = cfg.get("ID_CANAL_LOGS")
         if log_id:
             try:
                 await message.forward(log_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[account.py] ignorado: {e}")
         message.stop_propagation()
 
 
@@ -184,8 +186,8 @@ async def auto_unafk(client, message):
                 ))
                 await asyncio.sleep(4)
                 await aviso.delete()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[account.py] ignorado: {e}")
 
 
 @Client.on_message((filters.private | filters.mentioned) & ~filters.me)
@@ -227,8 +229,8 @@ async def monitor_central(client, message):
                         f"├ 🆔 `{message.chat.id}`\n"
                         f"└ 🕐 `{ts}`",
                     ))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[account.py] ignorado: {e}")
                 cache[cid]["era_admin"] = False
                 salvar("admin_cache.json", cache)
 
@@ -243,8 +245,8 @@ async def monitor_central(client, message):
                     f"💤 **Estou AFK há {_tempo_afk()}**\n└ 📝 Motivo: `{AFK_MOTIVO}`",
                     f"💤 **I've been AFK for {_tempo_afk()}**\n└ 📝 Reason: `{AFK_MOTIVO}`"
                 ))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[account.py] ignorado: {e}")
 
     if not log_id:
         return  # sem canal de logs, não há mais nada a fazer
@@ -291,8 +293,8 @@ async def monitor_central(client, message):
     try:
         await client.send_message(log_id, header)
         await message.forward(log_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[account.py] ignorado: {e}")
 
     limite = cfg.get("LIMITE_AUTO_UPLOAD", 20971520)
     drive = getattr(client, "drive", None)
@@ -312,11 +314,11 @@ async def monitor_central(client, message):
                 f_drive.Upload()
 
             await asyncio.to_thread(upload_drive_sync)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[account.py] ignorado: {e}")
         finally:
             if path and os.path.exists(path):
                 try:
                     os.remove(path)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[account.py] ignorado: {e}")

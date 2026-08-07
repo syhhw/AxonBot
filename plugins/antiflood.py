@@ -6,12 +6,14 @@ o usuário automaticamente. Unmute automático após 60 segundos.
 Créditos: antiflood é um módulo padrão de moderação em userbots Telegram
 (Man-Userbot e forks).
 """
+import logging
 import asyncio
 import time
 from collections import defaultdict
 from pyrogram import filters, Client
 from pyrogram.types import ChatPermissions
 from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr
+logger = logging.getLogger("AxonBot.antiflood")
 
 
 def _chave(chat_id: int) -> str:
@@ -37,8 +39,8 @@ async def _unmute_after(client, chat_id: int, user_id: int, delay: int = 60):
                 can_add_web_page_previews=True
             )
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[antiflood.py] ignorado: {e}")
 
 
 @Client.on_message(cmd_filter("setflood") & filters.me)

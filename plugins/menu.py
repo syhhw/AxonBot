@@ -3,9 +3,11 @@ plugins/menu.py
   ,menu          — lista todos os módulos com seus comandos e descrições.
   ,menu [módulo] — detalhes de um módulo específico (descrições completas).
 """
+import logging
 import os
 import re
 import ast
+logger = logging.getLogger("AxonBot.menu")
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, deletar_depois, tr
@@ -150,8 +152,8 @@ def extrair_comandos_do_arquivo(filepath: str) -> list[dict]:
             if cmd_name == "menu":
                 continue
             comandos.append({"cmd": cmd_name, "desc": docstrings.get(func_name, "")})
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[menu.py] ignorado: {e}")
     return comandos
 
 

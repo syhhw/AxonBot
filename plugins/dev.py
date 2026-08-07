@@ -2,6 +2,7 @@
 plugins/dev.py
 Desenvolvimento e gerenciamento: eval, term, install, uninstall
 """
+import logging
 import os
 import sys
 import io
@@ -9,6 +10,7 @@ import traceback
 import asyncio
 import contextlib
 import aiohttp
+logger = logging.getLogger("AxonBot.dev")
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, reiniciar_processo
@@ -41,8 +43,8 @@ async def cmd_term(client, message):
             finally:
                 try:
                     os.remove("term_output.txt")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[dev.py] ignorado: {e}")
         else:
             await message.edit_text(f"💻 `$ {cmd}`\n\n```text\n{res}\n```")
     except Exception as e:
@@ -84,8 +86,8 @@ async def cmd_eval(client, message):
         finally:
             try:
                 os.remove("eval_output.txt")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[dev.py] ignorado: {e}")
     else:
         await message.edit_text(f"🐍 **Eval Output**\n\n```python\n{out}\n```")
 

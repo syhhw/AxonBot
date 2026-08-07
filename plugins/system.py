@@ -2,6 +2,7 @@
 plugins/system.py
 Comandos de sistema: versao, atualizar, restart, ping, speed, sysinfo, processos
 """
+import logging
 import os
 import sys
 import time
@@ -14,6 +15,7 @@ import subprocess
 import platform
 import pyrogram
 from datetime import datetime
+logger = logging.getLogger("AxonBot.system")
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, salvar, deletar_depois, reiniciar_processo
@@ -180,8 +182,8 @@ async def cmd_atualizar(client, message):
             "arquivos":  arquivos,
             "timestamp": int(time.time()),
         })
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[system.py] ignorado: {e}")
 
     await msg.edit_text(tr("✅ **Atualização concluída! Reiniciando...**", "✅ **Update complete! Restarting...**"))
     await asyncio.sleep(2)
@@ -207,8 +209,8 @@ async def cmd_restart(client, message):
                 f"├ ⚙️ Restarted via command\n"
                 f"└ 🕐 `{ts}`",
             ))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[system.py] ignorado: {e}")
     reiniciar_processo()
 
 
@@ -280,15 +282,15 @@ def _get_cpu_name() -> str:
             key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
             name, _ = winreg.QueryValueEx(key, "ProcessorNameString")
             return name.strip()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[system.py] ignorado: {e}")
     try:
         with open("/proc/cpuinfo", "r") as f:
             for line in f:
                 if "model name" in line or "Hardware" in line:
                     return line.split(":")[1].strip()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[system.py] ignorado: {e}")
     return platform.processor() or "Unknown"
 
 
@@ -350,8 +352,8 @@ def _get_disk_info() -> list[str]:
                     dev_id, media = line.split("||", 1)
                     if "SSD" in media or "Solid" in media:
                         ssd_drives.add(dev_id.strip())
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[system.py] ignorado: {e}")
 
     lines = []
     try:
@@ -365,8 +367,8 @@ def _get_disk_info() -> list[str]:
                 )
             except Exception:
                 continue
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[system.py] ignorado: {e}")
     return lines or ["N/A"]
 
 
@@ -390,8 +392,8 @@ def _disk_type(device: str, ssd_set: set) -> str:
             disk_num = result.stdout.strip()
             if disk_num in ssd_set:
                 return "SSD"
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[system.py] ignorado: {e}")
     return "HDD"
 
 
@@ -499,7 +501,7 @@ async def cmd_desligar(client, message):
                 f"├ ⚙️ Terminated remotely via command\n"
                 f"└ 🕐 `{ts}`",
             ))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[system.py] ignorado: {e}")
 
     os._exit(0)

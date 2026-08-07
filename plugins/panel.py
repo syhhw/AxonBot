@@ -2,11 +2,13 @@
 plugins/panel.py
 IPC bridge: heartbeat de status (com métricas de sistema) + despacho de comandos do painel bot.
 """
+import logging
 import os
 import json
 import asyncio
 import time
 import subprocess
+logger = logging.getLogger("AxonBot.panel")
 
 import psutil
 from pyrogram import Client
@@ -24,8 +26,8 @@ def _write_json(path: str, data: dict) -> None:
     try:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[panel.py] ignorado: {e}")
 
 
 def _write_result(ts: int, status: str, data: str) -> None:

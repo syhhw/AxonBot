@@ -11,8 +11,10 @@ Variáveis disponíveis na mensagem:
 Créditos: boas-vindas configuráveis são um padrão comum em userbots
 Telegram (Man-Userbot e forks).
 """
+import logging
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr
+logger = logging.getLogger("AxonBot.welcome")
 
 
 def _chave(chat_id: int) -> str:
@@ -114,5 +116,5 @@ async def welcome_handler(client, message):
         )
         try:
             await client.send_message(message.chat.id, texto)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[welcome.py] ignorado: {e}")

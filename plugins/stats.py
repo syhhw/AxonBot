@@ -2,7 +2,9 @@
 plugins/stats.py
   ,stats — exibe estatísticas da sua conta Telegram (grupos, canais, contatos, bots).
 """
+import logging
 import time
+logger = logging.getLogger("AxonBot.stats")
 
 from pyrogram import filters, Client
 from pyrogram.enums import ChatType
@@ -32,8 +34,8 @@ async def cmd_stats(client, message):
             me_member = None
             try:
                 me_member = await client.get_chat_member(dialog.chat.id, "me")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[stats.py] ignorado: {e}")
             if me_member:
                 from pyrogram.enums import ChatMemberStatus
                 if me_member.status == ChatMemberStatus.OWNER:
@@ -50,8 +52,8 @@ async def cmd_stats(client, message):
                     admin_canais += 1
                 elif me_member.status == ChatMemberStatus.ADMINISTRATOR:
                     admin_canais += 1
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[stats.py] ignorado: {e}")
 
     elapsed = time.time() - start
     total = privados + bots + grupos + supergrupos + canais

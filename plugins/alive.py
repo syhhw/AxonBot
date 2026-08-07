@@ -4,10 +4,12 @@ plugins/alive.py
   ,setalivephoto  — define foto/gif exibida no ,alive (responda à mídia).
   ,delalivephoto  — remove a foto/gif do ,alive.
 """
+import logging
 import time
 import sys
 import platform
 import pyrogram
+logger = logging.getLogger("AxonBot.alive")
 
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, deletar_depois, tr, carregar, salvar
@@ -82,8 +84,8 @@ async def cmd_alive(client, message):
                 )
             deletar_depois(sent, 45)
             return
-        except Exception:
-            pass  # fall through to text if media fails
+        except Exception as e:
+            logger.debug(f"[alive.py] ignorado: {e}")  # fall through to text if media fails
 
     await message.edit_text(txt, disable_web_page_preview=True)
     deletar_depois(message, 45)

@@ -2,9 +2,11 @@
 plugins/ai.py
 Integração com Google Gemini (Inteligência Artificial)
 """
+import logging
 import asyncio
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, tr
+logger = logging.getLogger("AxonBot.ai")
 
 try:
     from google import genai
@@ -31,8 +33,8 @@ def obter_modelo_otimizado(api_key: str) -> str:
             if "flash" in name.lower():
                 _MODEL_CACHE[api_key] = name
                 return name
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[ai.py] ignorado: {e}")
     _MODEL_CACHE[api_key] = "gemini-2.0-flash"
     return _MODEL_CACHE[api_key]
 

@@ -7,10 +7,12 @@ para funcionar mesmo após troca de username.
 Créditos: ,kang é um padrão consagrado do ecossistema de userbots Telegram
 (Man-Userbot e forks). Implementação via raw MTProto é própria.
 """
+import logging
 import os
 import math
 import asyncio
 import tempfile
+logger = logging.getLogger("AxonBot.kang")
 
 from PIL import Image
 from pyrogram import filters, Client, raw
@@ -60,8 +62,8 @@ def limpar_tmp():
         try:
             if os.path.exists(p):
                 os.remove(p)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[kang.py] ignorado: {e}")
 
 
 async def _get_input_doc(client, reply) -> raw.types.InputDocument:

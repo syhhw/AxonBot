@@ -2,12 +2,14 @@
 plugins/drive.py
 Comandos do Google Drive: status, organizar, get, direto, procurar, apagar
 """
+import logging
 import os
 import time
 import asyncio
 import aiohttp
 import humanize
 import tempfile
+logger = logging.getLogger("AxonBot.drive")
 
 from googleapiclient.http import MediaFileUpload
 from pyrogram import filters, Client
@@ -39,8 +41,8 @@ async def _dl_progress_cb(current: int, total: int, msg) -> None:
             f"📥 **Baixando do Telegram...**\n`[{bar}]` `{pct}%` — `{mb}`",
             f"📥 **Downloading from Telegram...**\n`[{bar}]` `{pct}%` — `{mb}`",
         ))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"[drive.py] ignorado: {e}")
 
 
 async def _upload_com_progresso(service, local: str, nome: str, id_pasta: str, msg) -> dict:
@@ -68,8 +70,8 @@ async def _upload_com_progresso(service, local: str, nome: str, id_pasta: str, m
                         f"☁️ **Enviando para o Drive...**\n`[{bar}]` `{pct}%` — `{done_mb:.1f}/{total_mb:.1f} MB`",
                         f"☁️ **Uploading to Drive...**\n`[{bar}]` `{pct}%` — `{done_mb:.1f}/{total_mb:.1f} MB`",
                     ))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"[drive.py] ignorado: {e}")
 
     return response
 
@@ -304,8 +306,8 @@ async def drive_direto(client, message):
         if local and os.path.exists(local):
             try:
                 os.remove(local)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[drive.py] ignorado: {e}")
     deletar_depois(msg, 60)
 
 

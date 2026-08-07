@@ -7,6 +7,9 @@ Variáveis disponíveis na mensagem:
   {mention} — menção clicável
   {chat}    — nome do grupo
   {count}   — número total de membros
+
+Créditos: boas-vindas configuráveis são um padrão comum em userbots
+Telegram (Man-Userbot e forks).
 """
 from pyrogram import filters, Client
 from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr

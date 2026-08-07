@@ -2,6 +2,9 @@
 plugins/antiflood.py
 Controle de flood por grupo — detecta envio rápido de mensagens e muta
 o usuário automaticamente. Unmute automático após 60 segundos.
+
+Créditos: antiflood é um módulo padrão de moderação em userbots Telegram
+(Man-Userbot e forks).
 """
 import asyncio
 import time

@@ -2,6 +2,9 @@
 plugins/chatfilters.py
 Filtros automáticos por grupo — diferente dos triggers globais, cada filtro
 existe apenas no chat onde foi criado. Ideal para grupos com regras próprias.
+
+Créditos: filtros por grupo seguem o padrão popularizado por
+Ultroid/TeamUltroid no ecossistema de userbots Telegram.
 """
 import re
 from pyrogram import filters, Client

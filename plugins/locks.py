@@ -3,6 +3,9 @@ plugins/locks.py
   ,travar [tipo]   — bloqueia uma permissão padrão do grupo
   ,destravar [tipo] — desbloqueia uma permissão padrão do grupo
   ,travas          — lista o status de todas as permissões
+
+Créditos: ,lock/,unlock são comandos padrão de moderação em userbots
+Telegram (Man-Userbot e forks).
 """
 from pyrogram import filters, Client
 from pyrogram.types import ChatPermissions

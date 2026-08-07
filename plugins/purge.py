@@ -4,6 +4,9 @@ plugins/purge.py
   ,del      — apaga a mensagem respondida (e o comando).
   ,purgeme  — apaga suas últimas N mensagens no chat.
   ,sd <n>   — mensagem que se autodestrói após N segundos.
+
+Créditos: ,purge/,del são comandos padrão do ecossistema de userbots
+Telegram (Man-Userbot e forks).
 """
 import asyncio
 

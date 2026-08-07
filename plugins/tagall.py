@@ -2,6 +2,8 @@
 plugins/tagall.py
 Menciona todos os membros do grupo em lotes de 5. Requer que o userbot
 consiga listar membros (funciona melhor como admin).
+
+Créditos: ,tagall é um padrão comum em userbots Telegram (Man-Userbot e forks).
 """
 import asyncio
 from pyrogram import filters, Client

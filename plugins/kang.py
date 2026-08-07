@@ -3,6 +3,9 @@ plugins/kang.py
 Comando ,kang — Rouba figurinhas e adiciona ao pacote via raw MTProto API.
 Não depende do @Stickers bot. Detecta packs existentes via getAllStickers
 para funcionar mesmo após troca de username.
+
+Créditos: ,kang é um padrão consagrado do ecossistema de userbots Telegram
+(Man-Userbot e forks). Implementação via raw MTProto é própria.
 """
 import os
 import math

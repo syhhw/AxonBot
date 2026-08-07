@@ -127,7 +127,14 @@ async def cmd_permit(client, message):
 
 @Client.on_message(filters.private & ~filters.me & ~filters.bot, group=-2)
 async def pm_permit_checker(client, message):
-    """Bloqueia mensagens privadas de usuários não autorizados."""
+    """Bloqueia mensagens privadas de usuários não autorizados.
+
+    Liga/desliga e lista de autorizados são configurados pelo painel bot
+    (/painel → 🛡️ PM Permit) — mesma chave via utils.db, aplica na hora.
+    """
+    if not carregar("pm_firewall_ativo", True):
+        return
+
     permitidos = carregar("permitidos.json", [])
     uid = message.from_user.id if message.from_user else message.chat.id
 

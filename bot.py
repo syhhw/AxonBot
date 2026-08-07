@@ -92,7 +92,10 @@ _live_msgs: dict[int, int] = {}
 _waiting_plugin: set[int] = set()
 _waiting_shell: set[int] = set()
 _waiting_alive: set[int] = set()
+_waiting_pmpermit: set[int] = set()
 _ALIVE_KEY = "alive_media.json"
+_PERMITIDOS_KEY = "permitidos.json"
+_FIREWALL_KEY   = "pm_firewall_ativo"
 
 # ── Persistência de dados do grupo ─────────────────────────────────────────────
 def _data_path(name: str) -> Path:
@@ -387,6 +390,7 @@ def _kb_main() -> Markup:
         [Btn(f"{ic} Status",  callback_data="status"),      Btn("📋 Logs",      callback_data="logs")],
         [Btn("🔌 Plugins",    callback_data="plugins"),     Btn("💻 Sistema",   callback_data="sistema")],
         [Btn("🖼️ Alive",      callback_data="alive_cfg"),   Btn("⚙️ Config",    callback_data="config")],
+        [Btn("🛡️ PM Permit",  callback_data="pmpermit")],
         [Btn("🔄 Reiniciar",  callback_data="ask_restart"), Btn("⬆️ Atualizar", callback_data="ask_update")],
         [Btn("🛑 Desligar",   callback_data="ask_shutdown")],
         [Btn("❌ Fechar",     callback_data="panel_close")],
@@ -443,6 +447,37 @@ def _kb_alive() -> Markup:
     rows = [[Btn("📤 Enviar nova mídia", callback_data="alive_set")]]
     if cfg.get("file_id"):
         rows.append([Btn("🗑️ Remover mídia atual", callback_data="alive_del")])
+    rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
+    return Markup(rows)
+
+
+def _txt_pmpermit() -> str:
+    ativo = db_carregar(_FIREWALL_KEY, True)
+    lista = db_carregar(_PERMITIDOS_KEY, [])
+    ic    = "🟢 Ativo" if ativo else "🔴 Desativado"
+    if lista:
+        amostra = "\n".join(f"  • <code>{uid}</code>" for uid in lista[:10])
+        if len(lista) > 10:
+            amostra += f"\n  … e mais {len(lista) - 10}"
+    else:
+        amostra = "  <i>(nenhum)</i>"
+    return (
+        f"<b>🛡️ PM Permit (Firewall de PV)</b>\n\n"
+        f"├ Status: {ic}\n"
+        f"└ Autorizados: <b>{len(lista)}</b>\n\n"
+        f"{amostra}"
+    )
+
+
+def _kb_pmpermit() -> Markup:
+    ativo = db_carregar(_FIREWALL_KEY, True)
+    lista = db_carregar(_PERMITIDOS_KEY, [])
+    rows  = [[
+        Btn("🔴 Desativar" if ativo else "🟢 Ativar", callback_data="pmpermit_toggle"),
+        Btn("➕ Adicionar",  callback_data="pmpermit_add"),
+    ]]
+    for uid in lista[:8]:
+        rows.append([Btn(f"🗑️ Remover {uid}", callback_data=f"pmpermit_del_{uid}")])
     rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
     return Markup(rows)
 
@@ -1235,10 +1270,32 @@ async def handle_alive_media(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def handle_owner_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    """Executa comando de shell na VPS quando o dono está no fluxo 'Shell' do painel."""
+    """Despacha texto do dono pros fluxos de input pendentes do painel (shell, pmpermit)."""
     if not await _is_owner(update):
         return
     uid = update.effective_user.id
+
+    if uid in _waiting_pmpermit:
+        _waiting_pmpermit.discard(uid)
+        texto = update.message.text.strip()
+        try:
+            novo_uid = int(texto)
+        except ValueError:
+            await update.message.reply_text(
+                "❌ Envie um ID numérico válido.",
+                reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML,
+            )
+            return
+        lista = db_carregar(_PERMITIDOS_KEY, [])
+        if novo_uid not in lista:
+            lista.append(novo_uid)
+            db_salvar(_PERMITIDOS_KEY, lista)
+        await update.message.reply_text(
+            f"✅ <code>{novo_uid}</code> autorizado.",
+            reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML,
+        )
+        return
+
     if uid not in _waiting_shell:
         return
     _waiting_shell.discard(uid)
@@ -1454,6 +1511,39 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
     if data == "alive_del":
         db_salvar(_ALIVE_KEY, {})
         await q.edit_message_text(_txt_alive(), reply_markup=_kb_alive(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "pmpermit":
+        _waiting_pmpermit.discard(_OWNER)
+        await q.edit_message_text(_txt_pmpermit(), reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "pmpermit_toggle":
+        ativo = db_carregar(_FIREWALL_KEY, True)
+        db_salvar(_FIREWALL_KEY, not ativo)
+        await q.edit_message_text(_txt_pmpermit(), reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "pmpermit_add":
+        _waiting_pmpermit.add(_OWNER)
+        await q.edit_message_text(
+            "➕ <b>Autorizar usuário</b>\n\n"
+            "Envie o ID numérico do usuário agora.",
+            reply_markup=_kb_back(),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if data.startswith("pmpermit_del_"):
+        try:
+            uid = int(data[len("pmpermit_del_"):])
+        except ValueError:
+            uid = None
+        lista = db_carregar(_PERMITIDOS_KEY, [])
+        if uid in lista:
+            lista.remove(uid)
+            db_salvar(_PERMITIDOS_KEY, lista)
+        await q.edit_message_text(_txt_pmpermit(), reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML)
         return
 
     if data == "config":

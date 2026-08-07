@@ -18,7 +18,8 @@ from PIL import Image
 from pyrogram import filters, Client, raw
 from pyrogram.raw.types import InputStickerSetShortName
 from pyrogram.errors import StickersetInvalid
-from utils.helpers import cmd_filter, prefixo
+from utils.helpers import prefixo
+from utils.commands import cmd
 from utils.i18n import tr
 
 TMP_DIR  = tempfile.gettempdir()
@@ -156,7 +157,7 @@ async def _next_pack_name(client, me_id: int, username: str, is_anim: bool, is_v
 
 # ─── Comando ,kang ────────────────────────────────────────────────────────────
 
-@Client.on_message(cmd_filter("kang") & filters.me)
+@cmd("kang")
 async def cmd_kang(client, message):
     """
     Rouba figurinha/foto e adiciona ao seu pacote via API direta.
@@ -301,7 +302,7 @@ async def cmd_kang(client, message):
 
 # ─── Comando ,packinfo ────────────────────────────────────────────────────────
 
-@Client.on_message(cmd_filter("packinfo") & filters.me)
+@cmd("packinfo")
 async def cmd_packinfo(client, message):
     """Lista todos os seus pacotes de figurinhas (qualquer username)."""
     me = await client.get_me()

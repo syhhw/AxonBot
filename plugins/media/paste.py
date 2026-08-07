@@ -5,7 +5,8 @@ plugins/paste.py
 import aiohttp
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, tr
+from utils.helpers import tr
+from utils.commands import cmd
 
 
 async def _paste_to_katbin(text: str) -> str:
@@ -39,7 +40,7 @@ async def _paste_to_dpaste(text: str) -> str:
             raise ValueError(f"dpaste HTTP {r.status}")
 
 
-@Client.on_message(cmd_filter("paste") & filters.me)
+@cmd("paste")
 async def cmd_paste(client, message):
     """Envia texto ou mensagem respondida para um pastebin. Retorna o link."""
     parts = message.text.split(None, 1)

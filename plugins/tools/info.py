@@ -6,7 +6,8 @@ plugins/info.py
 import aiohttp
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, deletar_depois, tr
+from utils.helpers import prefixo, deletar_depois, tr, DEL_LONGO
+from utils.commands import cmd
 
 _GH_API    = "https://api.github.com"
 _OMDB_BASE = "https://www.omdbapi.com/"
@@ -17,7 +18,7 @@ def _n(val, fallback="?") -> str:
     return str(val) if val and val not in ("N/A", "null", None) else fallback
 
 
-@Client.on_message(cmd_filter("github") & filters.me)
+@cmd("github")
 async def cmd_github(client, message):
     """Consulta perfil ou repositório do GitHub. ,github user  ou  ,github user/repo"""
     p      = prefixo(client)
@@ -130,10 +131,10 @@ async def cmd_github(client, message):
         )
 
     await message.edit_text(txt, disable_web_page_preview=True)
-    deletar_depois(message, 60)
+    deletar_depois(message, DEL_LONGO)
 
 
-@Client.on_message(cmd_filter("filme") & filters.me)
+@cmd("filme")
 async def cmd_filme(client, message):
     """Busca informações de filme ou série no IMDb via OMDb. ,filme [nome]"""
     p      = prefixo(client)
@@ -222,4 +223,4 @@ async def cmd_filme(client, message):
     except Exception:
         await message.edit_text(caption, disable_web_page_preview=True)
 
-    deletar_depois(message, 60)
+    deletar_depois(message, DEL_LONGO)

@@ -13,10 +13,11 @@ import aiohttp
 logger = logging.getLogger("AxonBot.dev")
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, reiniciar_processo
+from utils.helpers import prefixo, reiniciar_processo
+from utils.commands import cmd
 from utils.i18n import tr
 
-@Client.on_message(cmd_filter("term") & filters.me)
+@cmd("term")
 async def cmd_term(client, message):
     """Executa comandos de terminal/shell do sistema."""
     p = prefixo(client)
@@ -50,7 +51,7 @@ async def cmd_term(client, message):
     except Exception as e:
         await message.edit_text(f"❌ Erro: `{e}`")
 
-@Client.on_message(cmd_filter("eval") & filters.me)
+@cmd("eval")
 async def cmd_eval(client, message):
     """Executa código Python dinamicamente."""
     p = prefixo(client)
@@ -91,7 +92,7 @@ async def cmd_eval(client, message):
     else:
         await message.edit_text(f"🐍 **Eval Output**\n\n```python\n{out}\n```")
 
-@Client.on_message(cmd_filter("instalar") & filters.me)
+@cmd("instalar")
 async def cmd_install(client, message):
     """Baixa e instala um novo plugin via URL."""
     p = prefixo(client)
@@ -116,7 +117,7 @@ async def cmd_install(client, message):
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
-@Client.on_message(cmd_filter("desinstalar") & filters.me)
+@cmd("desinstalar")
 async def cmd_uninstall(client, message):
     """Desinstala um plugin existente."""
     p = prefixo(client)

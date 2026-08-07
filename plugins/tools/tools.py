@@ -18,7 +18,8 @@ from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
 from pyrogram import filters, enums, Client
 from deep_translator import GoogleTranslator
-from utils.helpers import cmd_filter, prefixo, resolver_alvo, carregar, salvar
+from utils.helpers import prefixo, resolver_alvo, carregar, salvar
+from utils.commands import cmd
 from utils.i18n import tr, get_lang
 
 
@@ -40,7 +41,7 @@ def _clima_icon(code: int) -> str:
     return "🌡️"
 
 
-@Client.on_message(cmd_filter("hack") & filters.me)
+@cmd("hack")
 async def cmd_hack(client, message):
     """Simulador de hack interativo com dados reais do alvo."""
 
@@ -189,7 +190,7 @@ async def cmd_hack(client, message):
         logger.debug(f"[tools.py] ignorado: {e}")
 
 
-@Client.on_message(cmd_filter("type") & filters.me)
+@cmd("type")
 async def cmd_type(client, message):
     """Simula digitação letra por letra."""
     p = prefixo(client)
@@ -213,7 +214,7 @@ async def cmd_type(client, message):
     await message.edit_text(digitado)
 
 
-@Client.on_message(cmd_filter("ghost") & filters.me)
+@cmd("ghost")
 async def cmd_ghost(client, message):
     """Envia uma mensagem que se autodestrói após N segundos."""
     p = prefixo(client)
@@ -232,7 +233,7 @@ async def cmd_ghost(client, message):
         logger.debug(f"[tools.py] ignorado: {e}")
 
 
-@Client.on_message(cmd_filter("fake") & filters.me)
+@cmd("fake")
 async def cmd_fake(client, message):
     """Simula ação de digitação, gravação de áudio ou vídeo."""
     p = prefixo(client)
@@ -258,7 +259,7 @@ async def cmd_fake(client, message):
             break
 
 
-@Client.on_message(cmd_filter("tr") & filters.me)
+@cmd("tr")
 async def cmd_tr(client, message):
     """Traduz uma mensagem respondida para o idioma especificado."""
     if not message.reply_to_message:
@@ -276,7 +277,7 @@ async def cmd_tr(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("voz") & filters.me)
+@cmd("voz")
 async def cmd_voz(client, message):
     """Converte texto em áudio de voz (br, pt, en, es, ja, ru)."""
     p = prefixo(client)
@@ -335,7 +336,7 @@ def gerar_print_img(texto, autor, arquivo):
         y += 35
     img.save(arquivo)
 
-@Client.on_message(cmd_filter("print") & filters.me)
+@cmd("print")
 async def cmd_print(client, message):
     """Gera imagem estilizada de uma mensagem respondida."""
     if not message.reply_to_message:
@@ -364,7 +365,7 @@ async def cmd_print(client, message):
             os.remove(arquivo)
 
 
-@Client.on_message(cmd_filter("encurtar") & filters.me)
+@cmd("encurtar")
 async def cmd_encurtar(client, message):
     """Encurta uma URL usando o TinyURL."""
     p = prefixo(client)
@@ -382,7 +383,7 @@ async def cmd_encurtar(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("ipinfo") & filters.me)
+@cmd("ipinfo")
 async def cmd_ipinfo(client, message):
     """Exibe informações sobre um endereço IP."""
     partes = message.text.split(None, 1)
@@ -411,7 +412,7 @@ async def cmd_ipinfo(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("clima") & filters.me)
+@cmd("clima")
 async def cmd_clima(client, message):
     """Clima atual e previsão de 3 dias para uma cidade."""
     p      = prefixo(client)
@@ -530,7 +531,7 @@ async def cmd_clima(client, message):
         ))
 
 
-@Client.on_message(cmd_filter("specs") & filters.me)
+@cmd("specs")
 async def cmd_specs(client, message):
     """Especificações técnicas de celular via GSMArena."""
     p = prefixo(client)
@@ -577,7 +578,7 @@ async def cmd_specs(client, message):
         await message.edit_text(f"❌ Erro: `{e}`")
 
 
-@Client.on_message(cmd_filter("clone") & filters.me)
+@cmd("clone")
 async def cmd_clone(client, message):
     """Clona nome, bio e foto de perfil de um usuário."""
     user, _, _ = await resolver_alvo(client, message)
@@ -682,7 +683,7 @@ async def cmd_clone(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("reverter") & filters.me)
+@cmd("reverter")
 async def cmd_reverter(client, message):
     """Restaura o perfil original após um clone."""
     backup = carregar("clone_backup.json", {})

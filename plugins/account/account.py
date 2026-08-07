@@ -13,7 +13,8 @@ from datetime import datetime
 logger = logging.getLogger("AxonBot.account")
 
 from pyrogram import filters, enums, Client
-from utils.helpers import cmd_filter, prefixo, carregar, salvar, verificar_admin, tr
+from utils.helpers import prefixo, carregar, salvar, verificar_admin, tr
+from utils.commands import cmd
 from utils.i18n import tr_log
 
 # Estado global do AFK (compartilhado dentro deste módulo)
@@ -72,11 +73,11 @@ CATEGORIAS = {
 
 
 def obter_pasta(client, nome):
-    from plugins.drive import obter_pasta as _obter_pasta
+    from plugins.drive.drive import obter_pasta as _obter_pasta
     return _obter_pasta(client, nome)
 
 
-@Client.on_message(cmd_filter("afk") & filters.me)
+@cmd("afk")
 async def cmd_afk(client, message):
     """Ativa o modo AFK com motivo opcional."""
     global AFK_ATIVO, AFK_MOTIVO, AFK_INICIO
@@ -90,7 +91,7 @@ async def cmd_afk(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("unafk") & filters.me)
+@cmd("unafk")
 async def cmd_unafk(client, message):
     """Desativa o modo AFK manualmente."""
     global AFK_ATIVO
@@ -102,7 +103,7 @@ async def cmd_unafk(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("permit") & filters.me)
+@cmd("permit")
 async def cmd_permit(client, message):
     """Autoriza um usuário a enviar mensagens privadas."""
     if message.reply_to_message:
@@ -307,7 +308,7 @@ async def monitor_central(client, message):
             path = await message.download()
 
             def upload_drive_sync():
-                from plugins.drive import obter_pasta
+                from plugins.drive.drive import obter_pasta
                 id_pasta = obter_pasta(client, cat)
                 f_drive = drive.CreateFile({'title': os.path.basename(path), 'parents': [{'id': id_pasta}]})
                 f_drive.SetContentFile(path)

@@ -7,10 +7,11 @@ Créditos: ,tagall é um padrão comum em userbots Telegram (Man-Userbot e forks
 """
 import asyncio
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, tr
+from utils.helpers import prefixo, tr
+from utils.commands import cmd
 
 
-@Client.on_message(cmd_filter("mencionar") & filters.me)
+@cmd("mencionar")
 async def cmd_tagall(client, message):
     """Menciona todos os membros do grupo, em lotes de 5."""
     p = prefixo(client)

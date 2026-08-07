@@ -13,7 +13,8 @@ logger = logging.getLogger("AxonBot.drive")
 
 from googleapiclient.http import MediaFileUpload
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, salvar, carregar, deletar_depois
+from utils.helpers import prefixo, salvar, carregar, deletar_depois, DEL_LONGO, DEL_PADRAO
+from utils.commands import cmd
 from utils.i18n import tr
 
 # Throttle de edições de progresso (msg.id → último timestamp)
@@ -112,10 +113,10 @@ def obter_pasta(client, nome):
     return nova['id']
 
 
-@Client.on_message(cmd_filter("status") & filters.me)
+@cmd("status")
 async def drive_status(client, message):
     """Mostra espaço usado e disponível no Drive."""
-    deletar_depois(message, 30)
+    deletar_depois(message, DEL_PADRAO)
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))
@@ -137,7 +138,7 @@ async def drive_status(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("organizar") & filters.me)
+@cmd("organizar")
 async def drive_organizar(client, message):
     """Organiza arquivos da raiz em subpastas por tipo."""
     drive = getattr(client, "drive", None)
@@ -174,10 +175,10 @@ async def drive_organizar(client, message):
         await msg.edit_text(tr(f"✅ **Organização concluída!**\n📦 `{movidos}` arquivos movidos da raiz para subpastas.", f"✅ **Organization complete!**\n📦 `{movidos}` files moved from root to subfolders."))
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-    deletar_depois(msg, 30)
+    deletar_depois(msg, DEL_PADRAO)
 
 
-@Client.on_message(cmd_filter("get") & filters.me)
+@cmd("get")
 async def drive_get(client, message):
     """Baixa arquivo de uma URL direto para o Drive."""
     drive = getattr(client, "drive", None)
@@ -225,10 +226,10 @@ async def drive_get(client, message):
         ))
     except Exception as e:
         await msg.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-    deletar_depois(msg, 30)
+    deletar_depois(msg, DEL_PADRAO)
 
 
-@Client.on_message(cmd_filter("direto") & filters.me)
+@cmd("direto")
 async def drive_direto(client, message):
     """Envia arquivo do Telegram para o Drive com progresso."""
     drive = getattr(client, "drive", None)
@@ -308,13 +309,13 @@ async def drive_direto(client, message):
                 os.remove(local)
             except Exception as e:
                 logger.debug(f"[drive.py] ignorado: {e}")
-    deletar_depois(msg, 60)
+    deletar_depois(msg, DEL_LONGO)
 
 
-@Client.on_message(cmd_filter("procurar") & filters.me)
+@cmd("procurar")
 async def drive_procurar(client, message):
     """Busca arquivos no Drive pelo nome e lista resultados."""
-    deletar_depois(message, 60)
+    deletar_depois(message, DEL_LONGO)
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))
@@ -345,10 +346,10 @@ async def drive_procurar(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("apagar") & filters.me)
+@cmd("apagar")
 async def drive_apagar(client, message):
     """Move arquivo da última busca para a lixeira do Drive."""
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
     drive = getattr(client, "drive", None)
     if not drive:
         return await message.edit_text(tr("❌ Drive não conectado.", "❌ Drive not connected."))

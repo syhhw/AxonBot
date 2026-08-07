@@ -18,7 +18,8 @@ from datetime import datetime
 logger = logging.getLogger("AxonBot.system")
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, salvar, deletar_depois, reiniciar_processo
+from utils.helpers import salvar, deletar_depois, reiniciar_processo, DEL_LONGO, DEL_PADRAO, DEL_RAPIDO
+from utils.commands import cmd
 from utils.i18n import tr, tr_log, set_lang, get_lang
 
 _IS_ANDROID = os.path.exists("/system/build.prop") or "TERMUX_VERSION" in os.environ
@@ -43,15 +44,15 @@ def _e_repositorio_git():
 
 
 
-@Client.on_message(cmd_filter("versao") & filters.me)
+@cmd("versao")
 async def cmd_versao(client, message):
     """Versão local, remota e último commit do repositório."""
-    deletar_depois(message, 30)
+    deletar_depois(message, DEL_PADRAO)
     versao_local = getattr(client, "VERSAO", "?")
     if not _e_repositorio_git():
         return await message.edit_text(tr(
-            f"📦 **AxonBot v{versao_local}**\n⚠️ Pasta não é um repositório Git — atualização automática desativada.",
-            f"📦 **AxonBot v{versao_local}**\n⚠️ Folder is not a Git repository — auto-update disabled."
+            f"📦 **AxonBot** (`{versao_local}`)\n⚠️ Pasta não é um repositório Git — atualização automática desativada.",
+            f"📦 **AxonBot** (`{versao_local}`)\n⚠️ Folder is not a Git repository — auto-update disabled."
         ))
     await message.edit_text(tr("🔍 **Consultando GitHub...**", "🔍 **Querying GitHub...**"))
     _git("fetch", "origin", timeout=20)
@@ -65,12 +66,12 @@ async def cmd_versao(client, message):
     atras = atras or "0"
     status = tr("✅ atualizado", "✅ up to date") if atras == "0" else tr(f"🔄 {atras} commit(s) atrás", f"🔄 {atras} commit(s) behind")
     await message.edit_text(tr(
-        f"📦 **AxonBot v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remoto: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Último commit local: `{msg_local or 'n/a'}`\n👤 Autor: `{autor_local or 'n/a'}`",
-        f"📦 **AxonBot v{versao_local}**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remote: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Last local commit: `{msg_local or 'n/a'}`\n👤 Author: `{autor_local or 'n/a'}`"
+        f"📦 **AxonBot**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remoto: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Último commit local: `{msg_local or 'n/a'}`\n👤 Autor: `{autor_local or 'n/a'}`",
+        f"📦 **AxonBot**\n\n🌿 Branch: `{branch}`\n🔢 Local:  `{hash_local or 'n/a'}`\n🌐 Remote: `{hash_remoto or 'n/a'}`\n📈 Status: {status}\n\n💬 Last local commit: `{msg_local or 'n/a'}`\n👤 Author: `{autor_local or 'n/a'}`"
     ))
 
 
-@Client.on_message((cmd_filter("atualizar") | cmd_filter("update")) & filters.me)
+@cmd("atualizar")
 async def cmd_atualizar(client, message):
     """
     Auto-update via GitHub.
@@ -136,8 +137,8 @@ async def cmd_atualizar(client, message):
     atras = atras or "0"
     if atras == "0" and branch == branch_atual:
         return await msg.edit_text(tr(
-            f"✅ **AxonBot já está na versão mais recente!**\n📦 v{versao_local} | branch `{branch}`",
-            f"✅ **AxonBot is already up to date!**\n📦 v{versao_local} | branch `{branch}`"
+            f"✅ **AxonBot já está atualizado!**\n📦 `{versao_local}` | branch `{branch}`",
+            f"✅ **AxonBot is already up to date!**\n📦 `{versao_local}` | branch `{branch}`"
         ))
 
     _, diff_arquivos, _ = _git("diff", "--name-only", f"HEAD..origin/{branch}")
@@ -190,7 +191,7 @@ async def cmd_atualizar(client, message):
     reiniciar_processo()
 
 
-@Client.on_message(cmd_filter("restart") & filters.me)
+@cmd("restart")
 async def cmd_restart(client, message):
     """Reinicia o bot."""
     await message.edit_text(tr("🔄 **Reiniciando...**", "🔄 **Restarting...**"))
@@ -214,17 +215,17 @@ async def cmd_restart(client, message):
     reiniciar_processo()
 
 
-@Client.on_message(cmd_filter("ping") & filters.me)
+@cmd("ping")
 async def cmd_ping(client, message):
     """Mede a latência do bot."""
-    deletar_depois(message, 15)
+    deletar_depois(message, DEL_RAPIDO)
     inicio = time.time()
     await message.edit_text("⏱️")
     delta = (time.time() - inicio) * 1000
     await message.edit_text(tr(f"⚡ **Ping:** `{delta:.0f}ms`", f"⚡ **Latency:** `{delta:.0f}ms`"))
 
 
-@Client.on_message(cmd_filter("idioma") & filters.me)
+@cmd("idioma")
 async def cmd_idioma(client, message):
     """Altera o idioma do bot (pt/en)."""
     p = getattr(client, "PREFIXO", ",")
@@ -245,7 +246,7 @@ async def cmd_idioma(client, message):
     await message.edit_text(resp)
 
 
-@Client.on_message(cmd_filter("speed") & filters.me)
+@cmd("speed")
 async def cmd_speed(client, message):
     """Testa a velocidade da internet da VM."""
     await message.edit_text(tr("🚀 **Testando velocidade...**", "🚀 **Testing speed...**"))
@@ -272,7 +273,7 @@ async def cmd_speed(client, message):
         ))
     except Exception as e:
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
-    deletar_depois(message, 30)
+    deletar_depois(message, DEL_PADRAO)
 
 
 def _get_cpu_name() -> str:
@@ -397,10 +398,10 @@ def _disk_type(device: str, ssd_set: set) -> str:
     return "HDD"
 
 
-@Client.on_message(cmd_filter("sysinfo") & filters.me)
+@cmd("sysinfo")
 async def cmd_sysinfo(client, message):
     """Informações completas do sistema (estilo neofetch)."""
-    deletar_depois(message, 90)
+    deletar_depois(message, DEL_LONGO)
     await message.edit_text(tr("💻 **Coletando informações do sistema...**", "💻 **Collecting system info...**"))
 
     def coletar():
@@ -457,16 +458,16 @@ async def cmd_sysinfo(client, message):
         f"─────────────────────────────\n"
         f"Python   : {py_ver}\n"
         f"Pyrogram : {pyro_ver}\n"
-        f"AxonBot  : v{versao}\n"
+        f"AxonBot  : {versao}\n"
         f"```"
     )
     await message.edit_text(texto)
 
 
-@Client.on_message(cmd_filter("processos") & filters.me)
+@cmd("processos")
 async def cmd_processos(client, message):
     """Lista os 5 processos que mais consomem CPU."""
-    deletar_depois(message, 45)
+    deletar_depois(message, DEL_LONGO)
     coletados = []
     for proc in psutil.process_iter(['pid', 'name', 'cpu_percent']):
         try:
@@ -479,7 +480,7 @@ async def cmd_processos(client, message):
         txt += f"• `{p.info.get('name','?')}` | PID `{p.info.get('pid','?')}` | CPU `{p.info.get('cpu_percent', 0)}%`\n"
     await message.edit_text(txt)
 
-@Client.on_message(cmd_filter("desligar") & filters.me)
+@cmd("desligar")
 async def cmd_desligar(client, message):
     """Encerra o bot remotamente."""
     await message.edit_text(tr("🛑 **Desligando o bot com segurança...**", "🛑 **Shutting down gracefully...**"))

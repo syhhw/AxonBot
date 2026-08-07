@@ -263,13 +263,13 @@ def _reason(ctx: ContextTypes.DEFAULT_TYPE, via_reply: bool, default: str = "Nen
 def _txt_main() -> str:
     st     = _read_status()
     online = st.get("online", False)
-    versao = st.get("versao", "2.3")
+    versao = st.get("versao", "dev")
     ts     = st.get("ts", 0)
     hora   = datetime.fromtimestamp(ts).strftime("%H:%M:%S") if ts else "—"
     ic     = "🟢" if online else "🔴"
     return (
         f"<b>📓 Kira — Painel de Controle</b>\n"
-        f"<i>AxonBot v{versao}</i>\n\n"
+        f"<i>AxonBot ({versao})</i>\n\n"
         f"└ {ic} {'Online' if online else 'Offline'} · <code>{hora}</code>"
     )
 

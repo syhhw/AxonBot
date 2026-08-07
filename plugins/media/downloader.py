@@ -13,7 +13,8 @@ import tempfile
 import asyncio
 import aiohttp
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, tr
+from utils.helpers import prefixo, tr
+from utils.commands import cmd
 logger = logging.getLogger("AxonBot.downloader")
 
 try:
@@ -300,7 +301,7 @@ def _baixar_ytdlp(url: str, tmp_dir: str):
     return path, info.get('title', 'Video')
 
 
-@Client.on_message(cmd_filter("dlinfo") & filters.me)
+@cmd("dlinfo")
 async def cmd_dlinfo(client, message):
     """Mostra informações do vídeo (título, duração, canal, tamanho) sem baixar."""
     if not HAS_YTDLP:
@@ -363,7 +364,7 @@ async def cmd_dlinfo(client, message):
         await message.edit_text(caption)
 
 
-@Client.on_message(cmd_filter("dl") & filters.me)
+@cmd("dl")
 async def cmd_dl(client, message):
     """Baixa mídia de redes sociais (Instagram, TikTok, YouTube, etc.)."""
     if not HAS_YTDLP and not HAS_INSTALOADER:

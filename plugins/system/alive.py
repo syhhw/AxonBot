@@ -12,9 +12,19 @@ import pyrogram
 logger = logging.getLogger("AxonBot.alive")
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, deletar_depois, tr, carregar, salvar
+from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from utils.helpers import prefixo, deletar_depois, tr, carregar, salvar, DEL_LONGO
+from utils.commands import cmd
 
 _ALIVE_KEY = "alive_media.json"
+_REPO_URL  = "https://github.com/syhhw/AxonBot"
+
+
+def _alive_botoes() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton(tr("📦 Repositório", "📦 Repository"), url=_REPO_URL),
+        InlineKeyboardButton(tr("🔄 Atualizações", "🔄 Updates"), url=f"{_REPO_URL}/commits"),
+    ]])
 
 
 def _uptime(inicio: float) -> str:
@@ -39,7 +49,7 @@ def _build_text(me, inicio, versao, p) -> str:
         f"╔══「 ⚡ **AXONBOT** 」\n"
         f"╠══「 📊 **Sistema** 」\n"
         f"║  ├ ⏱ Uptime » `{ut}`\n"
-        f"║  ├ 📦 Versão » `v{versao}`\n"
+        f"║  ├ 📦 Build » `{versao}`\n"
         f"║  ├ 🔧 Prefixo » `{p}`\n"
         f"║  ├ 🐍 Python » `{py}`\n"
         f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
@@ -49,7 +59,7 @@ def _build_text(me, inicio, versao, p) -> str:
         f"╔══「 ⚡ **AXONBOT** 」\n"
         f"╠══「 📊 **System** 」\n"
         f"║  ├ ⏱ Uptime » `{ut}`\n"
-        f"║  ├ 📦 Version » `v{versao}`\n"
+        f"║  ├ 📦 Build » `{versao}`\n"
         f"║  ├ 🔧 Prefix » `{p}`\n"
         f"║  ├ 🐍 Python » `{py}`\n"
         f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
@@ -58,7 +68,7 @@ def _build_text(me, inicio, versao, p) -> str:
     )
 
 
-@Client.on_message(cmd_filter("alive") & filters.me)
+@cmd("alive")
 async def cmd_alive(client, message):
     """Verifica se o userbot está online e exibe informações de status."""
     inicio = getattr(client, "tempo_inicio", time.time())
@@ -71,27 +81,29 @@ async def cmd_alive(client, message):
     file_id   = media_cfg.get("file_id")
     media_type = media_cfg.get("type")  # "photo" or "animation"
 
+    botoes = _alive_botoes()
+
     if file_id:
         await message.delete()
         try:
             if media_type == "animation":
                 sent = await client.send_animation(
-                    message.chat.id, file_id, caption=txt
+                    message.chat.id, file_id, caption=txt, reply_markup=botoes
                 )
             else:
                 sent = await client.send_photo(
-                    message.chat.id, file_id, caption=txt
+                    message.chat.id, file_id, caption=txt, reply_markup=botoes
                 )
-            deletar_depois(sent, 45)
+            deletar_depois(sent, DEL_LONGO)
             return
         except Exception as e:
             logger.debug(f"[alive.py] ignorado: {e}")  # fall through to text if media fails
 
-    await message.edit_text(txt, disable_web_page_preview=True)
-    deletar_depois(message, 45)
+    await message.edit_text(txt, disable_web_page_preview=True, reply_markup=botoes)
+    deletar_depois(message, DEL_LONGO)
 
 
-@Client.on_message(cmd_filter("setalivephoto") & filters.me)
+@cmd("setalivephoto")
 async def cmd_setalivephoto(client, message):
     """Define a foto ou gif exibida no ,alive. Responda a uma foto/gif."""
     reply = message.reply_to_message
@@ -122,7 +134,7 @@ async def cmd_setalivephoto(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("delalivephoto") & filters.me)
+@cmd("delalivephoto")
 async def cmd_delalivephoto(client, message):
     """Remove a foto/gif do ,alive."""
     salvar(_ALIVE_KEY, {})

@@ -8,7 +8,8 @@ Ultroid/TeamUltroid no ecossistema de userbots Telegram.
 """
 import re
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr
+from utils.helpers import prefixo, carregar, salvar, tr
+from utils.commands import cmd
 
 
 def _chave(chat_id: int) -> str:
@@ -21,7 +22,7 @@ def _match(palavra: str, texto: str) -> bool:
     return bool(re.search(r'(?<!\w)' + re.escape(palavra) + r'(?!\w)', texto, re.IGNORECASE))
 
 
-@Client.on_message(cmd_filter("addfiltro") & filters.me)
+@cmd("addfiltro")
 async def cmd_addfilter(client, message):
     """Adiciona um filtro de resposta automática para este grupo."""
     p = prefixo(client)
@@ -47,7 +48,7 @@ async def cmd_addfilter(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("delfiltro") & filters.me)
+@cmd("delfiltro")
 async def cmd_delfilter(client, message):
     """Remove um filtro do grupo atual."""
     p = prefixo(client)
@@ -72,7 +73,7 @@ async def cmd_delfilter(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("filtros") & filters.me)
+@cmd("filtros")
 async def cmd_listfilters(client, message):
     """Lista todos os filtros ativos neste grupo."""
     p = prefixo(client)

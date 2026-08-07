@@ -12,7 +12,8 @@ import time
 from collections import defaultdict
 from pyrogram import filters, Client
 from pyrogram.types import ChatPermissions
-from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr
+from utils.helpers import prefixo, carregar, salvar, tr
+from utils.commands import cmd
 logger = logging.getLogger("AxonBot.antiflood")
 
 
@@ -43,7 +44,7 @@ async def _unmute_after(client, chat_id: int, user_id: int, delay: int = 60):
         logger.debug(f"[antiflood.py] ignorado: {e}")
 
 
-@Client.on_message(cmd_filter("setflood") & filters.me)
+@cmd("setflood")
 async def cmd_setflood(client, message):
     """Define o limite de mensagens/5s e a duração do mute para este grupo."""
     if message.chat.type.name not in ("GROUP", "SUPERGROUP"):
@@ -98,7 +99,7 @@ async def cmd_setflood(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("noflood") & filters.me)
+@cmd("noflood")
 async def cmd_noflood(client, message):
     """Desativa o antiflood neste grupo."""
     if message.chat.type.name not in ("GROUP", "SUPERGROUP"):
@@ -115,7 +116,7 @@ async def cmd_noflood(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("flood") & filters.me)
+@cmd("flood")
 async def cmd_floodstatus(client, message):
     """Mostra o status atual do antiflood neste grupo."""
     if message.chat.type.name not in ("GROUP", "SUPERGROUP"):

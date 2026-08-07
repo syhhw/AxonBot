@@ -11,14 +11,15 @@ logger = logging.getLogger("AxonBot.moderation")
 from pyrogram import filters, enums, Client
 from pyrogram.types import ChatPermissions
 from pyrogram.errors import FloodWait
-from utils.helpers import cmd_filter, prefixo, resolver_alvo, auditoria, verificar_admin, carregar, salvar, deletar_depois, tr
+from utils.helpers import prefixo, resolver_alvo, auditoria, verificar_admin, carregar, salvar, deletar_depois, tr, DEL_LONGO, DEL_PADRAO, DEL_RAPIDO
+from utils.commands import cmd
 from utils.i18n import tr_log
 
 
-@Client.on_message(cmd_filter("ban") & filters.me)
+@cmd("ban")
 async def cmd_ban(client, message):
     """Bane um usuário do grupo."""
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
     user, motivo, msg_orig = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(
@@ -36,10 +37,10 @@ async def cmd_ban(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("unban") & filters.me)
+@cmd("unban")
 async def cmd_unban(client, message):
     """Desbane um usuário do grupo."""
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
     user, _, _ = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(
@@ -54,10 +55,10 @@ async def cmd_unban(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("mute") & filters.me)
+@cmd("mute")
 async def cmd_mute(client, message):
     """Silencia um usuário no grupo."""
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
     user, motivo, msg_orig = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(
@@ -78,10 +79,10 @@ async def cmd_mute(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("unmute") & filters.me)
+@cmd("unmute")
 async def cmd_unmute(client, message):
     """Remove o silêncio de um usuário."""
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
     user, _, _ = await resolver_alvo(client, message)
     if not user:
         return await message.edit_text(tr(
@@ -102,10 +103,10 @@ async def cmd_unmute(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("admins") & filters.me)
+@cmd("admins")
 async def cmd_admins(client, message):
     """Lista todos os administradores do grupo."""
-    deletar_depois(message, 45)
+    deletar_depois(message, DEL_LONGO)
     await message.edit_text(tr("👮 **Listando administradores...**", "👮 **Listing administrators...**"))
     try:
         admins = []
@@ -124,7 +125,7 @@ async def cmd_admins(client, message):
         await message.edit_text(tr(f"❌ Erro: `{e}`", f"❌ Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("zombies") & filters.me)
+@cmd("zombies")
 async def cmd_zombies(client, message):
     """Detecta e remove contas deletadas do grupo (pede confirmação)."""
     p   = prefixo(client)
@@ -153,7 +154,7 @@ async def cmd_zombies(client, message):
             f"✅ **Nenhuma conta deletada encontrada.**\n└ 👥 Membros verificados: `{total}`",
             f"✅ **No deleted accounts found.**\n└ 👥 Members scanned: `{total}`",
         ))
-        return deletar_depois(msg, 20)
+        return deletar_depois(msg, DEL_PADRAO)
 
     await msg.edit_text(tr(
         f"🧟 **{len(zumbis)} conta(s) deletada(s) encontrada(s)**\n"
@@ -173,7 +174,7 @@ async def cmd_zombies(client, message):
             "⏰ **Tempo esgotado.** Operação cancelada.",
             "⏰ **Timed out.** Operation cancelled.",
         ))
-        return deletar_depois(msg, 15)
+        return deletar_depois(msg, DEL_RAPIDO)
 
     try:
         await resp.delete()
@@ -182,7 +183,7 @@ async def cmd_zombies(client, message):
 
     if not confirmado:
         await msg.edit_text(tr("🚫 **Operação cancelada.**", "🚫 **Operation cancelled.**"))
-        return deletar_depois(msg, 10)
+        return deletar_depois(msg, DEL_RAPIDO)
 
     await msg.edit_text(tr(
         f"🧟 **Removendo {len(zumbis)} zumbi(s)...**",
@@ -209,10 +210,10 @@ async def cmd_zombies(client, message):
         f"├ 👥 Members scanned: `{total}`\n"
         f"└ 🗑️ Zombies removed: `{removidos}`",
     ))
-    deletar_depois(msg, 30)
+    deletar_depois(msg, DEL_PADRAO)
 
 
-@Client.on_message(cmd_filter("gban") & filters.me)
+@cmd("gban")
 async def cmd_gban(client, message):
     """Bane um usuário em todos os grupos onde o bot é admin."""
     user, motivo, msg_orig = await resolver_alvo(client, message)
@@ -240,10 +241,10 @@ async def cmd_gban(client, message):
         f"☢️ **GBAN concluído!**\n👤 Alvo: {user.first_name} (`{user.id}`)\n🔨 Banido em `{sucesso}` grupos.",
         f"☢️ **GBAN completed!**\n👤 Target: {user.first_name} (`{user.id}`)\n🔨 Banned in `{sucesso}` groups."
     ))
-    deletar_depois(aviso, 30)
+    deletar_depois(aviso, DEL_PADRAO)
 
 
-@Client.on_message(cmd_filter("fban") & filters.me)
+@cmd("fban")
 async def cmd_fban(client, message):
     """Bane um usuário em todos os grupos da federação."""
     user_obj, motivo, msg_orig = await resolver_alvo(client, message)
@@ -273,13 +274,13 @@ async def cmd_fban(client, message):
     ))
     if user_obj:
         await auditoria(client, "FBAN", user_obj, message.chat, motivo, msg_orig)
-    deletar_depois(message, 30)
+    deletar_depois(message, DEL_PADRAO)
 
 
-@Client.on_message(cmd_filter("addfed") & filters.me)
+@cmd("addfed")
 async def cmd_addfed(client, message):
     """Adiciona o grupo atual à federação."""
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
     feds = carregar("feds.json", [])
     if message.chat.id in feds:
         return await message.edit_text(tr("⚠️ Este grupo já está cadastrado.", "⚠️ This group is already registered."))
@@ -288,10 +289,10 @@ async def cmd_addfed(client, message):
     await message.edit_text(tr(f"✅ **Grupo adicionado à federação.**\n📍 ID: `{message.chat.id}`", f"✅ **Group added to federation.**\n📍 ID: `{message.chat.id}`"))
 
 
-@Client.on_message(cmd_filter("delfed") & filters.me)
+@cmd("delfed")
 async def cmd_delfed(client, message):
     """Remove o grupo atual da federação."""
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
     feds = carregar("feds.json", [])
     if message.chat.id not in feds:
         return await message.edit_text(tr("⚠️ Este grupo não está cadastrado.", "⚠️ This group is not registered."))
@@ -300,10 +301,10 @@ async def cmd_delfed(client, message):
     await message.edit_text(tr("✅ **Grupo removido da federação.**", "✅ **Group removed from federation.**"))
 
 
-@Client.on_message(cmd_filter("feds") & filters.me)
+@cmd("feds")
 async def cmd_feds(client, message):
     """Lista todos os grupos da federação."""
-    deletar_depois(message, 45)
+    deletar_depois(message, DEL_LONGO)
     feds = carregar("feds.json", [])
     if not feds:
         return await message.edit_text(tr("⚠️ Nenhuma federação cadastrada.", "⚠️ No federations registered."))
@@ -317,7 +318,7 @@ async def cmd_feds(client, message):
     await message.edit_text(txt)
 
 
-@Client.on_message(cmd_filter("fixar") & filters.me)
+@cmd("fixar")
 async def cmd_fixar(client, message):
     """Fixa a mensagem respondida no chat e registra no canal de logs."""
     if not message.reply_to_message:
@@ -370,10 +371,10 @@ async def cmd_fixar(client, message):
         except Exception as e:
             logger.debug(f"[moderation.py] ignorado: {e}")
 
-    deletar_depois(message, 10)
+    deletar_depois(message, DEL_RAPIDO)
 
 
-@Client.on_message(cmd_filter("desafixar") & filters.me)
+@cmd("desafixar")
 async def cmd_desafixar(client, message):
     """Desafixa a mensagem respondida (ou a última fixada) no chat."""
     chat_id = message.chat.id
@@ -389,4 +390,4 @@ async def cmd_desafixar(client, message):
         return await message.edit_text(tr(f"❌ Não foi possível desafixar:\n`{e}`", f"❌ Could not unpin:\n`{e}`"))
 
     await message.edit_text(tr("📌 **Mensagem desafixada.**", "📌 **Message unpinned.**"))
-    deletar_depois(message, 8)
+    deletar_depois(message, DEL_RAPIDO)

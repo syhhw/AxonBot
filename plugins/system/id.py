@@ -3,10 +3,11 @@ plugins/id.py
   ,id — retorna o ID do chat, usuário ou mensagem respondida.
 """
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, tr
+from utils.helpers import tr
+from utils.commands import cmd
 
 
-@Client.on_message(cmd_filter("id") & filters.me)
+@cmd("id")
 async def cmd_id(client, message):
     """Retorna o ID do chat atual, usuário ou mensagem respondida."""
     reply = message.reply_to_message

@@ -193,7 +193,21 @@ except ImportError:
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 IDENTIDADE DO PROJETO
 # ══════════════════════════════════════════════════════════════════════════════
-__VERSAO__     = "1.0"
+def _commit_atual() -> str:
+    """Hash curto do commit local — serve de identidade do build, sem precisar
+    manter um número de versão manualmente. ,versao/,atualizar já comparam
+    esse hash contra origin/<branch> pra saber se há atualização disponível."""
+    import subprocess
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, timeout=5,
+        )
+        return r.stdout.strip() if r.returncode == 0 else "dev"
+    except Exception:
+        return "dev"
+
+__VERSAO__     = _commit_atual()
 UPDATE_FLAG    = ".update_pending.json"
 UPDATE_BRANCH  = "AxonBot"
 
@@ -332,11 +346,14 @@ def _carregar_plugins():
     import glob
     from pyrogram.handlers import MessageHandler
     plugins_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
-    for path in sorted(glob.glob(os.path.join(plugins_dir, "*.py"))):
+    # recursive=True pra pegar plugins organizados em subpastas por categoria
+    # (plugins/moderation/purge.py) além dos soltos na raiz (plugins/*.py).
+    for path in sorted(glob.glob(os.path.join(plugins_dir, "**", "*.py"), recursive=True)):
         nome = os.path.basename(path)[:-3]
         if nome.startswith("_"):
             continue
-        mod_name = f"plugins.{nome}"
+        rel = os.path.relpath(path, plugins_dir)[:-3]
+        mod_name = "plugins." + rel.replace(os.sep, ".")
         try:
             mod = importlib.import_module(mod_name)
             count = 0
@@ -357,7 +374,7 @@ def _carregar_plugins():
 
 async def iniciar():
     asyncio.get_event_loop().set_exception_handler(manipulador_erros)
-    logger.info(f"🚀 INICIANDO AXONBOT v{__VERSAO__}...")
+    logger.info(f"🚀 INICIANDO AXONBOT (`{__VERSAO__}`)...")
     await app.start()
     _carregar_plugins()
 
@@ -378,7 +395,7 @@ async def iniciar():
                     lista_arq += f"\n  • ... e mais {len(arquivos) - 15} arquivo(s)"
                 texto_update = (
                     f"🔄 **SISTEMA ATUALIZADO** / **SYSTEM UPDATED**\n\n"
-                    f"📦 **v{__VERSAO__}** (`{info_update.get('commit', 'n/a')}`)\n"
+                    f"📦 **AxonBot** (`{info_update.get('commit', __VERSAO__)}`)\n"
                     f"💬 `{info_update.get('mensagem', 'n/a')}`\n"
                     f"{screen_info}"
                 )
@@ -397,7 +414,7 @@ async def iniciar():
                 lista_libs = "\n".join([f"📦 `{lib}`" for lib in libs_instaladas])
                 await app.send_message(
                     config["ID_CANAL_LOGS"],
-                    f"🛠️ **AUTO-REPAIR DETECTADO:**\n\nDetectei que bibliotecas vitais estavam faltando e as instalei automaticamente antes de dar boot:\n{lista_libs}\n\n🚀 **AxonBot v{__VERSAO__} ONLINE!**"
+                    f"🛠️ **AUTO-REPAIR DETECTADO:**\n\nDetectei que bibliotecas vitais estavam faltando e as instalei automaticamente antes de dar boot:\n{lista_libs}\n\n🚀 **AxonBot ONLINE!** (`{__VERSAO__}`)"
                 )
             except Exception as e:
                 logger.warning(f"⚠️ Falha ao notificar libs instaladas: {e}")
@@ -410,7 +427,7 @@ async def iniciar():
             await app.send_message(
                 config["ID_CANAL_LOGS"],
                 f"🟢 **AXONBOT ONLINE**\n\n"
-                f"├ **Versão:** `v{__VERSAO__}`\n"
+                f"├ **Build:** `{__VERSAO__}`\n"
                 f"├ **Prefixo:** `{PREFIXO}`\n"
                 f"└ **Drive:** {'✅ Conectado' if drive else '❌ Offline'}\n"
                 f"{screen_info}"

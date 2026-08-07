@@ -12,12 +12,13 @@ import asyncio
 import logging
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, tr
+from utils.helpers import tr
+from utils.commands import cmd
 
 logger = logging.getLogger("AxonBot.purge")
 
 
-@Client.on_message(cmd_filter("purge") & filters.me)
+@cmd("purge")
 async def cmd_purge(client, message):
     """Apaga mensagens desde a respondida até agora."""
     reply = message.reply_to_message
@@ -65,7 +66,7 @@ async def cmd_purge(client, message):
             logger.debug(f"[purge.py] ignorado: {e2}")
 
 
-@Client.on_message(cmd_filter("del") & filters.me)
+@cmd("del")
 async def cmd_del(client, message):
     """Apaga a mensagem respondida e o comando."""
     reply = message.reply_to_message
@@ -77,7 +78,7 @@ async def cmd_del(client, message):
         logger.debug(f"[purge.py] ignorado: {e}")
 
 
-@Client.on_message(cmd_filter("purgeme") & filters.me)
+@cmd("purgeme")
 async def cmd_purgeme(client, message):
     """Apaga suas últimas N mensagens no chat. Ex: ,purgeme 20"""
     parts = message.text.split(None, 1)
@@ -106,7 +107,7 @@ async def cmd_purgeme(client, message):
         await client.delete_messages(message.chat.id, batch)
 
 
-@Client.on_message(cmd_filter("sd") & filters.me)
+@cmd("sd")
 async def cmd_sd(client, message):
     """Envia mensagem que se autodestrói. Ex: ,sd 10 olá mundo"""
     parts = message.text.split(None, 2)

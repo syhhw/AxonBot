@@ -9,7 +9,8 @@ Telegram (Man-Userbot e forks).
 """
 from pyrogram import filters, Client
 from pyrogram.types import ChatPermissions
-from utils.helpers import cmd_filter, prefixo, verificar_admin, deletar_depois, tr
+from utils.helpers import prefixo, verificar_admin, deletar_depois, tr, DEL_LONGO, DEL_PADRAO
+from utils.commands import cmd
 
 
 # Mapa tipo → campo em ChatPermissions
@@ -78,7 +79,7 @@ async def _apenas_grupos(message) -> bool:
     return message.chat.type.name in ("GROUP", "SUPERGROUP")
 
 
-@Client.on_message(cmd_filter("travar") & filters.me)
+@cmd("travar")
 async def cmd_travar(client, message):
     """Bloqueia uma permissão do grupo. ,travar msg|media|gif|link|poll|info|invite|pin"""
     p = prefixo(client)
@@ -122,10 +123,10 @@ async def cmd_travar(client, message):
             f"❌ Erro ao travar: `{e}`",
             f"❌ Error locking: `{e}`",
         ))
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
 
 
-@Client.on_message(cmd_filter("destravar") & filters.me)
+@cmd("destravar")
 async def cmd_destravar(client, message):
     """Desbloqueia uma permissão do grupo. ,destravar msg|media|gif|link|poll|info|invite|pin"""
     p = prefixo(client)
@@ -169,10 +170,10 @@ async def cmd_destravar(client, message):
             f"❌ Erro ao destravar: `{e}`",
             f"❌ Error unlocking: `{e}`",
         ))
-    deletar_depois(message, 20)
+    deletar_depois(message, DEL_PADRAO)
 
 
-@Client.on_message(cmd_filter("travas") & filters.me)
+@cmd("travas")
 async def cmd_travas(client, message):
     """Lista o status atual de todas as permissões padrão do grupo."""
     if not await _apenas_grupos(message):
@@ -198,4 +199,4 @@ async def cmd_travas(client, message):
         f"📋 **Permissões de {titulo}**\n\n" + "\n".join(linhas),
         f"📋 **Permissions in {titulo}**\n\n" + "\n".join(linhas),
     ))
-    deletar_depois(message, 45)
+    deletar_depois(message, DEL_LONGO)

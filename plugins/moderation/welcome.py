@@ -13,7 +13,8 @@ Telegram (Man-Userbot e forks).
 """
 import logging
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr
+from utils.helpers import prefixo, carregar, salvar, tr
+from utils.commands import cmd
 logger = logging.getLogger("AxonBot.welcome")
 
 
@@ -21,7 +22,7 @@ def _chave(chat_id: int) -> str:
     return f"welcome_{chat_id}"
 
 
-@Client.on_message(cmd_filter("setbemvindo") & filters.me)
+@cmd("setbemvindo")
 async def cmd_setwelcome(client, message):
     """Define a mensagem de boas-vindas para este grupo."""
     p = prefixo(client)
@@ -55,7 +56,7 @@ async def cmd_setwelcome(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("delbemvindo") & filters.me)
+@cmd("delbemvindo")
 async def cmd_delwelcome(client, message):
     """Desativa e remove a mensagem de boas-vindas deste grupo."""
     dados = carregar(_chave(message.chat.id), {})
@@ -68,7 +69,7 @@ async def cmd_delwelcome(client, message):
     await message.edit_text(tr("🗑️ **Boas-vindas removida.**", "🗑️ **Welcome message removed.**"))
 
 
-@Client.on_message(cmd_filter("bemvindo") & filters.me)
+@cmd("bemvindo")
 async def cmd_showwelcome(client, message):
     """Mostra a mensagem de boas-vindas atual deste grupo."""
     p = prefixo(client)

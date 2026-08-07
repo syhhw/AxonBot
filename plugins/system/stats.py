@@ -8,10 +8,11 @@ logger = logging.getLogger("AxonBot.stats")
 
 from pyrogram import filters, Client
 from pyrogram.enums import ChatType
-from utils.helpers import cmd_filter, tr
+from utils.helpers import tr
+from utils.commands import cmd
 
 
-@Client.on_message(cmd_filter("stats") & filters.me)
+@cmd("stats")
 async def cmd_stats(client, message):
     """Exibe estatísticas completas da sua conta Telegram."""
     await message.edit_text(tr("📊 **Coletando estatísticas...**", "📊 **Collecting stats...**"))

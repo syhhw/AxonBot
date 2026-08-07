@@ -5,14 +5,15 @@ com um nome e recupere a qualquer hora usando #nome.
 """
 import re
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr
+from utils.helpers import prefixo, carregar, salvar, tr
+from utils.commands import cmd
 
 
 def _chave(chat_id: int) -> str:
     return f"notes_{chat_id}"
 
 
-@Client.on_message(cmd_filter("nota") & filters.me)
+@cmd("nota")
 async def cmd_savenote(client, message):
     """Salva uma nota nomeada para este grupo. Use respondendo a uma mensagem ou com texto direto."""
     p = prefixo(client)
@@ -65,7 +66,7 @@ async def cmd_savenote(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("delnota") & filters.me)
+@cmd("delnota")
 async def cmd_delnote(client, message):
     """Remove uma nota do grupo atual."""
     p = prefixo(client)
@@ -90,7 +91,7 @@ async def cmd_delnote(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("notas") & filters.me)
+@cmd("notas")
 async def cmd_listnotes(client, message):
     """Lista todas as notas salvas neste grupo."""
     p = prefixo(client)

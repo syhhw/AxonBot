@@ -4,7 +4,8 @@ Sistema de Auto-Respostas Passivas (Gatilhos)
 """
 import re
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, carregar, salvar, tr
+from utils.helpers import prefixo, carregar, salvar, tr
+from utils.commands import cmd
 
 
 def _trigger_matches(gatilho: str, texto: str) -> bool:
@@ -14,7 +15,7 @@ def _trigger_matches(gatilho: str, texto: str) -> bool:
     return bool(re.search(r'(?<!\w)' + re.escape(gatilho) + r'(?!\w)', texto, re.IGNORECASE))
 
 
-@Client.on_message(cmd_filter("addtrigger") & filters.me)
+@cmd("addtrigger")
 async def cmd_addtrigger(client, message):
     """Adiciona um gatilho de resposta automática."""
     p = prefixo(client)
@@ -38,7 +39,7 @@ async def cmd_addtrigger(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("deltrigger") & filters.me)
+@cmd("deltrigger")
 async def cmd_deltrigger(client, message):
     """Remove um gatilho de resposta."""
     p = prefixo(client)
@@ -59,7 +60,7 @@ async def cmd_deltrigger(client, message):
         await message.edit_text(tr(f"❌ **Trigger não encontrado:** `{gatilho}`", f"❌ **Trigger not found:** `{gatilho}`"))
 
 
-@Client.on_message(cmd_filter("triggers") & filters.me)
+@cmd("triggers")
 async def cmd_triggers(client, message):
     """Lista todos os gatilhos ativos."""
     triggers = carregar("triggers.json", {})

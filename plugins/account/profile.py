@@ -10,10 +10,11 @@ import tempfile
 
 from pyrogram import filters, Client
 from pyrogram.raw import functions
-from utils.helpers import cmd_filter, tr
+from utils.helpers import tr
+from utils.commands import cmd
 
 
-@Client.on_message(cmd_filter("setname") & filters.me)
+@cmd("setname")
 async def cmd_setname(client, message):
     """Altera seu nome no Telegram. Ex: ,setname João Silva"""
     parts = message.text.split(None, 1)
@@ -37,7 +38,7 @@ async def cmd_setname(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("setbio") & filters.me)
+@cmd("setbio")
 async def cmd_setbio(client, message):
     """Altera sua bio do Telegram. Ex: ,setbio Olá, sou eu!"""
     parts = message.text.split(None, 1)
@@ -50,7 +51,7 @@ async def cmd_setbio(client, message):
     ))
 
 
-@Client.on_message(cmd_filter("setpfp") & filters.me)
+@cmd("setpfp")
 async def cmd_setpfp(client, message):
     """Define sua foto de perfil. Responda a uma foto com este comando."""
     reply = message.reply_to_message
@@ -76,7 +77,7 @@ async def cmd_setpfp(client, message):
             os.remove(tmp)
 
 
-@Client.on_message(cmd_filter("delpfp") & filters.me)
+@cmd("delpfp")
 async def cmd_delpfp(client, message):
     """Remove a foto de perfil atual."""
     await message.edit_text(tr("⏳ Removendo foto de perfil...", "⏳ Removing profile photo..."))

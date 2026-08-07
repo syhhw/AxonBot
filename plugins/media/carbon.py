@@ -8,7 +8,8 @@ import tempfile
 import aiohttp
 
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, tr
+from utils.helpers import tr
+from utils.commands import cmd
 
 _CARBON_URL = "https://carbonara.solopov.dev/api/cook"
 _CARBON_THEMES = ["monokai", "dracula", "one-dark", "nord", "night-owl"]
@@ -37,7 +38,7 @@ async def _render_carbon(code: str, theme: str = "dracula") -> bytes:
             return await r.read()
 
 
-@Client.on_message(cmd_filter("carbon") & filters.me)
+@cmd("carbon")
 async def cmd_carbon(client, message):
     """Gera imagem do código via carbon. ,carbon [código] ou responda a texto."""
     parts = message.text.split(None, 1)

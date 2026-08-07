@@ -2,15 +2,16 @@
 plugins/menu.py
   ,menu          — lista todos os módulos com seus comandos e descrições.
   ,menu [módulo] — detalhes de um módulo específico (descrições completas).
+
+Lê os comandos direto do utils.commands.REGISTRY (preenchido quando cada
+plugin carrega, via o decorator @cmd) em vez de reabrir e reparsear cada
+arquivo .py a cada chamada.
 """
 import logging
-import os
-import re
-import ast
 logger = logging.getLogger("AxonBot.menu")
 
-from pyrogram import filters, Client
-from utils.helpers import cmd_filter, prefixo, deletar_depois, tr
+from utils.helpers import prefixo, deletar_depois, tr, DEL_LONGO
+from utils.commands import cmd, REGISTRY
 from utils.i18n import COMMAND_ALIASES
 
 
@@ -126,38 +127,7 @@ def _nome_modulo(filename: str, lang: str) -> str:
     return nomes.get(filename, f"🔌 {base}")
 
 
-def extrair_comandos_do_arquivo(filepath: str) -> list[dict]:
-    comandos = []
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            source = f.read()
-        try:
-            tree = ast.parse(source)
-        except SyntaxError:
-            return []
-
-        docstrings: dict[str, str] = {}
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef)):
-                doc = ast.get_docstring(node)
-                if doc:
-                    docstrings[node.name] = doc.splitlines()[0].strip()
-
-        pattern = re.compile(
-            r'cmd_filter\(["\'](\w+)["\']\).*?\n(?:.*?\n)*?async def (\w+)',
-            re.MULTILINE,
-        )
-        for match in pattern.finditer(source):
-            cmd_name, func_name = match.group(1), match.group(2)
-            if cmd_name == "menu":
-                continue
-            comandos.append({"cmd": cmd_name, "desc": docstrings.get(func_name, "")})
-    except Exception as e:
-        logger.debug(f"[menu.py] ignorado: {e}")
-    return comandos
-
-
-def _resolver_modulo(query: str, plugins_dir: str) -> str | None:
+def _resolver_modulo(query: str) -> str | None:
     q = query.strip().lower()
     if q in _ALIAS:
         return _ALIAS[q]
@@ -165,19 +135,19 @@ def _resolver_modulo(query: str, plugins_dir: str) -> str | None:
         if q in key:
             return fn
     candidate = q if q.endswith(".py") else f"{q}.py"
-    if os.path.exists(os.path.join(plugins_dir, candidate)):
+    if candidate in REGISTRY:
         return candidate
     return None
 
 
-def _build_modulo_section(filename: str, comandos: list[dict], p: str, lang: str,
+def _build_modulo_section(filename: str, comandos, p: str, lang: str,
                            desc_len: int = 42) -> str:
     titulo = _nome_modulo(filename, lang)
     n      = len(comandos)
     linhas = []
     for c in comandos:
-        nome_cmd = COMMAND_ALIASES.get(c["cmd"], c["cmd"]) if lang == "en" else c["cmd"]
-        desc     = _limpar_desc(c["desc"], max_len=desc_len)
+        nome_cmd = COMMAND_ALIASES.get(c.nome, c.nome) if lang == "en" else c.nome
+        desc     = _limpar_desc(c.desc, max_len=desc_len)
         entry    = f"  `{p}{nome_cmd}`"
         if desc:
             entry += f" — {desc}"
@@ -185,51 +155,38 @@ def _build_modulo_section(filename: str, comandos: list[dict], p: str, lang: str
     return f"**{titulo}** ({n})\n" + "\n".join(linhas)
 
 
-@Client.on_message(cmd_filter("menu") & filters.me)
+@cmd("menu")
 async def cmd_menu(client, message):
     """Exibe módulos com comandos. ,menu [módulo] para detalhe."""
     p      = prefixo(client)
     lang   = getattr(client, "LANG", "pt")
     partes = message.text.split(None, 1)
 
-    plugins_dir = os.path.dirname(os.path.abspath(__file__))
-
     # ── Detalhe de um módulo específico ──────────────────────────────────────
     if len(partes) > 1:
         query    = partes[1].strip()
-        filename = _resolver_modulo(query, plugins_dir)
-        if not filename:
+        filename = _resolver_modulo(query)
+        comandos = REGISTRY.get(filename) if filename else None
+        if not filename or not comandos:
             return await message.edit_text(tr(
                 f"❌ Módulo `{query}` não encontrado.\nUse `{p}menu` para ver todos.",
                 f"❌ Module `{query}` not found.\nUse `{p}menu` to see all.",
             ))
-        filepath = os.path.join(plugins_dir, filename)
-        comandos = extrair_comandos_do_arquivo(filepath)
-        if not comandos:
-            return await message.edit_text(tr(
-                f"⚠️ Nenhum comando registrado em `{filename}`.",
-                f"⚠️ No commands registered in `{filename}`.",
-            ))
         text = _build_modulo_section(filename, comandos, p, lang, desc_len=50)
         await message.edit_text(text, disable_web_page_preview=True)
-        deletar_depois(message, 60)
+        deletar_depois(message, DEL_LONGO)
         return
 
     # ── Visão completa: todos os módulos com descrições ───────────────────────
-    todos_arqs = [
-        f for f in os.listdir(plugins_dir)
-        if f.endswith(".py") and f != "menu.py" and not f.startswith("_")
-    ]
     arquivos = sorted(
-        todos_arqs,
+        (f for f in REGISTRY if f != "menu.py"),
         key=lambda f: (_MODULO_ORDER.index(f) if f in _MODULO_ORDER else len(_MODULO_ORDER), f),
     )
 
-    modulos: list[tuple[str, list[dict]]] = []
+    modulos: list[tuple[str, list]] = []
     total_cmds = 0
     for filename in arquivos:
-        filepath = os.path.join(plugins_dir, filename)
-        comandos = extrair_comandos_do_arquivo(filepath)
+        comandos = REGISTRY.get(filename)
         if not comandos:
             continue
         modulos.append((filename, comandos))
@@ -238,15 +195,14 @@ async def cmd_menu(client, message):
     if not modulos:
         return await message.edit_text(tr("⚠️ Nenhum comando encontrado.", "⚠️ No commands found."))
 
-    versao = getattr(client, "VERSAO", "1.0")
     n_mods = len(modulos)
 
     header = tr(
-        f"⚡ **AXONBOT v{versao}**\n"
+        f"⚡ **AXONBOT**\n"
         f"├ 🔧 Prefixo: `{p}`\n"
         f"├ 📦 {total_cmds} comandos  ·  {n_mods} módulos\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
-        f"⚡ **AXONBOT v{versao}**\n"
+        f"⚡ **AXONBOT**\n"
         f"├ 🔧 Prefix: `{p}`\n"
         f"├ 📦 {total_cmds} commands  ·  {n_mods} modules\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n",
@@ -266,7 +222,7 @@ async def cmd_menu(client, message):
 
     if len(full_text) <= 4000:
         await message.edit_text(full_text, disable_web_page_preview=True)
-        deletar_depois(message, 60)
+        deletar_depois(message, DEL_LONGO)
         return
 
     # Fallback: tabela de conteúdo com todos os comandos por módulo
@@ -276,7 +232,7 @@ async def cmd_menu(client, message):
         n      = len(comandos)
         chips  = []
         for c in comandos:
-            nome_cmd = COMMAND_ALIASES.get(c["cmd"], c["cmd"]) if lang == "en" else c["cmd"]
+            nome_cmd = COMMAND_ALIASES.get(c.nome, c.nome) if lang == "en" else c.nome
             chips.append(f"`{p}{nome_cmd}`")
         secoes_toc.append(f"**{titulo}** ({n})\n  " + "  ".join(chips))
 
@@ -284,4 +240,4 @@ async def cmd_menu(client, message):
         header + "\n\n".join(secoes_toc) + footer,
         disable_web_page_preview=True,
     )
-    deletar_depois(message, 60)
+    deletar_depois(message, DEL_LONGO)

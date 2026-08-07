@@ -5,7 +5,8 @@ Integração com Google Gemini (Inteligência Artificial)
 import logging
 import asyncio
 from pyrogram import filters, Client
-from utils.helpers import cmd_filter, tr
+from utils.helpers import tr
+from utils.commands import cmd
 logger = logging.getLogger("AxonBot.ai")
 
 try:
@@ -39,7 +40,7 @@ def obter_modelo_otimizado(api_key: str) -> str:
     return _MODEL_CACHE[api_key]
 
 
-@Client.on_message(cmd_filter("perguntar") & filters.me)
+@cmd("perguntar")
 async def cmd_ask(client, message):
     """Faz uma pergunta para a IA (Gemini)."""
     if not HAS_GEMINI:
@@ -70,7 +71,7 @@ async def cmd_ask(client, message):
         await message.edit_text(tr(f"❌ Erro na IA: `{e}`", f"❌ AI Error: `{e}`"))
 
 
-@Client.on_message(cmd_filter("resumir") & filters.me)
+@cmd("resumir")
 async def cmd_resumir(client, message):
     """Lê as últimas 50 mensagens do chat e pede um resumo em tópicos para a IA."""
     api_key = getattr(client, "config", {}).get("GEMINI_API_KEY")

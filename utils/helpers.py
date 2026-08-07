@@ -27,7 +27,15 @@ __all__ = [
     # próprios
     "deletar_depois", "prefixo", "listen", "cmd_filter",
     "verificar_admin", "auditoria", "resolver_alvo", "reiniciar_processo",
+    "DEL_RAPIDO", "DEL_PADRAO", "DEL_LONGO",
 ]
+
+# Tempos padrão de auto-delete de respostas (estilo `del_in` do plain-ub:
+# github.com/thedragonsinn/plain-ub), pra não ter valor mágico solto em
+# cada plugin. Usar com deletar_depois(message, DEL_*).
+DEL_RAPIDO = 5    # confirmações/erros rápidos e de baixo interesse
+DEL_PADRAO = 10   # confirmação padrão de uma ação (ban, mute, purge, etc.)
+DEL_LONGO  = 30   # listagens e telas informativas maiores
 
 
 def deletar_depois(message, tempo: int = 30) -> None:

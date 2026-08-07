@@ -28,6 +28,7 @@ __pycache__/
 _panel_cmd.json
 _panel_result.json
 _panel_status.json
+.bot_companion.pid
 
 # Ferramentas locais (não vai pro repositório)
 debug.py

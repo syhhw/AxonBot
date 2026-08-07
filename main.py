@@ -302,6 +302,31 @@ app.UPDATE_FLAG   = UPDATE_FLAG
 app.UPDATE_BRANCH = UPDATE_BRANCH
 
 # ── Companion bot ─────────────────────────────────────────────────────────────
+def _matar_companion_anterior(pid_file: str) -> None:
+    """Encerra uma instância anterior do bot.py ainda viva, se houver.
+
+    Sem isso, cada restart (,restart/,atualizar) empilhava mais um bot.py
+    disputando o mesmo BOT_TOKEN via getUpdates, causando
+    'Conflict: terminated by other getUpdates request' no Telegram.
+    """
+    if not os.path.exists(pid_file):
+        return
+    try:
+        with open(pid_file, "r") as f:
+            pid_antigo = int(f.read().strip())
+        if os.name == "nt":
+            import subprocess as _sp
+            _sp.run(["taskkill", "/F", "/PID", str(pid_antigo)], capture_output=True)
+        else:
+            import signal
+            os.kill(pid_antigo, signal.SIGTERM)
+        logger.info(f"🤖 bot.py anterior (PID {pid_antigo}) encerrado.")
+    except (ProcessLookupError, ValueError, OSError):
+        pass
+    except Exception as e:
+        logger.debug(f"Falha ao encerrar bot.py anterior: {e}")
+
+
 def _launch_companion_bot() -> None:
     """Sobe bot.py junto se configurado e main.py não foi iniciado por ele."""
     if os.environ.get("PANEL_CHILD"):
@@ -309,14 +334,20 @@ def _launch_companion_bot() -> None:
     if not config.get("BOT_TOKEN"):
         return
     import subprocess as _sp
-    _dir   = os.path.dirname(os.path.abspath(__file__))
-    bot_py = os.path.join(_dir, "bot.py")
+    _dir     = os.path.dirname(os.path.abspath(__file__))
+    bot_py   = os.path.join(_dir, "bot.py")
+    pid_file = os.path.join(_dir, ".bot_companion.pid")
     if not os.path.exists(bot_py):
         return
+
+    _matar_companion_anterior(pid_file)
+
     env = os.environ.copy()
     env["PANEL_CHILD"] = "1"
     try:
         proc = _sp.Popen([sys.executable, bot_py], env=env, cwd=_dir)
+        with open(pid_file, "w") as f:
+            f.write(str(proc.pid))
         logger.info(f"🤖 bot.py iniciado (PID {proc.pid}).")
     except Exception as e:
         logger.warning(f"⚠️ Falha ao iniciar bot.py: {e}")

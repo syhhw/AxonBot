@@ -20,6 +20,7 @@ Gerenciamento (admins do grupo):
 Painel admin (apenas dono — acessado via /painel ou botão em /start):
   Status, Logs (live), Plugins, Sistema, Config, Reiniciar/Atualizar/Desligar
 """
+import html
 import json
 import time
 import os
@@ -30,6 +31,9 @@ from datetime import datetime
 from pathlib import Path
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+from utils import sysinfo
+from utils.db import salvar as db_salvar, carregar as db_carregar
 
 from telegram import (
     Update,
@@ -86,6 +90,9 @@ _UNMUTE_PERMS = ChatPermissions(
 # ── Estado global ──────────────────────────────────────────────────────────────
 _live_msgs: dict[int, int] = {}
 _waiting_plugin: set[int] = set()
+_waiting_shell: set[int] = set()
+_waiting_alive: set[int] = set()
+_ALIVE_KEY = "alive_media.json"
 
 # ── Persistência de dados do grupo ─────────────────────────────────────────────
 def _data_path(name: str) -> Path:
@@ -189,8 +196,18 @@ def _log_tail(n: int = 30) -> str:
 
 
 def _list_plugins() -> list[str]:
+    """Lista plugins recursivamente (plugins/categoria/arquivo.py), sem a extensão.
+
+    Retorna o caminho relativo (ex: "moderation/moderation") — os pontos de uso
+    (_kb_plugins, instalar, remover, info) já reconstroem o path via
+    `_PLUGINS / f"{name}.py"`, que funciona igual com ou sem subpasta.
+    """
     try:
-        return sorted(p.stem for p in _PLUGINS.glob("*.py") if not p.name.startswith("_"))
+        return sorted(
+            str(p.relative_to(_PLUGINS).with_suffix("")).replace(os.sep, "/")
+            for p in _PLUGINS.rglob("*.py")
+            if not p.name.startswith("_")
+        )
     except Exception:
         return []
 
@@ -315,6 +332,39 @@ def _txt_sistema() -> str:
     )
 
 
+def _txt_sysinfo(info: dict) -> str:
+    import humanize
+
+    ram   = info["ram"]
+    swap  = info["swap"]
+    net   = info["net"]
+    freq  = f" @ {info['cpu_freq'].current/1000:.1f} GHz" if info["cpu_freq"] else ""
+    disco = "\n".join(f"             {d}" for d in info["discos"]).strip()
+    swap_str = (
+        f"{humanize.naturalsize(swap.used)} / {humanize.naturalsize(swap.total)} ({swap.percent}%)"
+        if swap.total > 0 else "N/A"
+    )
+    uptime_os = humanize.precisedelta(time.time() - info["boot_time"], minimum_unit="minutes")
+    return (
+        f"💻 <b>Neofetch — VPS</b>\n\n"
+        f"<pre>"
+        f"OS       : {html.escape(info['os_info'])}\n"
+        f"Kernel   : {html.escape(info['kernel'])}\n"
+        f"Uptime   : {uptime_os}\n"
+        f"─────────────────────────────\n"
+        f"CPU      : {html.escape(info['cpu_nome'])}\n"
+        f"Cores    : {info['cpu_cores']}C / {info['cpu_threads']}T{freq} @ {info['cpu_uso']}%\n"
+        f"GPU      : {html.escape(info['gpu_info'])}\n"
+        f"RAM      : {humanize.naturalsize(ram.used)} / {humanize.naturalsize(ram.total)} ({ram.percent}%)\n"
+        f"Swap     : {swap_str}\n"
+        f"─────────────────────────────\n"
+        f"Disk     : {html.escape(disco)}\n"
+        f"Net ↑    : {humanize.naturalsize(net.bytes_sent)}\n"
+        f"Net ↓    : {humanize.naturalsize(net.bytes_recv)}"
+        f"</pre>"
+    )
+
+
 def _txt_config() -> str:
     limit    = _cfg.get("LIMITE_AUTO_UPLOAD", 0)
     limit_mb = f"{limit // 1024 // 1024} MB" if limit else "—"
@@ -336,7 +386,7 @@ def _kb_main() -> Markup:
     return Markup([
         [Btn(f"{ic} Status",  callback_data="status"),      Btn("📋 Logs",      callback_data="logs")],
         [Btn("🔌 Plugins",    callback_data="plugins"),     Btn("💻 Sistema",   callback_data="sistema")],
-        [Btn("⚙️ Config",     callback_data="config")],
+        [Btn("🖼️ Alive",      callback_data="alive_cfg"),   Btn("⚙️ Config",    callback_data="config")],
         [Btn("🔄 Reiniciar",  callback_data="ask_restart"), Btn("⬆️ Atualizar", callback_data="ask_update")],
         [Btn("🛑 Desligar",   callback_data="ask_shutdown")],
         [Btn("❌ Fechar",     callback_data="panel_close")],
@@ -367,17 +417,42 @@ def _kb_logs(live: bool = False) -> Markup:
 def _kb_plugins() -> Markup:
     rows = []
     for name in _list_plugins():
+        label = name.rsplit("/", 1)[-1]
         rows.append([
-            Btn(f"🔌 {name}", callback_data=f"plugin_info_{name}"),
-            Btn("🗑️",          callback_data=f"plugin_del_{name}"),
+            Btn(f"🔌 {label}", callback_data=f"plugin_info_{name}"),
+            Btn("🗑️",           callback_data=f"plugin_del_{name}"),
         ])
     rows.append([Btn("📥 Instalar módulo", callback_data="plugin_install")])
     rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
     return Markup(rows)
 
 
+def _txt_alive() -> str:
+    cfg   = db_carregar(_ALIVE_KEY, {})
+    tipo  = cfg.get("type")
+    icone = {"animation": "🎞️ GIF", "video": "🎬 Vídeo", "photo": "🖼️ Foto"}.get(tipo, "❌ Nenhuma")
+    return (
+        f"<b>🖼️ Mídia do ,alive</b>\n\n"
+        f"├ Atual: {icone}\n"
+        f"└ Aplica na hora — não precisa reiniciar o userbot."
+    )
+
+
+def _kb_alive() -> Markup:
+    cfg = db_carregar(_ALIVE_KEY, {})
+    rows = [[Btn("📤 Enviar nova mídia", callback_data="alive_set")]]
+    if cfg.get("file_id"):
+        rows.append([Btn("🗑️ Remover mídia atual", callback_data="alive_del")])
+    rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
+    return Markup(rows)
+
+
 def _kb_sistema() -> Markup:
-    return Markup([[Btn("🔄 Atualizar", callback_data="sistema_refresh"), Btn("◀️ Voltar", callback_data="panel_main")]])
+    return Markup([
+        [Btn("🖥️ Sysinfo",  callback_data="sysinfo"),   Btn("📊 Processos", callback_data="top_procs")],
+        [Btn("🌐 Speedtest", callback_data="speedtest"), Btn("💻 Shell",     callback_data="shell_prompt")],
+        [Btn("🔄 Atualizar", callback_data="sistema_refresh"), Btn("◀️ Voltar", callback_data="panel_main")],
+    ])
 
 # ── Live log ─────────────────────────────────────────────────────────────────────
 async def _live_job(context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1128,6 +1203,67 @@ async def handle_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
 
+async def handle_alive_media(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    """Salva foto/vídeo/gif como mídia do ,alive quando o dono está no fluxo do painel."""
+    if not await _is_owner(update):
+        return
+    uid = update.effective_user.id
+    if uid not in _waiting_alive:
+        return
+    _waiting_alive.discard(uid)
+
+    msg = update.message
+    if msg.photo:
+        file_id, tipo = msg.photo[-1].file_id, "photo"
+    elif msg.video:
+        file_id, tipo = msg.video.file_id, "video"
+    elif msg.animation:
+        file_id, tipo = msg.animation.file_id, "animation"
+    else:
+        await msg.reply_text(
+            "❌ Envie uma <b>foto</b>, <b>vídeo</b> ou <b>gif</b>.",
+            reply_markup=_kb_back(), parse_mode=ParseMode.HTML,
+        )
+        return
+
+    db_salvar(_ALIVE_KEY, {"file_id": file_id, "type": tipo})
+    icon = {"animation": "🎞️", "video": "🎬"}.get(tipo, "🖼️")
+    await msg.reply_text(
+        f"{icon} <b>Mídia do ,alive definida!</b>",
+        reply_markup=_kb_alive(), parse_mode=ParseMode.HTML,
+    )
+
+
+async def handle_owner_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+    """Executa comando de shell na VPS quando o dono está no fluxo 'Shell' do painel."""
+    if not await _is_owner(update):
+        return
+    uid = update.effective_user.id
+    if uid not in _waiting_shell:
+        return
+    _waiting_shell.discard(uid)
+
+    comando = update.message.text.strip()
+    msg = await update.message.reply_text("🖥️ <b>Executando...</b>", parse_mode=ParseMode.HTML)
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            comando, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+        saida = (stdout.decode(errors="replace") + stderr.decode(errors="replace")).strip() or "✅ Concluído (sem saída)."
+    except Exception as e:
+        saida = f"❌ Erro: {e}"
+
+    if len(saida) > 3500:
+        saida = saida[:3500] + "\n… (truncado)"
+
+    await msg.edit_text(
+        f"💻 <code>$ {html.escape(comando)}</code>\n\n<pre>{html.escape(saida)}</pre>",
+        reply_markup=_kb_sistema(),
+        parse_mode=ParseMode.HTML,
+    )
+
+
 async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if not await _is_owner(update):
         return
@@ -1253,6 +1389,73 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         await q.edit_message_text(_txt_sistema(), reply_markup=_kb_sistema(), parse_mode=ParseMode.HTML)
         return
 
+    if data == "sysinfo":
+        await q.edit_message_text("💻 <b>Coletando informações do sistema...</b>", parse_mode=ParseMode.HTML)
+        info = await asyncio.to_thread(sysinfo.collect)
+        await q.edit_message_text(_txt_sysinfo(info), reply_markup=_kb_sistema(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "top_procs":
+        await q.edit_message_text("🔍 <b>Coletando processos...</b>", parse_mode=ParseMode.HTML)
+        procs = await asyncio.to_thread(sysinfo.top_processes, 5)
+        linhas = "\n".join(
+            f"• <code>{p.get('name', '?')}</code> | PID <code>{p.get('pid', '?')}</code> | CPU <code>{p.get('cpu_percent', 0)}%</code>"
+            for p in procs
+        )
+        await q.edit_message_text(
+            f"🔍 <b>Top 5 Processos (CPU)</b>\n\n{linhas}",
+            reply_markup=_kb_sistema(), parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if data == "speedtest":
+        await q.edit_message_text("🚀 <b>Testando velocidade...</b>", parse_mode=ParseMode.HTML)
+        try:
+            r = await asyncio.to_thread(sysinfo.run_speedtest)
+            texto = (
+                f"🌐 <b>Network Speedtest</b>\n"
+                f"├ ⬇️ Download: <code>{r['download']/10**6:.2f} Mbps</code>\n"
+                f"├ ⬆️ Upload: <code>{r['upload']/10**6:.2f} Mbps</code>\n"
+                f"├ 📶 Ping: <code>{r['ping']:.1f} ms</code>\n"
+                f"└ 🏢 Servidor: <code>{r['server']['name']}</code>"
+            )
+        except Exception as e:
+            texto = f"❌ Erro no speedtest: <code>{e}</code>"
+        await q.edit_message_text(texto, reply_markup=_kb_sistema(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "shell_prompt":
+        _waiting_shell.add(_OWNER)
+        await q.edit_message_text(
+            "💻 <b>Executar comando shell</b>\n\n"
+            "Envie o comando como mensagem de texto agora.\n"
+            "⚠️ Roda direto na VPS com os privilégios deste processo.",
+            reply_markup=_kb_back(),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if data == "alive_cfg":
+        _waiting_alive.discard(_OWNER)
+        await q.edit_message_text(_txt_alive(), reply_markup=_kb_alive(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "alive_set":
+        _waiting_alive.add(_OWNER)
+        await q.edit_message_text(
+            "📤 <b>Definir mídia do ,alive</b>\n\n"
+            "Envie uma foto, vídeo ou gif agora.\n"
+            "Aplica na hora, sem precisar reiniciar o userbot.",
+            reply_markup=_kb_back(),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if data == "alive_del":
+        db_salvar(_ALIVE_KEY, {})
+        await q.edit_message_text(_txt_alive(), reply_markup=_kb_alive(), parse_mode=ParseMode.HTML)
+        return
+
     if data == "config":
         await q.edit_message_text(_txt_config(), reply_markup=_kb_back(), parse_mode=ParseMode.HTML)
         return
@@ -1359,6 +1562,14 @@ def main() -> None:
     app.add_handler(CommandHandler("painel", cmd_panel))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(tfilters.Document.ALL & tfilters.User(_OWNER), handle_document))
+    app.add_handler(MessageHandler(
+        (tfilters.PHOTO | tfilters.VIDEO | tfilters.ANIMATION) & tfilters.ChatType.PRIVATE & tfilters.User(_OWNER),
+        handle_alive_media,
+    ))
+    app.add_handler(MessageHandler(
+        tfilters.TEXT & tfilters.ChatType.PRIVATE & tfilters.User(_OWNER) & ~tfilters.COMMAND,
+        handle_owner_text,
+    ))
 
     # Handlers passivos
     app.add_handler(MessageHandler(tfilters.StatusUpdate.NEW_CHAT_MEMBERS, on_new_member))

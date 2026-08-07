@@ -196,20 +196,26 @@ async def cmd_menu(client, message):
     if not arquivos:
         return await message.edit_text(tr("⚠️ Nenhum comando encontrado.", "⚠️ No commands found."))
 
-    linhas = [f"  {_nome_modulo(fn, lang)} — `{len(REGISTRY[fn])}`" for fn in arquivos]
+    # Estilo plain-ub (thedragonsinn/plain-ub): cabeçalho por categoria +
+    # lista de comandos num bloco tipo array, sem botão — inline keyboard
+    # não é enviável por conta de usuário (só por bot), testado ao vivo.
+    blocos = []
+    for fn in arquivos:
+        nomes = [
+            (COMMAND_ALIASES.get(c.nome, c.nome) if lang == "en" else c.nome)
+            for c in REGISTRY[fn]
+        ]
+        lista = "[" + ", ".join(nomes) + "]"
+        blocos.append(f"**{_nome_modulo(fn, lang)}**\n`{lista}`")
 
     texto = tr(
-        f"⚡ **AXONBOT**\n"
-        f"├ 🔧 Prefixo: `{p}`\n"
-        f"└ 📦 {total_cmds} comandos  ·  {len(arquivos)} módulos\n\n"
-        + "\n".join(linhas) +
+        f"⚡ **AXONBOT** — {total_cmds} comandos · {len(arquivos)} módulos · prefixo `{p}`\n\n"
+        + "\n\n".join(blocos) +
         f"\n\n💡 `{p}menu [módulo]` — detalhes\n"
         f"   Ex: `{p}menu mod`  `{p}menu dl`  `{p}menu ia`",
 
-        f"⚡ **AXONBOT**\n"
-        f"├ 🔧 Prefix: `{p}`\n"
-        f"└ 📦 {total_cmds} commands  ·  {len(arquivos)} modules\n\n"
-        + "\n".join(linhas) +
+        f"⚡ **AXONBOT** — {total_cmds} commands · {len(arquivos)} modules · prefix `{p}`\n\n"
+        + "\n\n".join(blocos) +
         f"\n\n💡 `{p}menu [module]` — full details\n"
         f"   Ex: `{p}menu mod`  `{p}menu dl`  `{p}menu ai`",
     )

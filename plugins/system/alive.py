@@ -1,8 +1,8 @@
 """
 plugins/alive.py
-  ,alive          — exibe status completo do userbot (uptime, versões, dono).
-  ,setalivephoto  — define foto/gif exibida no ,alive (responda à mídia).
-  ,delalivephoto  — remove a foto/gif do ,alive.
+  ,alive          — exibe status completo do userbot (uptime, versões, usuário).
+  ,setalivephoto  — define foto, vídeo ou gif exibido no ,alive (responda à mídia).
+  ,delalivephoto  — remove a mídia do ,alive.
 """
 import logging
 import time
@@ -33,32 +33,29 @@ def _uptime(inicio: float) -> str:
 
 
 def _build_text(me, inicio, versao, p) -> str:
-    py  = sys.version.split()[0]
+    py   = sys.version.split()[0]
     pyro = pyrogram.__version__
-    so  = f"{platform.system()} {platform.release()}"
-    ut  = _uptime(inicio)
+    so   = f"{platform.system()} {platform.release()}"
+    ut   = _uptime(inicio)
+    nome = me.first_name or "?"
     return tr(
-        f"╔══「 ⚡ **AXONBOT** 」\n"
-        f"╠══「 📊 **Sistema** 」\n"
-        f"║  ├ ⏱ Uptime » `{ut}`\n"
-        f"║  ├ 📦 Build » `{versao}`\n"
-        f"║  ├ 🔧 Prefixo » `{p}`\n"
-        f"║  ├ 🐍 Python » `{py}`\n"
-        f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
-        f"║  └ 💻 SO » `{so}`\n"
-        f"╚═══════════════════\n"
-        f"[📦 Repositório]({_REPO_URL})",
+        f"**[AxonBot]({_REPO_URL})** — userbot pessoal via Pyrogram.\n\n"
+        f"› Usuário    :   `{nome}`\n"
+        f"› Uptime     :   `{ut}`\n"
+        f"› Build      :   `{versao}`\n"
+        f"› Prefixo    :   `{p}`\n"
+        f"› Python     :   `{py}`\n"
+        f"› Pyrogram   :   `{pyro}`\n"
+        f"› SO         :   `{so}`",
 
-        f"╔══「 ⚡ **AXONBOT** 」\n"
-        f"╠══「 📊 **System** 」\n"
-        f"║  ├ ⏱ Uptime » `{ut}`\n"
-        f"║  ├ 📦 Build » `{versao}`\n"
-        f"║  ├ 🔧 Prefix » `{p}`\n"
-        f"║  ├ 🐍 Python » `{py}`\n"
-        f"║  ├ ⚙️ Pyrogram » `{pyro}`\n"
-        f"║  └ 💻 OS » `{so}`\n"
-        f"╚═══════════════════\n"
-        f"[📦 Repository]({_REPO_URL})",
+        f"**[AxonBot]({_REPO_URL})** — personal userbot powered by Pyrogram.\n\n"
+        f"› User       :   `{nome}`\n"
+        f"› Uptime     :   `{ut}`\n"
+        f"› Build      :   `{versao}`\n"
+        f"› Prefix     :   `{p}`\n"
+        f"› Python     :   `{py}`\n"
+        f"› Pyrogram   :   `{pyro}`\n"
+        f"› OS         :   `{so}`",
     )
 
 
@@ -73,13 +70,17 @@ async def cmd_alive(client, message):
 
     media_cfg = carregar(_ALIVE_KEY, {})
     file_id   = media_cfg.get("file_id")
-    media_type = media_cfg.get("type")  # "photo" or "animation"
+    media_type = media_cfg.get("type")  # "photo", "animation" ou "video"
 
     if file_id:
         await message.delete()
         try:
             if media_type == "animation":
                 sent = await client.send_animation(
+                    message.chat.id, file_id, caption=txt
+                )
+            elif media_type == "video":
+                sent = await client.send_video(
                     message.chat.id, file_id, caption=txt
                 )
             else:
@@ -100,40 +101,35 @@ async def cmd_alive(client, message):
 
 @cmd("setalivephoto")
 async def cmd_setalivephoto(client, message):
-    """Define a foto ou gif exibida no ,alive. Responda a uma foto/gif."""
+    """Define a foto, vídeo ou gif exibido no ,alive. Responda à mídia."""
     reply = message.reply_to_message
+    alvo  = reply if reply else message
 
-    if reply and reply.photo:
-        file_id    = reply.photo.file_id
-        media_type = "photo"
-    elif reply and reply.animation:
-        file_id    = reply.animation.file_id
-        media_type = "animation"
-    elif message.photo:
-        file_id    = message.photo.file_id
-        media_type = "photo"
-    elif message.animation:
-        file_id    = message.animation.file_id
-        media_type = "animation"
+    if alvo.photo:
+        file_id, media_type = alvo.photo.file_id, "photo"
+    elif alvo.animation:
+        file_id, media_type = alvo.animation.file_id, "animation"
+    elif alvo.video:
+        file_id, media_type = alvo.video.file_id, "video"
     else:
         return await message.edit_text(tr(
-            "⚠️ Responda a uma **foto** ou **gif** com este comando.",
-            "⚠️ Reply to a **photo** or **gif** with this command.",
+            "⚠️ Responda a uma **foto**, **vídeo** ou **gif** com este comando.",
+            "⚠️ Reply to a **photo**, **video** or **gif** with this command.",
         ))
 
     salvar(_ALIVE_KEY, {"file_id": file_id, "type": media_type})
-    icon = "🎞️" if media_type == "animation" else "🖼️"
+    icon = {"animation": "🎞️", "video": "🎬"}.get(media_type, "🖼️")
     await message.edit_text(tr(
-        f"{icon} **Foto do ,alive definida!**",
-        f"{icon} **,alive photo set!**",
+        f"{icon} **Mídia do ,alive definida!**",
+        f"{icon} **,alive media set!**",
     ))
 
 
 @cmd("delalivephoto")
 async def cmd_delalivephoto(client, message):
-    """Remove a foto/gif do ,alive."""
+    """Remove a mídia do ,alive."""
     salvar(_ALIVE_KEY, {})
     await message.edit_text(tr(
-        "🗑️ **Foto do ,alive removida.**",
-        "🗑️ **,alive photo removed.**",
+        "🗑️ **Mídia do ,alive removida.**",
+        "🗑️ **,alive media removed.**",
     ))

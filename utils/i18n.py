@@ -15,8 +15,13 @@ COMMAND_ALIASES = {
     "organizar": "organize", "procurar": "search", "apagar": "delete",
     "encurtar": "shorten", "clima": "weather", "voz": "voice",
     "direto": "direct", "resumir": "summarize", "idioma": "lang",
-    "zombies": "zombies", "reverter": "revert", "desligar": "stop",
+    "zombies": "zombies", "reverter": "revert", "desligar": "shutdown",
     "instalar": "install", "desinstalar": "uninstall", "perguntar": "ask",
+    "filme": "movie",
+    # locks
+    "travar": "lock", "destravar": "unlock", "travas": "locks",
+    # moderation (pin)
+    "fixar": "pin", "desafixar": "unpin",
     # chatfilters
     "addfiltro": "addfilter", "delfiltro": "delfilter", "filtros": "filters",
     # notes

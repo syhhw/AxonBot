@@ -210,7 +210,14 @@ def reiniciar_processo() -> None:
 
     python = sys.executable
     args = sys.argv[:]
-    kwargs: dict = {}
+    # Um restart disparado de dentro do próprio bot (,restart/,atualizar) nunca
+    # é uma execução manual nova — sempre força --background pra pular o
+    # prompt interativo de main.py (input() trava/quebra com EOFError quando
+    # não há terminal pra responder, derrubando o processo relançado).
+    if "--background" not in args:
+        args.append("--background")
+
+    kwargs: dict = {"stdin": subprocess.DEVNULL}
     if os.name == "nt" and "--background" in args:
         python = python.replace("python.exe", "pythonw.exe")
         if not os.path.exists(python):

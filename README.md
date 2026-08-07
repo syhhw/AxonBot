@@ -141,7 +141,14 @@ Type `,menu` in any chat to see all commands grouped by module.
 | `,lang [pt/en]` | Switch language |
 | `,sysinfo` | Full neofetch: CPU, GPU, RAM, Swap, Disk, Net |
 | `,speed` | Run internet speed test |
+| `,processes` | List the top 5 CPU-consuming processes |
 | `,shutdown` | Gracefully shut down the bot |
+| `,id` | Get the ID of the chat, a user, or a replied message |
+| `,stats` | Show account stats (groups, channels, contacts, bots) |
+| `,alive` | Show full userbot status (uptime, versions, owner) |
+| `,setalivephoto` / `,delalivephoto` | Set or remove the photo/GIF shown in `,alive` |
+| `,github [user/repo]` | Look up a GitHub user or repository |
+| `,movie [name]` | Look up a movie or TV show (OMDb) |
 
 ### 👮 Moderation
 | Command | Description |
@@ -150,10 +157,18 @@ Type `,menu` in any chat to see all commands grouped by module.
 | `,mute` / `,unmute` | Mute or unmute a user |
 | `,del` | Delete the replied message |
 | `,purge` | Delete all messages from the replied one to the command |
+| `,purgeme [N]` | Delete your own last N messages in the chat |
+| `,sd [seconds] [text]` | Send a message that self-destructs after N seconds |
+| `,admins` | List all group admins |
 | `,zombies` | Remove deleted accounts from the group |
 | `,gban` | Ban a user across all your admin groups |
 | `,fban` | Ban a user across all federation groups |
-| `,admins` | List all group admins |
+| `,addfed` / `,delfed` / `,feds` | Manage which groups belong to your federation |
+| `,pin` / `,unpin` | Pin or unpin the replied message |
+| `,lock [type]` / `,unlock [type]` | Lock or unlock a group permission |
+| `,locks` | Show the status of all group permissions |
+| `,setflood [msgs] [seconds]` | Auto-mute users who flood past this limit |
+| `,noflood` / `,flood` | Disable antiflood / show its current status |
 
 ### 👤 Account & AFK
 | Command | Description |
@@ -177,6 +192,7 @@ Type `,menu` in any chat to see all commands grouped by module.
 ### ⬇️ Downloader
 | Command | Description |
 |:---|:---|
+| `,dlinfo [url]` | Show title, duration, channel and estimated size before downloading |
 | `,dl [url]` | Download video from YouTube, Instagram, TikTok |
 
 ### 📂 Google Drive
@@ -188,6 +204,42 @@ Type `,menu` in any chat to see all commands grouped by module.
 | `,search [name]` | Search files in your Drive |
 | `,delete [N]` | Delete file from search results |
 | `,organize` | Sort root folder files into category subfolders |
+
+### 👋 Group Management
+| Command | Description |
+|:---|:---|
+| `,setwelcome [message]` | Set the welcome message for new members (`{name}`, `{mention}`, `{chat}`, `{count}`) |
+| `,delwelcome` / `,welcome` | Remove or preview the current welcome message |
+| `,note [name]` / `,delnote [name]` / `,notes` | Save, remove, or list quick replies (recall with `#name`) |
+| `,addfilter "word" "reply"` / `,delfilter "word"` / `,filters` | Manage per-group auto-reply filters |
+| `,tagall [message]` | Mention every member of the group in batches of 5 |
+
+### 🪪 Profile
+| Command | Description |
+|:---|:---|
+| `,setname [name]` | Change your Telegram display name |
+| `,setbio [text]` | Change your bio |
+| `,setpfp` | Set your profile photo (reply to a photo) |
+| `,delpfp` | Remove your current profile photo |
+| `,clone` | Clone another user's name, bio and photo onto your account |
+| `,revert` | Restore your original profile after `,clone` |
+
+### 🛠️ Utilities & Fun
+| Command | Description |
+|:---|:---|
+| `,carbon [code]` | Render a styled code screenshot via carbon.now.sh |
+| `,paste` | Paste text (or the replied message) to a pastebin and get the link |
+| `,hack` | Interactive fake-hack simulator using real target data |
+| `,type [text]` | Simulate typing the text letter by letter |
+| `,ghost [seconds] [text]` | Send a message that self-destructs after N seconds |
+| `,fake [typing/recording/...]` | Simulate a chat action (typing, recording audio/video, etc.) |
+| `,tr [lang]` | Translate the replied message |
+| `,voice [text]` | Convert text to speech (br, pt, en, es, ja, ru) |
+| `,print` | Render the replied message as a styled image |
+| `,shorten [url]` | Shorten a URL via TinyURL |
+| `,ipinfo [ip]` | Show information about an IP address |
+| `,weather [city]` | Current weather and 3-day forecast for a city |
+| `,specs [model]` | Phone specs lookup via GSMArena |
 
 ### ⚙️ Developer
 | Command | Description |
@@ -366,7 +418,14 @@ Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo
 | `,idioma [pt/en]` | Muda o idioma do bot |
 | `,sysinfo` | Neofetch completo: CPU, GPU, RAM, Swap, Disco, Rede |
 | `,speed` | Testa a velocidade da internet |
+| `,processos` | Lista os 5 processos que mais consomem CPU |
 | `,desligar` | Encerra o bot com segurança |
+| `,id` | Retorna o ID do chat, usuário ou mensagem respondida |
+| `,stats` | Estatísticas da conta (grupos, canais, contatos, bots) |
+| `,alive` | Status completo do userbot (uptime, versões, dono) |
+| `,setalivephoto` / `,delalivephoto` | Define ou remove a foto/gif exibida no `,alive` |
+| `,github [user/repo]` | Consulta perfil ou repositório no GitHub |
+| `,filme [nome]` | Informações de filme ou série (OMDb) |
 
 ### 👮 Moderação
 | Comando | Descrição |
@@ -375,10 +434,18 @@ Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo
 | `,mute` / `,unmute` | Silencia ou desmuta um usuário |
 | `,del` | Apaga a mensagem respondida |
 | `,purge` | Apaga todas as mensagens a partir da respondida |
+| `,purgeme [N]` | Apaga suas últimas N mensagens no chat |
+| `,sd [segundos] [texto]` | Envia mensagem que se autodestrói após N segundos |
+| `,admins` | Lista todos os admins do grupo |
 | `,zombies` | Remove contas deletadas do grupo |
 | `,gban` | Bane um usuário em todos os seus grupos admin |
 | `,fban` | Bane um usuário em todos os grupos da federação |
-| `,admins` | Lista todos os admins do grupo |
+| `,addfed` / `,delfed` / `,feds` | Gerencia quais grupos pertencem à sua federação |
+| `,fixar` / `,desafixar` | Fixa ou desafixa a mensagem respondida |
+| `,travar [tipo]` / `,destravar [tipo]` | Bloqueia ou desbloqueia uma permissão do grupo |
+| `,travas` | Mostra o status de todas as permissões do grupo |
+| `,setflood [msgs] [segundos]` | Muta automaticamente quem passar desse limite |
+| `,noflood` / `,flood` | Desativa o antiflood / mostra o status atual |
 
 ### 👤 Conta & AFK
 | Comando | Descrição |
@@ -402,6 +469,7 @@ Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo
 ### ⬇️ Downloader
 | Comando | Descrição |
 |:---|:---|
+| `,dlinfo [link]` | Mostra título, duração, canal e tamanho estimado antes de baixar |
 | `,dl [url]` | Baixa vídeo do YouTube, Instagram, TikTok |
 
 ### 📂 Google Drive
@@ -413,6 +481,42 @@ Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo
 | `,procurar [nome]` | Pesquisa arquivos no seu Drive |
 | `,apagar [N]` | Apaga arquivo dos resultados da busca |
 | `,organizar` | Organiza os arquivos da pasta raiz em subpastas por tipo |
+
+### 👋 Gerenciamento de Grupo
+| Comando | Descrição |
+|:---|:---|
+| `,setbemvindo [mensagem]` | Define a mensagem de boas-vindas (`{name}`, `{mention}`, `{chat}`, `{count}`) |
+| `,delbemvindo` / `,bemvindo` | Remove ou mostra a mensagem de boas-vindas atual |
+| `,nota [nome]` / `,delnota [nome]` / `,notas` | Salva, remove ou lista notas rápidas (recupere com `#nome`) |
+| `,addfiltro "palavra" "resposta"` / `,delfiltro "palavra"` / `,filtros` | Gerencia filtros automáticos por grupo |
+| `,mencionar [mensagem]` | Menciona todos os membros do grupo em lotes de 5 |
+
+### 🪪 Perfil
+| Comando | Descrição |
+|:---|:---|
+| `,setname [nome]` | Altera seu nome no Telegram |
+| `,setbio [texto]` | Altera sua bio |
+| `,setpfp` | Define foto de perfil (responda a uma foto) |
+| `,delpfp` | Remove a foto de perfil atual |
+| `,clone` | Clona nome, bio e foto de perfil de outro usuário |
+| `,reverter` | Restaura seu perfil original após `,clone` |
+
+### 🛠️ Utilidades & Diversão
+| Comando | Descrição |
+|:---|:---|
+| `,carbon [código]` | Gera imagem estilizada do código via carbon.now.sh |
+| `,paste` | Envia o texto (ou mensagem respondida) para um pastebin |
+| `,hack` | Simulador de hack interativo com dados reais do alvo |
+| `,type [texto]` | Simula digitação letra por letra |
+| `,ghost [segundos] [texto]` | Envia mensagem que se autodestrói após N segundos |
+| `,fake [typing/recording/...]` | Simula ação de digitação, gravação de áudio ou vídeo |
+| `,tr [idioma]` | Traduz a mensagem respondida |
+| `,voz [texto]` | Converte texto em áudio de voz (br, pt, en, es, ja, ru) |
+| `,print` | Gera imagem estilizada de uma mensagem respondida |
+| `,encurtar [url]` | Encurta uma URL usando o TinyURL |
+| `,ipinfo [ip]` | Exibe informações sobre um endereço IP |
+| `,clima [cidade]` | Clima atual e previsão de 3 dias |
+| `,specs [modelo]` | Especificações técnicas de celular via GSMArena |
 
 ### ⚙️ Desenvolvedor
 | Comando | Descrição |

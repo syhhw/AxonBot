@@ -21,6 +21,26 @@ _AFK_COOLDOWN = 60          # segundos entre auto-respostas AFK para o mesmo usu
 _LOG_PM_COOLDOWN: dict[int, float] = {}
 _LOG_PM_COOLDOWN_S = 300    # log de PM: apenas 1x por usuário a cada 5 minutos
 
+# Conta oficial de notificações de serviço do Telegram (códigos de login, avisos).
+# Nunca deve receber captcha nem ter mensagens encaminhadas/logadas — contém dados sensíveis.
+TELEGRAM_SERVICE_ID = 777000
+
+
+def _e_conta_oficial(sender, uid: int) -> bool:
+    """Identifica contas oficiais/de serviço do Telegram (777000, suporte, verificadas).
+
+    Encaminhar, forwardar ou até responder automaticamente mensagens dessas
+    contas faz o Telegram enxergar o userbot "lendo" notificações de segurança
+    (ex.: código de login), o que pode disparar bloqueios/atrasos ao tentar
+    logar a conta em um novo aparelho. Por isso essas contas nunca são
+    monitoradas, independente de qual handler passivo está rodando.
+    """
+    if uid == TELEGRAM_SERVICE_ID:
+        return True
+    if sender and (getattr(sender, "is_verified", False) or getattr(sender, "is_support", False)):
+        return True
+    return False
+
 
 def _tempo_afk() -> str:
     """Retorna quanto tempo o AFK está ativo em formato legível."""
@@ -104,7 +124,10 @@ async def pm_permit_checker(client, message):
     """Bloqueia mensagens privadas de usuários não autorizados."""
     permitidos = carregar("permitidos.json", [])
     uid = message.from_user.id if message.from_user else message.chat.id
-    
+
+    if _e_conta_oficial(message.from_user, uid):
+        return
+
     if uid not in permitidos:
         if uid in CAPTCHA_PENDENTE:
             esperado = CAPTCHA_PENDENTE[uid]["resposta"]
@@ -173,6 +196,10 @@ async def monitor_central(client, message):
     uid_sender = sender.id if sender else 0
 
     if log_id and message.chat and message.chat.id == log_id:
+        return
+
+    # Conta oficial/de serviço do Telegram (códigos de login etc.) — nunca monitorar/encaminhar.
+    if _e_conta_oficial(sender, uid_sender) or message.chat.id == TELEGRAM_SERVICE_ID:
         return
 
     ts = datetime.now().strftime("%d/%m/%Y %H:%M")

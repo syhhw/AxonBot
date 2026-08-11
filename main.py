@@ -175,6 +175,7 @@ import asyncio
 
 from pyrogram import Client, filters, idle
 from utils.i18n import tr, get_lang
+from utils.helpers import alertar_dono_via_bot
 
 # Cria e define o event loop ANTES do Client para que o Pyrogram
 # capture o loop correto ao inicializar o Dispatcher
@@ -403,6 +404,21 @@ def _carregar_plugins():
             logger.warning(f"⚠️ Falha ao carregar plugin {nome}: {e}")
 
 
+async def _notificar_status(texto: str) -> None:
+    """Avisos de status do boot (online/atualizado/desligado) — prefere PV
+    direto do dono via bot do painel (discreto); só cai pro canal de logs
+    se o painel não estiver configurado ou o envio falhar."""
+    if await alertar_dono_via_bot(config, texto, parse_mode=None):
+        return
+    log_id = config.get("ID_CANAL_LOGS")
+    if not log_id:
+        return
+    try:
+        await app.send_message(log_id, texto)
+    except Exception as e:
+        logger.warning(f"⚠️ Falha ao avisar status: {e}")
+
+
 async def iniciar():
     asyncio.get_event_loop().set_exception_handler(manipulador_erros)
     logger.info(f"🚀 INICIANDO AXONBOT (`{__VERSAO__}`)...")
@@ -410,68 +426,48 @@ async def iniciar():
     _carregar_plugins()
 
     em_background = "--background" in sys.argv or _ja_esta_em_screen()
-    if em_background:
-        screen_info = tr("\n🖥️ Rodando em **segundo plano**", "\n🖥️ Running in **background**")
-    else:
-        screen_info = tr("\n🖥️ Rodando em **primeiro plano** (terminal aberto)", "\n🖥️ Running in **foreground** (terminal open)")
+    modo = tr("segundo plano", "background") if em_background else tr("primeiro plano", "foreground")
 
-    try:
-        if os.path.exists(UPDATE_FLAG):
-            try:
-                with open(UPDATE_FLAG, "r", encoding="utf-8") as f:
-                    info_update = json.load(f)
-                arquivos = info_update.get("arquivos", [])
-                lista_arq = "\n".join([f"  • `{a}`" for a in arquivos[:15]]) or "  • (sem detalhes)"
-                if len(arquivos) > 15:
-                    lista_arq += f"\n  • ... e mais {len(arquivos) - 15} arquivo(s)"
-                texto_update = (
-                    f"🔄 **SISTEMA ATUALIZADO** / **SYSTEM UPDATED**\n\n"
-                    f"📦 **AxonBot** (`{info_update.get('commit', __VERSAO__)}`)\n"
-                    f"💬 `{info_update.get('mensagem', 'n/a')}`\n"
-                    f"{screen_info}"
-                )
-                await app.send_message(config["ID_CANAL_LOGS"], texto_update)
-            except Exception as e:
-                logger.warning(f"⚠️ Falha ao ler flag de update: {e}")
-            finally:
-                try:
-                    os.remove(UPDATE_FLAG)
-                except OSError:
-                    pass
-        elif os.path.exists(".deps_updated.json"):
-            try:
-                with open(".deps_updated.json", "r", encoding="utf-8") as f:
-                    libs_instaladas = json.load(f)
-                lista_libs = "\n".join([f"📦 `{lib}`" for lib in libs_instaladas])
-                await app.send_message(
-                    config["ID_CANAL_LOGS"],
-                    f"🛠️ **AUTO-REPAIR DETECTADO:**\n\nDetectei que bibliotecas vitais estavam faltando e as instalei automaticamente antes de dar boot:\n{lista_libs}\n\n🚀 **AxonBot ONLINE!** (`{__VERSAO__}`)"
-                )
-            except Exception as e:
-                logger.warning(f"⚠️ Falha ao notificar libs instaladas: {e}")
-            finally:
-                try:
-                    os.remove(".deps_updated.json")
-                except OSError:
-                    pass
-        else:
-            await app.send_message(
-                config["ID_CANAL_LOGS"],
-                f"🟢 **AXONBOT ONLINE**\n\n"
-                f"├ **Build:** `{__VERSAO__}`\n"
-                f"├ **Prefixo:** `{PREFIXO}`\n"
-                f"└ **Drive:** {'✅ Conectado' if drive else '❌ Offline'}\n"
-                f"{screen_info}"
+    if os.path.exists(UPDATE_FLAG):
+        try:
+            with open(UPDATE_FLAG, "r", encoding="utf-8") as f:
+                info_update = json.load(f)
+            await _notificar_status(
+                f"AxonBot atualizado ({info_update.get('commit', __VERSAO__)}).\n"
+                f"{info_update.get('mensagem', 'n/a')}\n"
+                f"Rodando em {modo}."
             )
-    except Exception as e:
-        logger.warning(f"⚠️ Falha ao avisar no canal de logs: {e}")
+        except Exception as e:
+            logger.warning(f"⚠️ Falha ao ler flag de update: {e}")
+        finally:
+            try:
+                os.remove(UPDATE_FLAG)
+            except OSError:
+                pass
+    elif os.path.exists(".deps_updated.json"):
+        try:
+            with open(".deps_updated.json", "r", encoding="utf-8") as f:
+                libs_instaladas = json.load(f)
+            await _notificar_status(
+                f"Instalei automaticamente as libs que faltavam: {', '.join(libs_instaladas)}.\n"
+                f"AxonBot online."
+            )
+        except Exception as e:
+            logger.warning(f"⚠️ Falha ao notificar libs instaladas: {e}")
+        finally:
+            try:
+                os.remove(".deps_updated.json")
+            except OSError:
+                pass
+    else:
+        await _notificar_status(
+            f"AxonBot online. Build {__VERSAO__} · prefixo {PREFIXO} · "
+            f"Drive {'conectado' if drive else 'offline'}. Rodando em {modo}."
+        )
 
     logger.info(f"✅ AXONBOT ONLINE | Prefixo: '{PREFIXO}' | Aguardando comandos...")
     await idle()
-    try:
-        await app.send_message(config["ID_CANAL_LOGS"], "🛑 **AXONBOT OFFLINE**\nO processo foi encerrado de forma segura.")
-    except Exception:
-        pass
+    await _notificar_status("AxonBot encerrado.")
     await app.stop()
     logger.info("👋 AxonBot encerrado.")
 

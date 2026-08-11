@@ -166,13 +166,18 @@ async def auditoria(client, acao: str, user, chat, motivo=None, msg_orig=None) -
         pass
 
 
-async def alertar_dono_via_bot(cfg: dict, texto: str, parse_mode: str = "HTML") -> bool:
+async def alertar_dono_via_bot(cfg: dict, texto: str, parse_mode: str | None = "HTML") -> bool:
     """Manda mensagem direto ao dono via API do bot do painel (bot.py), se configurado.
 
     Não depende do processo bot.py estar rodando nem escutando nada —
     qualquer código com o BOT_TOKEN pode chamar sendMessage a qualquer
-    momento. Usado pro monitor central migrar os avisos de status
-    (online/atualizado/desligado) do canal de logs pro PV do dono.
+    momento. Usado pro monitor central e pelos avisos de status do boot
+    (online/atualizado/desligado), que preferem o PV do dono ao canal de
+    logs quando o painel está configurado.
+
+    parse_mode=None manda texto puro (sem negrito/HTML) — usado nos avisos
+    de status, que são deliberadamente discretos.
+
     Retorna True se enviou, False se não configurado ou falhou (quem
     chama decide se cai pro canal de logs como alternativa).
     """
@@ -180,12 +185,15 @@ async def alertar_dono_via_bot(cfg: dict, texto: str, parse_mode: str = "HTML") 
     dono  = cfg.get("DONO_ID")
     if not token or not dono:
         return False
+    payload = {"chat_id": dono, "text": texto}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
     try:
         import aiohttp
         async with aiohttp.ClientSession() as s:
             r = await s.post(
                 f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": dono, "text": texto, "parse_mode": parse_mode},
+                json=payload,
                 timeout=aiohttp.ClientTimeout(total=10),
             )
             return r.status == 200

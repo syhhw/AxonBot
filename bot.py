@@ -110,6 +110,17 @@ _ALIVE_KEY = "alive_media.json"
 _PERMITIDOS_KEY = "permitidos.json"
 _FIREWALL_KEY   = "pm_firewall_ativo"
 
+
+def _limpar_esperas(uid: int) -> None:
+    """Cancela todo fluxo de input pendente (texto ou mídia) pra esse uid."""
+    _waiting_plugin.discard(uid)
+    _waiting_shell.discard(uid)
+    _waiting_alive.discard(uid)
+    _waiting_pmpermit.discard(uid)
+    _waiting_gemini.discard(uid)
+    _waiting_drive_secrets.discard(uid)
+    _waiting_mensagem.pop(uid, None)
+
 # ── Persistência de dados do grupo ─────────────────────────────────────────────
 def _data_path(name: str) -> Path:
     return _DATA_DIR / name
@@ -1384,10 +1395,15 @@ async def handle_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         removido = ""
         if os.path.exists("meu_drive.json"):
             os.remove("meu_drive.json")
-            removido = " (sessão antiga do Drive removida — vai pedir autorização de novo)"
+            removido = " A sessão antiga foi removida — vai pedir autorização de novo (navegador)."
         await update.message.reply_text(
-            f"✅ <code>client_secrets.json</code> atualizado.{removido}",
-            reply_markup=_kb_config(), parse_mode=ParseMode.HTML,
+            f"✅ <code>client_secrets.json</code> atualizado.\n\n"
+            f"⚠️ O userbot só lê isso na inicialização — precisa reiniciar pra valer.{removido}",
+            reply_markup=Markup([[
+                Btn("🔄 Reiniciar agora", callback_data="ask_restart"),
+                Btn("◀️ Menu",           callback_data="panel_main"),
+            ]]),
+            parse_mode=ParseMode.HTML,
         )
         return
 
@@ -1455,7 +1471,13 @@ async def handle_owner_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> N
         cfg["GEMINI_API_KEY"] = nova_key
         db_salvar("config.json", cfg)
         await update.message.reply_text(
-            "✅ GEMINI_API_KEY atualizada.", reply_markup=_kb_config(), parse_mode=ParseMode.HTML,
+            "✅ GEMINI_API_KEY atualizada.\n\n"
+            "⚠️ O userbot só lê essa chave na inicialização — precisa reiniciar pra valer.",
+            reply_markup=Markup([[
+                Btn("🔄 Reiniciar agora", callback_data="ask_restart"),
+                Btn("◀️ Menu",           callback_data="panel_main"),
+            ]]),
+            parse_mode=ParseMode.HTML,
         )
         return
 
@@ -1539,6 +1561,13 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     await q.answer()
+
+    # Qualquer clique de botão cancela fluxos de input pendentes (shell, mídia,
+    # add por ID, etc.) — sem isso, sair de um fluxo sem completá-lo deixava o
+    # estado preso: uma mensagem de texto mandada por outro motivo depois
+    # podia ser interpretada como resposta daquele fluxo abandonado (o pior
+    # caso: texto qualquer sendo executado como comando de shell na VPS).
+    _limpar_esperas(update.effective_user.id)
 
     if data in ("panel_main", "main"):
         _stop_live(ctx.application, chat_id)
@@ -1965,7 +1994,9 @@ def main() -> None:
     # Painel oculto
     app.add_handler(CommandHandler("painel", cmd_panel))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    app.add_handler(MessageHandler(tfilters.Document.ALL & tfilters.User(_OWNER), handle_document))
+    app.add_handler(MessageHandler(
+        tfilters.Document.ALL & tfilters.ChatType.PRIVATE & tfilters.User(_OWNER), handle_document
+    ))
     app.add_handler(MessageHandler(
         (tfilters.PHOTO | tfilters.VIDEO | tfilters.ANIMATION) & tfilters.ChatType.PRIVATE & tfilters.User(_OWNER),
         handle_alive_media,

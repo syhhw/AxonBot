@@ -27,6 +27,7 @@ __all__ = [
     # próprios
     "deletar_depois", "prefixo", "listen", "cmd_filter",
     "verificar_admin", "auditoria", "resolver_alvo", "reiniciar_processo",
+    "alertar_dono_via_bot",
     "DEL_RAPIDO", "DEL_PADRAO", "DEL_LONGO",
 ]
 
@@ -163,6 +164,34 @@ async def auditoria(client, acao: str, user, chat, motivo=None, msg_orig=None) -
             await msg_orig.forward(log_id)
     except Exception:
         pass
+
+
+async def alertar_dono_via_bot(cfg: dict, texto: str, parse_mode: str = "HTML") -> bool:
+    """Manda mensagem direto ao dono via API do bot do painel (bot.py), se configurado.
+
+    Não depende do processo bot.py estar rodando nem escutando nada —
+    qualquer código com o BOT_TOKEN pode chamar sendMessage a qualquer
+    momento. Usado pro monitor central migrar os avisos de status
+    (online/atualizado/desligado) do canal de logs pro PV do dono.
+    Retorna True se enviou, False se não configurado ou falhou (quem
+    chama decide se cai pro canal de logs como alternativa).
+    """
+    token = cfg.get("BOT_TOKEN")
+    dono  = cfg.get("DONO_ID")
+    if not token or not dono:
+        return False
+    try:
+        import aiohttp
+        async with aiohttp.ClientSession() as s:
+            r = await s.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": dono, "text": texto, "parse_mode": parse_mode},
+                timeout=aiohttp.ClientTimeout(total=10),
+            )
+            return r.status == 200
+    except Exception as e:
+        logger.debug(f"Falha ao alertar dono via bot: {e}")
+        return False
 
 
 async def resolver_alvo(client, message):

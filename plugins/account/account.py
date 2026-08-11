@@ -10,12 +10,11 @@ import os
 import time
 import random
 import asyncio
-import aiohttp
 from datetime import datetime
 logger = logging.getLogger("AxonBot.account")
 
 from pyrogram import filters, enums, Client
-from utils.helpers import prefixo, carregar, salvar, verificar_admin, tr
+from utils.helpers import prefixo, carregar, salvar, verificar_admin, tr, alertar_dono_via_bot
 from utils.commands import cmd
 from utils.i18n import tr_log
 from utils.monitor_db import registrar as registrar_monitor
@@ -94,28 +93,6 @@ def _gerar_captcha() -> tuple[str, str]:
         return alvo, tr(f"Envie exatamente este emoji: {alvo}", f"Send exactly this emoji: {alvo}")
     n1, n2 = random.randint(1, 10), random.randint(1, 10)
     return str(n1 + n2), tr(f"Resolva a conta:\n👉 **{n1} + {n2} = ?**", f"Solve this:\n👉 **{n1} + {n2} = ?**")
-
-
-async def _alertar_dono_via_bot(client, texto: str) -> None:
-    """Manda um alerta direto ao dono via API do bot do painel (se configurado).
-
-    Não depende do processo bot.py estar 'escutando' nada — qualquer cliente
-    com o BOT_TOKEN pode chamar sendMessage a qualquer momento.
-    """
-    cfg   = getattr(client, "config", {})
-    token = cfg.get("BOT_TOKEN")
-    dono  = cfg.get("DONO_ID")
-    if not token or not dono:
-        return
-    try:
-        async with aiohttp.ClientSession() as s:
-            await s.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": dono, "text": texto, "parse_mode": "HTML"},
-                timeout=aiohttp.ClientTimeout(total=10),
-            )
-    except Exception as e:
-        logger.debug(f"[account.py] falha ao alertar via bot: {e}")
 
 
 def _e_conta_oficial(sender, uid: int) -> bool:
@@ -261,7 +238,8 @@ async def pm_permit_checker(client, message):
                     sender = message.from_user
                     nome   = (sender.first_name if sender else None) or "?"
                     tag    = f" (@{sender.username})" if sender and sender.username else ""
-                    await _alertar_dono_via_bot(client, (
+                    cfg    = getattr(client, "config", {})
+                    await alertar_dono_via_bot(cfg, (
                         f"⚠️ <b>Possível spam detectado</b>\n\n"
                         f"<code>{uid}</code> — {nome}{tag}\n"
                         f"Falhou o captcha {falhas}x seguidas tentando te mandar PV."
@@ -380,54 +358,59 @@ async def monitor_central(client, message):
             except Exception as e:
                 logger.debug(f"[account.py] ignorado: {e}")
 
+    if not log_id:
+        return  # sem canal de logs, não há mais nada a fazer (forward e auto-upload dependem dele)
+
     # Encaminhamento pro canal de logs é opcional (/painel → 📊 Relatórios)
-    # agora que o histórico completo já foi gravado no banco acima — quem
-    # preferir só consultar por lá pode desligar o forward pro canal.
-    if not log_id or not carregar("monitor_forward_ativo", True):
-        return
+    # agora que o histórico completo já foi gravado no banco acima — mas isso
+    # NÃO deve afetar o auto-upload pro Drive logo abaixo, que é um recurso
+    # independente (só compartilha o mesmo log_id como pré-requisito).
+    if carregar("monitor_forward_ativo", True):
+        # Rate-limit do log para PMs: só encaminha a primeira mensagem de cada
+        # remetente a cada 5 minutos — evita spam no canal quando alguém manda
+        # várias mensagens seguidas.
+        pode_encaminhar = True
+        if is_pm:
+            agora_log = time.time()
+            if agora_log - _LOG_PM_COOLDOWN.get(uid_sender, 0) < _LOG_PM_COOLDOWN_S:
+                pode_encaminhar = False
+            else:
+                _LOG_PM_COOLDOWN[uid_sender] = agora_log
 
-    # Rate-limit do log para PMs: só encaminha a primeira mensagem de cada
-    # remetente a cada 5 minutos — evita spam no canal quando alguém manda
-    # várias mensagens seguidas.
-    if is_pm:
-        agora_log = time.time()
-        if agora_log - _LOG_PM_COOLDOWN.get(uid_sender, 0) < _LOG_PM_COOLDOWN_S:
-            return
-        _LOG_PM_COOLDOWN[uid_sender] = agora_log
+        if pode_encaminhar:
+            # Cabeçalho de contexto + forward para o canal de logs
+            if sender:
+                nome     = sender.first_name or "?"
+                mention  = f"[{nome}](tg://user?id={uid_sender})"
+                user_tag = f" • @{sender.username}" if sender.username else ""
+            else:
+                mention  = tr_log("Desconhecido", "Unknown")
+                user_tag = ""
 
-    # Cabeçalho de contexto + forward para o canal de logs
-    if sender:
-        nome     = sender.first_name or "?"
-        mention  = f"[{nome}](tg://user?id={uid_sender})"
-        user_tag = f" • @{sender.username}" if sender.username else ""
-    else:
-        mention  = tr_log("Desconhecido", "Unknown")
-        user_tag = ""
+            tipo_icon  = "💬" if is_pm else "📣"
+            tipo_label = tr_log(
+                "Mensagem Privada" if is_pm else "Menção em Grupo",
+                "Private Message"  if is_pm else "Group Mention",
+            )
+            chat_nome = tr_log("Chat Privado", "Private Chat") if is_pm else (message.chat.title or "?")
 
-    tipo_icon  = "💬" if is_pm else "📣"
-    tipo_label = tr_log(
-        "Mensagem Privada" if is_pm else "Menção em Grupo",
-        "Private Message"  if is_pm else "Group Mention",
-    )
-    chat_nome = tr_log("Chat Privado", "Private Chat") if is_pm else (message.chat.title or "?")
-
-    header = tr_log(
-        f"{tipo_icon} **{tipo_label}**\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"├ 👤 **De:** {mention}{user_tag}\n"
-        f"├ 💬 **Em:** {chat_nome}\n"
-        f"└ 🕐 `{ts}`",
-        f"{tipo_icon} **{tipo_label}**\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"├ 👤 **From:** {mention}{user_tag}\n"
-        f"├ 💬 **In:** {chat_nome}\n"
-        f"└ 🕐 `{ts}`",
-    )
-    try:
-        await client.send_message(log_id, header)
-        await message.forward(log_id)
-    except Exception as e:
-        logger.debug(f"[account.py] ignorado: {e}")
+            header = tr_log(
+                f"{tipo_icon} **{tipo_label}**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ 👤 **De:** {mention}{user_tag}\n"
+                f"├ 💬 **Em:** {chat_nome}\n"
+                f"└ 🕐 `{ts}`",
+                f"{tipo_icon} **{tipo_label}**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"├ 👤 **From:** {mention}{user_tag}\n"
+                f"├ 💬 **In:** {chat_nome}\n"
+                f"└ 🕐 `{ts}`",
+            )
+            try:
+                await client.send_message(log_id, header)
+                await message.forward(log_id)
+            except Exception as e:
+                logger.debug(f"[account.py] ignorado: {e}")
 
     limite = cfg.get("LIMITE_AUTO_UPLOAD", 20971520)
     drive = getattr(client, "drive", None)

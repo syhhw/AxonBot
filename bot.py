@@ -43,6 +43,7 @@ logger = logging.getLogger("KiraBot")
 
 from utils import sysinfo
 from utils.db import salvar as db_salvar, carregar as db_carregar
+from utils.monitor_db import contagem_por_dia, mensagens_do_dia, total_do_dia, total_geral
 
 from telegram import (
     Update,
@@ -102,6 +103,9 @@ _waiting_plugin: set[int] = set()
 _waiting_shell: set[int] = set()
 _waiting_alive: set[int] = set()
 _waiting_pmpermit: set[int] = set()
+_waiting_gemini: set[int] = set()
+_waiting_drive_secrets: set[int] = set()
+_waiting_mensagem: dict[int, str] = {}  # uid -> chave da mensagem sendo editada
 _ALIVE_KEY = "alive_media.json"
 _PERMITIDOS_KEY = "permitidos.json"
 _FIREWALL_KEY   = "pm_firewall_ativo"
@@ -377,20 +381,36 @@ def _txt_sysinfo(info: dict) -> str:
     )
 
 
+def _config_atual() -> dict:
+    """config.json fresco do disco — _cfg é só o snapshot do boot, fica stale
+    assim que qualquer coisa (painel ou userbot) reescreve o arquivo."""
+    return db_carregar("config.json", dict(_cfg))
+
+
 def _txt_config() -> str:
-    limit    = _cfg.get("LIMITE_AUTO_UPLOAD", 0)
+    cfg      = _config_atual()
+    limit    = cfg.get("LIMITE_AUTO_UPLOAD", 0)
     limit_mb = f"{limit // 1024 // 1024} MB" if limit else "—"
-    drive    = "✅ Ativo"       if _cfg.get("ID_PASTA_RAIZ_DRIVE") else "❌ Inativo"
-    gemini   = "✅ Configurado" if _cfg.get("GEMINI_API_KEY")      else "❌ Ausente"
+    tem_secrets = os.path.exists("client_secrets.json")
+    drive    = "✅ Ativo" if cfg.get("ID_PASTA_RAIZ_DRIVE") else ("🟡 Credencial sem pasta" if tem_secrets else "❌ Inativo")
+    gemini   = "✅ Configurado" if cfg.get("GEMINI_API_KEY") else "❌ Ausente"
     return (
         f"<b>⚙️ Configurações</b>\n\n"
-        f"├ 🔧 Prefixo: <code>{_cfg.get('PREFIXO', ',')}</code>\n"
-        f"├ 🌐 Idioma: <code>{_cfg.get('LANGUAGE', 'pt').upper()}</code>\n"
+        f"├ 🔧 Prefixo: <code>{cfg.get('PREFIXO', ',')}</code>\n"
+        f"├ 🌐 Idioma: <code>{cfg.get('LANGUAGE', 'pt').upper()}</code>\n"
         f"├ 📤 Auto-upload: <code>{limit_mb}</code>\n"
         f"├ 📂 Google Drive: {drive}\n"
         f"├ 🧠 Gemini AI: {gemini}\n"
         f"└ 🤖 Painel Bot: ✅ Ativo"
     )
+
+
+def _kb_config() -> Markup:
+    return Markup([
+        [Btn("🧠 Trocar Gemini Key", callback_data="cfg_gemini")],
+        [Btn("📂 Trocar client_secrets.json (Drive)", callback_data="cfg_drive")],
+        [Btn("◀️ Voltar", callback_data="panel_main")],
+    ])
 
 
 def _kb_main() -> Markup:
@@ -399,7 +419,8 @@ def _kb_main() -> Markup:
         [Btn(f"{ic} Status",  callback_data="status"),      Btn("📋 Logs",      callback_data="logs")],
         [Btn("🔌 Plugins",    callback_data="plugins"),     Btn("💻 Sistema",   callback_data="sistema")],
         [Btn("🖼️ Alive",      callback_data="alive_cfg"),   Btn("⚙️ Config",    callback_data="config")],
-        [Btn("🛡️ PM Permit",  callback_data="pmpermit")],
+        [Btn("🛡️ PM Permit",  callback_data="pmpermit"), Btn("📊 Relatórios", callback_data="relatorios")],
+        [Btn("✏️ Mensagens",  callback_data="mensagens")],
         [Btn("🔄 Reiniciar",  callback_data="ask_restart"), Btn("⬆️ Atualizar", callback_data="ask_update")],
         [Btn("🛑 Desligar",   callback_data="ask_shutdown")],
         [Btn("❌ Fechar",     callback_data="panel_close")],
@@ -460,10 +481,17 @@ def _kb_alive() -> Markup:
     return Markup(rows)
 
 
+_CAPTCHA_TIPOS = ["math", "palavra", "emoji"]
+_CAPTCHA_TIPO_LABEL = {"math": "🔢 Matemático", "palavra": "🔤 Palavra", "emoji": "😀 Emoji"}
+
+
 def _txt_pmpermit() -> str:
-    ativo = db_carregar(_FIREWALL_KEY, True)
-    lista = db_carregar(_PERMITIDOS_KEY, [])
-    ic    = "🟢 Ativo" if ativo else "🔴 Desativado"
+    ativo    = db_carregar(_FIREWALL_KEY, True)
+    captcha  = db_carregar("captcha_ativo", True)
+    lista    = db_carregar(_PERMITIDOS_KEY, [])
+    tipo     = db_carregar("captcha_tipo", "math")
+    ic       = "🟢 Ativo" if ativo else "🔴 Desativado"
+    ic_capt  = "🟢 Ativo" if captcha else "🔴 Desativado (bloqueia sem desafio)"
     if lista:
         amostra = "\n".join(f"  • <code>{uid}</code>" for uid in lista[:10])
         if len(lista) > 10:
@@ -473,21 +501,139 @@ def _txt_pmpermit() -> str:
     return (
         f"<b>🛡️ PM Permit (Firewall de PV)</b>\n\n"
         f"├ Status: {ic}\n"
+        f"├ Captcha: {ic_capt}\n"
+        f"├ Tipo: {_CAPTCHA_TIPO_LABEL.get(tipo, tipo)}\n"
         f"└ Autorizados: <b>{len(lista)}</b>\n\n"
         f"{amostra}"
     )
 
 
 def _kb_pmpermit() -> Markup:
-    ativo = db_carregar(_FIREWALL_KEY, True)
-    lista = db_carregar(_PERMITIDOS_KEY, [])
+    ativo   = db_carregar(_FIREWALL_KEY, True)
+    captcha = db_carregar("captcha_ativo", True)
+    lista   = db_carregar(_PERMITIDOS_KEY, [])
+    tipo    = db_carregar("captcha_tipo", "math")
     rows  = [[
-        Btn("🔴 Desativar" if ativo else "🟢 Ativar", callback_data="pmpermit_toggle"),
+        Btn("🔴 Desativar firewall" if ativo else "🟢 Ativar firewall", callback_data="pmpermit_toggle"),
         Btn("➕ Adicionar",  callback_data="pmpermit_add"),
+    ], [
+        Btn("🔴 Desativar captcha" if captcha else "🟢 Ativar captcha", callback_data="captcha_toggle"),
+    ], [
+        Btn(f"🔀 Tipo: {_CAPTCHA_TIPO_LABEL.get(tipo, tipo)}", callback_data="captcha_cycle"),
     ]]
     for uid in lista[:8]:
         rows.append([Btn(f"🗑️ Remover {uid}", callback_data=f"pmpermit_del_{uid}")])
     rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
+    return Markup(rows)
+
+
+_MENSAGENS_LABELS = {
+    "firewall_intro":     "🛡️ Firewall — introdução",
+    "firewall_sucesso":   "🛡️ Firewall — sucesso",
+    "firewall_erro":      "🛡️ Firewall — erro",
+    "firewall_bloqueado": "🛡️ Firewall — captcha desativado",
+    "afk_ativado":        "💤 AFK — ativado",
+    "afk_resposta":       "💤 AFK — resposta automática",
+}
+
+
+def _txt_mensagens() -> str:
+    custom = db_carregar("mensagens_custom", {})
+    linhas = [
+        f"  • {label} — {'✏️ Personalizada' if chave in custom else '⚙️ Padrão'}"
+        for chave, label in _MENSAGENS_LABELS.items()
+    ]
+    return "<b>✏️ Mensagens Editáveis</b>\n\nToque numa pra ver ou editar.\n\n" + "\n".join(linhas)
+
+
+def _kb_mensagens() -> Markup:
+    rows = [[Btn(label, callback_data=f"msg_edit_{chave}")] for chave, label in _MENSAGENS_LABELS.items()]
+    rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
+    return Markup(rows)
+
+
+def _txt_mensagem_detalhe(chave: str) -> str:
+    custom = db_carregar("mensagens_custom", {})
+    label  = _MENSAGENS_LABELS.get(chave, chave)
+    if chave in custom:
+        atual = html.escape(custom[chave])
+    else:
+        atual = "<i>(usando o padrão do sistema — bilíngue conforme ,idioma)</i>"
+    return (
+        f"<b>{label}</b>\n\n"
+        f"Texto atual:\n{atual}\n\n"
+        f"Variáveis possíveis: <code>{{motivo}}</code>, <code>{{tempo}}</code> (só nas mensagens de AFK)."
+    )
+
+
+def _kb_mensagem_detalhe(chave: str) -> Markup:
+    rows = [[Btn("✏️ Editar", callback_data=f"msg_setwait_{chave}")]]
+    if chave in db_carregar("mensagens_custom", {}):
+        rows.append([Btn("↩️ Restaurar padrão", callback_data=f"msg_reset_{chave}")])
+    rows.append([Btn("◀️ Mensagens", callback_data="mensagens")])
+    return Markup(rows)
+
+
+def _txt_relatorios() -> str:
+    total   = total_geral()
+    dias    = contagem_por_dia(15)
+    monitor = db_carregar("monitor_ativo", True)
+    corpo   = "\n".join(f"  • <code>{d}</code> — {n} msg(s)" for d, n in dias) or "  <i>(nenhuma mensagem capturada ainda)</i>"
+    return (
+        f"<b>📊 Relatórios do Monitor</b>\n\n"
+        f"├ Monitor: {'🟢 Ativo' if monitor else '🔴 Desativado'}\n"
+        f"├ Total capturado: <b>{total}</b>\n"
+        f"└ Toque num dia pra ver as mensagens\n\n"
+        f"{corpo}"
+    )
+
+
+def _kb_relatorios() -> Markup:
+    dias = contagem_por_dia(15)
+    rows = [[Btn(f"📅 {d} ({n})", callback_data=f"report_dia_{d}_0")] for d, n in dias]
+    monitor_ativo = db_carregar("monitor_ativo", True)
+    fwd_ativo     = db_carregar("monitor_forward_ativo", True)
+    rows.append([Btn(
+        "🔴 Desativar monitor" if monitor_ativo else "🟢 Ativar monitor",
+        callback_data="monitor_toggle",
+    )])
+    rows.append([Btn(
+        ("🔴 Desativar" if fwd_ativo else "🟢 Ativar") + " encaminhamento p/ canal",
+        callback_data="report_fwd_toggle",
+    )])
+    rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
+    return Markup(rows)
+
+
+def _txt_dia(data: str, offset: int, msgs: list[dict], total: int) -> str:
+    if not msgs:
+        corpo = "  <i>(nada nessa página)</i>"
+    else:
+        linhas = []
+        for m in msgs:
+            hora   = datetime.fromtimestamp(m["ts"]).strftime("%H:%M")
+            icone  = "💬" if m["tipo"] == "pm" else "📣"
+            quem   = html.escape(m["sender_nome"] or "?")
+            tag    = f" (@{html.escape(m['sender_username'])})" if m["sender_username"] else ""
+            local  = f" em <i>{html.escape(m['chat_nome'])}</i>" if m["chat_nome"] else ""
+            texto  = html.escape((m["texto"] or "")[:150]) or "<i>(sem texto/mídia)</i>"
+            linhas.append(
+                f"{icone} <code>{hora}</code> <b>{quem}</b>{tag}{local} · <code>{m['sender_id']}</code>\n{texto}"
+            )
+        corpo = "\n\n".join(linhas)
+    pagina = offset // 15 + 1
+    total_paginas = max(1, -(-total // 15))
+    return f"<b>📅 {data}</b> — {total} mensagem(ns) · página {pagina}/{total_paginas}\n\n{corpo}"
+
+
+def _kb_dia(data: str, offset: int, total: int) -> Markup:
+    nav = []
+    if offset > 0:
+        nav.append(Btn("⬅️ Anterior", callback_data=f"report_dia_{data}_{max(0, offset - 15)}"))
+    if offset + 15 < total:
+        nav.append(Btn("Próxima ➡️", callback_data=f"report_dia_{data}_{offset + 15}"))
+    rows = [nav] if nav else []
+    rows.append([Btn("◀️ Relatórios", callback_data="relatorios")])
     return Markup(rows)
 
 
@@ -1226,9 +1372,27 @@ async def handle_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
     if not await _is_owner(update):
         return
     uid = update.effective_user.id
+    doc = update.message.document
+
+    if uid in _waiting_drive_secrets:
+        _waiting_drive_secrets.discard(uid)
+        if not doc.file_name.endswith(".json"):
+            await update.message.reply_text("❌ Envie um arquivo <code>.json</code>.", parse_mode=ParseMode.HTML)
+            return
+        tg_file = await ctx.bot.get_file(doc.file_id)
+        await tg_file.download_to_drive("client_secrets.json")
+        removido = ""
+        if os.path.exists("meu_drive.json"):
+            os.remove("meu_drive.json")
+            removido = " (sessão antiga do Drive removida — vai pedir autorização de novo)"
+        await update.message.reply_text(
+            f"✅ <code>client_secrets.json</code> atualizado.{removido}",
+            reply_markup=_kb_config(), parse_mode=ParseMode.HTML,
+        )
+        return
+
     if uid not in _waiting_plugin:
         return
-    doc = update.message.document
     if not doc.file_name.endswith(".py"):
         await update.message.reply_text("❌ Envie um arquivo <code>.py</code>.", parse_mode=ParseMode.HTML)
         return
@@ -1279,10 +1443,32 @@ async def handle_alive_media(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def handle_owner_text(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    """Despacha texto do dono pros fluxos de input pendentes do painel (shell, pmpermit)."""
+    """Despacha texto do dono pros fluxos de input pendentes do painel."""
     if not await _is_owner(update):
         return
     uid = update.effective_user.id
+
+    if uid in _waiting_gemini:
+        _waiting_gemini.discard(uid)
+        nova_key = update.message.text.strip()
+        cfg = _config_atual()
+        cfg["GEMINI_API_KEY"] = nova_key
+        db_salvar("config.json", cfg)
+        await update.message.reply_text(
+            "✅ GEMINI_API_KEY atualizada.", reply_markup=_kb_config(), parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if uid in _waiting_mensagem:
+        chave = _waiting_mensagem.pop(uid)
+        texto = update.message.text
+        custom = db_carregar("mensagens_custom", {})
+        custom[chave] = texto
+        db_salvar("mensagens_custom", custom)
+        await update.message.reply_text(
+            "✅ Mensagem atualizada.", reply_markup=_kb_mensagens(), parse_mode=ParseMode.HTML,
+        )
+        return
 
     if uid in _waiting_pmpermit:
         _waiting_pmpermit.discard(uid)
@@ -1555,8 +1741,101 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         await q.edit_message_text(_txt_pmpermit(), reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML)
         return
 
+    if data == "relatorios":
+        await q.edit_message_text(_txt_relatorios(), reply_markup=_kb_relatorios(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "monitor_toggle":
+        ativo = db_carregar("monitor_ativo", True)
+        db_salvar("monitor_ativo", not ativo)
+        await q.edit_message_text(_txt_relatorios(), reply_markup=_kb_relatorios(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "report_fwd_toggle":
+        ativo = db_carregar("monitor_forward_ativo", True)
+        db_salvar("monitor_forward_ativo", not ativo)
+        await q.edit_message_text(_txt_relatorios(), reply_markup=_kb_relatorios(), parse_mode=ParseMode.HTML)
+        return
+
+    if data.startswith("report_dia_"):
+        resto = data[len("report_dia_"):]
+        data_str, offset_str = resto.rsplit("_", 1)
+        offset = int(offset_str)
+        total  = total_do_dia(data_str)
+        msgs   = mensagens_do_dia(data_str, offset=offset, limite=15)
+        await q.edit_message_text(
+            _txt_dia(data_str, offset, msgs, total),
+            reply_markup=_kb_dia(data_str, offset, total),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if data == "captcha_toggle":
+        ativo = db_carregar("captcha_ativo", True)
+        db_salvar("captcha_ativo", not ativo)
+        await q.edit_message_text(_txt_pmpermit(), reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "captcha_cycle":
+        atual = db_carregar("captcha_tipo", "math")
+        idx   = (_CAPTCHA_TIPOS.index(atual) + 1) % len(_CAPTCHA_TIPOS) if atual in _CAPTCHA_TIPOS else 0
+        db_salvar("captcha_tipo", _CAPTCHA_TIPOS[idx])
+        await q.edit_message_text(_txt_pmpermit(), reply_markup=_kb_pmpermit(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "mensagens":
+        await q.edit_message_text(_txt_mensagens(), reply_markup=_kb_mensagens(), parse_mode=ParseMode.HTML)
+        return
+
+    if data.startswith("msg_setwait_"):
+        chave = data[len("msg_setwait_"):]
+        _waiting_mensagem[_OWNER] = chave
+        await q.edit_message_text(
+            f"✏️ Envie o novo texto pra <b>{_MENSAGENS_LABELS.get(chave, chave)}</b> agora.\n\n"
+            f"Aceita Markdown (**negrito**, `código`) e as variáveis da tela anterior.",
+            reply_markup=_kb_back(), parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if data.startswith("msg_reset_"):
+        chave  = data[len("msg_reset_"):]
+        custom = db_carregar("mensagens_custom", {})
+        custom.pop(chave, None)
+        db_salvar("mensagens_custom", custom)
+        await q.edit_message_text(
+            _txt_mensagem_detalhe(chave), reply_markup=_kb_mensagem_detalhe(chave), parse_mode=ParseMode.HTML
+        )
+        return
+
+    if data.startswith("msg_edit_"):
+        chave = data[len("msg_edit_"):]
+        await q.edit_message_text(
+            _txt_mensagem_detalhe(chave), reply_markup=_kb_mensagem_detalhe(chave), parse_mode=ParseMode.HTML
+        )
+        return
+
     if data == "config":
-        await q.edit_message_text(_txt_config(), reply_markup=_kb_back(), parse_mode=ParseMode.HTML)
+        await q.edit_message_text(_txt_config(), reply_markup=_kb_config(), parse_mode=ParseMode.HTML)
+        return
+
+    if data == "cfg_gemini":
+        _waiting_gemini.add(_OWNER)
+        await q.edit_message_text(
+            "🧠 <b>Trocar GEMINI_API_KEY</b>\n\n"
+            "Pegue uma grátis em aistudio.google.com/app/apikey e cole aqui.",
+            reply_markup=_kb_back(), parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if data == "cfg_drive":
+        _waiting_drive_secrets.add(_OWNER)
+        await q.edit_message_text(
+            "📂 <b>Trocar credencial do Google Drive</b>\n\n"
+            "Envie o novo <code>client_secrets.json</code> (baixado do Google Cloud Console) como arquivo.\n\n"
+            "⚠️ Isso substitui o atual. O userbot vai pedir autorização de novo "
+            "(janela do navegador) na próxima vez que rodar.",
+            reply_markup=_kb_back(), parse_mode=ParseMode.HTML,
+        )
         return
 
     if data == "ask_restart":

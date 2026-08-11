@@ -8,7 +8,9 @@ ecossistema de userbots Telegram.
 import logging
 import os
 import time
+import random
 import asyncio
+import aiohttp
 from datetime import datetime
 logger = logging.getLogger("AxonBot.account")
 
@@ -16,6 +18,7 @@ from pyrogram import filters, enums, Client
 from utils.helpers import prefixo, carregar, salvar, verificar_admin, tr
 from utils.commands import cmd
 from utils.i18n import tr_log
+from utils.monitor_db import registrar as registrar_monitor
 
 # Estado global do AFK (compartilhado dentro deste módulo)
 AFK_ATIVO  = False
@@ -26,10 +29,93 @@ _AFK_ULTIMO_REPLY: dict[int, float] = {}
 _AFK_COOLDOWN = 60          # segundos entre auto-respostas AFK para o mesmo usuário
 _LOG_PM_COOLDOWN: dict[int, float] = {}
 _LOG_PM_COOLDOWN_S = 300    # log de PM: apenas 1x por usuário a cada 5 minutos
+_CAPTCHA_FALHAS: dict[int, int] = {}
+_CAPTCHA_FALHAS_LIMITE = 3  # falhas seguidas antes de alertar o dono via bot
 
 # Conta oficial de notificações de serviço do Telegram (códigos de login, avisos).
 # Nunca deve receber captcha nem ter mensagens encaminhadas/logadas — contém dados sensíveis.
 TELEGRAM_SERVICE_ID = 777000
+
+# ── Textos editáveis pelo painel (/painel → Mensagens) ────────────────────────
+# Override fica em "mensagens_custom" (carregar/salvar) — só as chaves que o
+# dono realmente customizou; o resto cai no padrão bilíngue abaixo.
+_MENSAGENS_PADRAO = {
+    "firewall_intro": {
+        "pt": "🛡️ **Firewall de Segurança**\n\nMensagens restritas. Para provar que é humano, resolva:",
+        "en": "🛡️ **Security Firewall**\n\nRestricted messages. To prove you are human, solve this:",
+    },
+    "firewall_sucesso": {
+        "pt": "✅ **Verificação concluída!** Você agora pode me enviar mensagens.",
+        "en": "✅ **Verification complete!** You can now send me messages.",
+    },
+    "firewall_erro": {
+        "pt": "❌ **Resposta incorreta.** Tente novamente.",
+        "en": "❌ **Incorrect answer.** Try again.",
+    },
+    "firewall_bloqueado": {
+        "pt": "Mensagens privadas estão temporariamente limitadas.",
+        "en": "Private messages are temporarily limited.",
+    },
+    "afk_ativado": {
+        "pt": "💤 **Modo AFK Ativado**\n└ 📝 **Motivo:** `{motivo}`",
+        "en": "💤 **AFK Mode Activated**\n└ 📝 **Reason:** `{motivo}`",
+    },
+    "afk_resposta": {
+        "pt": "💤 **Estou AFK há {tempo}**\n└ 📝 Motivo: `{motivo}`",
+        "en": "💤 **I've been AFK for {tempo}**\n└ 📝 Reason: `{motivo}`",
+    },
+}
+
+_CAPTCHA_PALAVRAS = ["BANANA", "FOGUETE", "PIRATA", "OCEANO", "MONTANHA", "GIRASSOL"]
+_CAPTCHA_EMOJIS   = ["🍕", "🚀", "🐱", "⚽", "🎸", "🌵", "🎲", "🦊"]
+
+
+def _msg(chave: str, **kwargs) -> str:
+    """Busca o texto customizado no painel; cai pro padrão bilíngue se não houver."""
+    custom = carregar("mensagens_custom", {})
+    texto  = custom.get(chave)
+    if not texto:
+        padrao = _MENSAGENS_PADRAO.get(chave, {})
+        texto  = tr(padrao.get("pt", ""), padrao.get("en", ""))
+    try:
+        return texto.format(**kwargs)
+    except Exception:
+        return texto
+
+
+def _gerar_captcha() -> tuple[str, str]:
+    """Gera (resposta_esperada, descrição_do_desafio) conforme captcha_tipo (painel)."""
+    tipo = carregar("captcha_tipo", "math")
+    if tipo == "palavra":
+        palavra = random.choice(_CAPTCHA_PALAVRAS)
+        return palavra, tr(f"Digite a palavra: **{palavra}**", f"Type the word: **{palavra}**")
+    if tipo == "emoji":
+        alvo = random.choice(_CAPTCHA_EMOJIS)
+        return alvo, tr(f"Envie exatamente este emoji: {alvo}", f"Send exactly this emoji: {alvo}")
+    n1, n2 = random.randint(1, 10), random.randint(1, 10)
+    return str(n1 + n2), tr(f"Resolva a conta:\n👉 **{n1} + {n2} = ?**", f"Solve this:\n👉 **{n1} + {n2} = ?**")
+
+
+async def _alertar_dono_via_bot(client, texto: str) -> None:
+    """Manda um alerta direto ao dono via API do bot do painel (se configurado).
+
+    Não depende do processo bot.py estar 'escutando' nada — qualquer cliente
+    com o BOT_TOKEN pode chamar sendMessage a qualquer momento.
+    """
+    cfg   = getattr(client, "config", {})
+    token = cfg.get("BOT_TOKEN")
+    dono  = cfg.get("DONO_ID")
+    if not token or not dono:
+        return
+    try:
+        async with aiohttp.ClientSession() as s:
+            await s.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": dono, "text": texto, "parse_mode": "HTML"},
+                timeout=aiohttp.ClientTimeout(total=10),
+            )
+    except Exception as e:
+        logger.debug(f"[account.py] falha ao alertar via bot: {e}")
 
 
 def _e_conta_oficial(sender, uid: int) -> bool:
@@ -85,10 +171,7 @@ async def cmd_afk(client, message):
     AFK_MOTIVO = partes[1].strip() if len(partes) > 1 else tr("Ausente.", "Away.")
     AFK_ATIVO  = True
     AFK_INICIO = time.time()
-    await message.edit_text(tr(
-        f"💤 **Modo AFK Ativado**\n└ 📝 **Motivo:** `{AFK_MOTIVO}`",
-        f"💤 **AFK Mode Activated**\n└ 📝 **Reason:** `{AFK_MOTIVO}`"
-    ))
+    await message.edit_text(_msg("afk_ativado", motivo=AFK_MOTIVO))
 
 
 @cmd("unafk")
@@ -142,30 +225,55 @@ async def pm_permit_checker(client, message):
         return
 
     if uid not in permitidos:
+        # Captcha desativado no painel: bloqueia sem desafio — só o dono
+        # consegue liberar manualmente com ,permit ou pelo painel.
+        if not carregar("captcha_ativo", True):
+            try:
+                await message.reply_text(_msg("firewall_bloqueado"))
+            except Exception as e:
+                logger.debug(f"[account.py] ignorado: {e}")
+            cfg = getattr(client, "config", {})
+            log_id = cfg.get("ID_CANAL_LOGS")
+            if log_id:
+                try:
+                    await message.forward(log_id)
+                except Exception as e:
+                    logger.debug(f"[account.py] ignorado: {e}")
+            message.stop_propagation()
+            return
+
         if uid in CAPTCHA_PENDENTE:
-            esperado = CAPTCHA_PENDENTE[uid]["resposta"]
-            if message.text and message.text.strip() == str(esperado):
+            esperado = str(CAPTCHA_PENDENTE[uid]["resposta"]).strip().upper()
+            recebido = (message.text or "").strip().upper()
+            if recebido == esperado:
                 permitidos.append(uid)
                 salvar("permitidos.json", permitidos)
                 del CAPTCHA_PENDENTE[uid]
-                await message.reply_text(tr("✅ **Verificação concluída!** Você agora pode me enviar mensagens.", "✅ **Verification complete!** You can now send me messages."))
+                _CAPTCHA_FALHAS.pop(uid, None)
+                await message.reply_text(_msg("firewall_sucesso"))
                 message.stop_propagation()
                 return
             else:
-                await message.reply_text(tr("❌ **Resposta incorreta.** Tente novamente.", "❌ **Incorrect answer.** Try again."))
+                falhas = _CAPTCHA_FALHAS.get(uid, 0) + 1
+                _CAPTCHA_FALHAS[uid] = falhas
+                await message.reply_text(_msg("firewall_erro"))
+                if falhas >= _CAPTCHA_FALHAS_LIMITE:
+                    sender = message.from_user
+                    nome   = (sender.first_name if sender else None) or "?"
+                    tag    = f" (@{sender.username})" if sender and sender.username else ""
+                    await _alertar_dono_via_bot(client, (
+                        f"⚠️ <b>Possível spam detectado</b>\n\n"
+                        f"<code>{uid}</code> — {nome}{tag}\n"
+                        f"Falhou o captcha {falhas}x seguidas tentando te mandar PV."
+                    ))
                 message.stop_propagation()
                 return
-                
-        import random
-        n1 = random.randint(1, 10)
-        n2 = random.randint(1, 10)
-        CAPTCHA_PENDENTE[uid] = {"resposta": n1 + n2}
-        
+
+        resposta, desafio = _gerar_captcha()
+        CAPTCHA_PENDENTE[uid] = {"resposta": resposta}
+
         try:
-            await message.reply_text(tr(
-                f"🛡️ **Firewall de Segurança**\n\nMensagens restritas. Para provar que é humano, resolva a conta:\n👉 **{n1} + {n2} = ?**",
-                f"🛡️ **Security Firewall**\n\nRestricted messages. To prove you are human, solve this:\n👉 **{n1} + {n2} = ?**"
-            ))
+            await message.reply_text(f"{_msg('firewall_intro')}\n{desafio}")
         except Exception as e:
             logger.debug(f"[account.py] ignorado: {e}")
         cfg = getattr(client, "config", {})
@@ -215,6 +323,25 @@ async def monitor_central(client, message):
     if _e_conta_oficial(sender, uid_sender) or message.chat.id == TELEGRAM_SERVICE_ID:
         return
 
+    # O handler só dispara pra PV ou menção (filtro no decorator), então aqui
+    # já sabemos que é um ou outro.
+    is_pm = message.chat.type == enums.ChatType.PRIVATE
+
+    # Captura pro banco de relatórios (/painel → 📊 Relatórios) — desligável
+    # separado do resto (perda de admin, auto-resposta AFK continuam
+    # funcionando mesmo com o monitor de mensagens desativado).
+    if carregar("monitor_ativo", True):
+        registrar_monitor(
+            tipo="pm" if is_pm else "mencao",
+            chat_id=message.chat.id,
+            chat_nome=None if is_pm else (message.chat.title or "?"),
+            sender_id=uid_sender,
+            sender_nome=(sender.first_name if sender else None) or "?",
+            sender_username=sender.username if sender else None,
+            texto=message.text or message.caption or "",
+            tem_midia=bool(message.media),
+        )
+
     ts = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     # Verifica perda de admin (apenas em grupos)
@@ -249,17 +376,15 @@ async def monitor_central(client, message):
         if agora_afk - _AFK_ULTIMO_REPLY.get(uid_sender, 0) >= _AFK_COOLDOWN:
             _AFK_ULTIMO_REPLY[uid_sender] = agora_afk
             try:
-                await message.reply_text(tr(
-                    f"💤 **Estou AFK há {_tempo_afk()}**\n└ 📝 Motivo: `{AFK_MOTIVO}`",
-                    f"💤 **I've been AFK for {_tempo_afk()}**\n└ 📝 Reason: `{AFK_MOTIVO}`"
-                ))
+                await message.reply_text(_msg("afk_resposta", tempo=_tempo_afk(), motivo=AFK_MOTIVO))
             except Exception as e:
                 logger.debug(f"[account.py] ignorado: {e}")
 
-    if not log_id:
-        return  # sem canal de logs, não há mais nada a fazer
-
-    is_pm = message.chat.type == enums.ChatType.PRIVATE
+    # Encaminhamento pro canal de logs é opcional (/painel → 📊 Relatórios)
+    # agora que o histórico completo já foi gravado no banco acima — quem
+    # preferir só consultar por lá pode desligar o forward pro canal.
+    if not log_id or not carregar("monitor_forward_ativo", True):
+        return
 
     # Rate-limit do log para PMs: só encaminha a primeira mensagem de cada
     # remetente a cada 5 minutos — evita spam no canal quando alguém manda

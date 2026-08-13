@@ -28,6 +28,7 @@ import sys
 import re
 import logging
 import asyncio
+import mimetypes
 from datetime import datetime
 from pathlib import Path
 
@@ -107,8 +108,37 @@ _waiting_gemini: set[int] = set()
 _waiting_drive_secrets: set[int] = set()
 _waiting_mensagem: dict[int, str] = {}  # uid -> chave da mensagem sendo editada
 _ALIVE_KEY = "alive_media.json"
+_ALIVE_MEDIA_BASENAME = "alive_media"
 _PERMITIDOS_KEY = "permitidos.json"
 _FIREWALL_KEY   = "pm_firewall_ativo"
+
+
+async def _baixar_midia_alive(ctx: "ContextTypes.DEFAULT_TYPE", tg_file_id: str, tipo: str, mime: str | None = None) -> str:
+    """Baixa a mídia do ,alive pro disco (bot_data/), pasta compartilhada com o userbot.
+
+    Reusar o file_id emitido pela API de Bot direto na sessão MTProto do
+    Pyrogram falha silenciosamente pra alguns tipos (mesma classe de
+    incompatibilidade cross-cliente do reply_markup) — baixar o arquivo de
+    verdade e deixar o userbot reenviar do zero pela própria sessão é o
+    único jeito garantido de funcionar.
+    """
+    tg_file = await ctx.bot.get_file(tg_file_id)
+    ext = Path(tg_file.file_path or "").suffix
+    if not ext and mime:
+        ext = mimetypes.guess_extension(mime) or ""
+    if not ext:
+        ext = {"video": ".mp4", "animation": ".mp4", "document": ".bin"}.get(tipo, ".jpg")
+
+    novo_path = _data_path(f"{_ALIVE_MEDIA_BASENAME}{ext}")
+    for antigo in _DATA_DIR.glob(f"{_ALIVE_MEDIA_BASENAME}.*"):
+        if antigo != novo_path:
+            try:
+                antigo.unlink()
+            except OSError:
+                pass
+
+    await tg_file.download_to_drive(str(novo_path))
+    return str(novo_path)
 
 
 def _limpar_esperas(uid: int) -> None:
@@ -488,7 +518,7 @@ def _txt_alive() -> str:
 def _kb_alive() -> Markup:
     cfg = db_carregar(_ALIVE_KEY, {})
     rows = [[Btn("📤 Enviar nova mídia", callback_data="alive_set")]]
-    if cfg.get("file_id"):
+    if cfg.get("path") or cfg.get("file_id"):
         rows.append([Btn("🗑️ Remover mídia atual", callback_data="alive_del")])
     rows.append([Btn("◀️ Voltar", callback_data="panel_main")])
     return Markup(rows)
@@ -1398,7 +1428,8 @@ async def handle_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         mime = (doc.mime_type or "")
         if mime.startswith("image/") or mime.startswith("video/"):
             _waiting_alive.discard(uid)
-            db_salvar(_ALIVE_KEY, {"file_id": doc.file_id, "type": "document"})
+            path = await _baixar_midia_alive(ctx, doc.file_id, "document", mime)
+            db_salvar(_ALIVE_KEY, {"path": path, "type": "document"})
             await update.message.reply_text(
                 "📎 <b>Mídia do ,alive definida!</b> (recebida como arquivo)",
                 reply_markup=_kb_alive(), parse_mode=ParseMode.HTML,
@@ -1461,11 +1492,11 @@ async def handle_alive_media(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> 
 
     msg = update.message
     if msg.photo:
-        file_id, tipo = msg.photo[-1].file_id, "photo"
+        tg_file_id, tipo = msg.photo[-1].file_id, "photo"
     elif msg.video:
-        file_id, tipo = msg.video.file_id, "video"
+        tg_file_id, tipo = msg.video.file_id, "video"
     elif msg.animation:
-        file_id, tipo = msg.animation.file_id, "animation"
+        tg_file_id, tipo = msg.animation.file_id, "animation"
     else:
         await msg.reply_text(
             "❌ Envie uma <b>foto</b>, <b>vídeo</b> ou <b>gif</b>.",
@@ -1473,7 +1504,8 @@ async def handle_alive_media(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
-    db_salvar(_ALIVE_KEY, {"file_id": file_id, "type": tipo})
+    path = await _baixar_midia_alive(ctx, tg_file_id, tipo)
+    db_salvar(_ALIVE_KEY, {"path": path, "type": tipo})
     icon = {"animation": "🎞️", "video": "🎬"}.get(tipo, "🖼️")
     await msg.reply_text(
         f"{icon} <b>Mídia do ,alive definida!</b>",
@@ -1756,6 +1788,11 @@ async def handle_callback(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         return
 
     if data == "alive_del":
+        for antigo in _DATA_DIR.glob(f"{_ALIVE_MEDIA_BASENAME}.*"):
+            try:
+                antigo.unlink()
+            except OSError:
+                pass
         db_salvar(_ALIVE_KEY, {})
         await q.edit_message_text(_txt_alive(), reply_markup=_kb_alive(), parse_mode=ParseMode.HTML)
         return

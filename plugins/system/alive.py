@@ -7,6 +7,7 @@ bot agora (/painel → 🖼️ Alive) — escreve na mesma chave via utils.db,
 então aplica na hora, sem precisar reiniciar o userbot.
 """
 import logging
+import os
 import time
 import sys
 import platform
@@ -14,7 +15,7 @@ import pyrogram
 logger = logging.getLogger("AxonBot.alive")
 
 from pyrogram import filters, Client
-from utils.helpers import prefixo, deletar_depois, tr, carregar, DEL_LONGO
+from utils.helpers import prefixo, deletar_depois, tr, carregar, salvar, DEL_LONGO
 from utils.commands import cmd
 
 _ALIVE_KEY = "alive_media.json"
@@ -61,6 +62,21 @@ def _build_text(me, inicio, versao, p) -> str:
     )
 
 
+async def _enviar_midia(client, chat_id, tipo, source, caption):
+    if tipo == "animation":
+        return await client.send_animation(chat_id, source, caption=caption)
+    if tipo == "video":
+        return await client.send_video(chat_id, source, caption=caption)
+    if tipo == "document":
+        return await client.send_document(chat_id, source, caption=caption)
+    return await client.send_photo(chat_id, source, caption=caption)
+
+
+def _extrair_file_id(sent, tipo):
+    midia = getattr(sent, tipo, None) or getattr(sent, "photo", None)
+    return getattr(midia, "file_id", None)
+
+
 @cmd("alive")
 async def cmd_alive(client, message):
     """Verifica se o userbot está online e exibe informações de status."""
@@ -70,39 +86,51 @@ async def cmd_alive(client, message):
     me     = await client.get_me()
     txt    = _build_text(me, inicio, versao, p)
 
-    media_cfg = carregar(_ALIVE_KEY, {})
-    file_id   = media_cfg.get("file_id")
+    media_cfg  = carregar(_ALIVE_KEY, {})
+    path       = media_cfg.get("path")
+    file_id    = media_cfg.get("file_id")  # formato legado (antes do reenvio via arquivo local)
+    native_id  = media_cfg.get("native_file_id")
     media_type = media_cfg.get("type")  # "photo", "animation", "video" ou "document"
 
-    if file_id:
+    if path or file_id:
         await message.delete()
-        try:
-            if media_type == "animation":
-                sent = await client.send_animation(
-                    message.chat.id, file_id, caption=txt
-                )
-            elif media_type == "video":
-                sent = await client.send_video(
-                    message.chat.id, file_id, caption=txt
-                )
-            elif media_type == "document":
-                # Mídia enviada ao painel como arquivo (comum em foto/gif
-                # encaminhado do iOS sem recomprimir) — reenvia do mesmo
-                # jeito que chegou, único método garantido compatível com
-                # esse file_id.
-                sent = await client.send_document(
-                    message.chat.id, file_id, caption=txt
-                )
-            else:
-                sent = await client.send_photo(
-                    message.chat.id, file_id, caption=txt
-                )
+        sent = None
+
+        # 1) file_id da própria sessão do userbot, cacheado de um envio anterior — mais
+        #    rápido, sem reenviar o arquivo inteiro de novo.
+        if native_id:
+            try:
+                sent = await _enviar_midia(client, message.chat.id, media_type, native_id, txt)
+            except Exception as e:
+                logger.debug(f"[alive.py] file_id nativo expirou, reenviando do arquivo local: {e}")
+
+        # 2) reenvia a partir do arquivo baixado localmente pelo painel — não depende de
+        #    reusar o file_id emitido pela API de Bot na sessão MTProto do userbot (isso
+        #    falha silenciosamente pra alguns tipos), então é o método garantido.
+        if sent is None and path and os.path.exists(path):
+            try:
+                sent = await _enviar_midia(client, message.chat.id, media_type, path, txt)
+                novo_id = _extrair_file_id(sent, media_type)
+                if novo_id:
+                    media_cfg["native_file_id"] = novo_id
+                    salvar(_ALIVE_KEY, media_cfg)
+            except Exception as e:
+                logger.warning(f"[alive.py] falha ao reenviar arquivo local do ,alive: {e}")
+
+        # 3) último recurso, só existe em configs antigas sem arquivo local salvo ainda.
+        if sent is None and file_id:
+            try:
+                sent = await _enviar_midia(client, message.chat.id, media_type, file_id, txt)
+            except Exception as e:
+                logger.warning(f"[alive.py] falha ao reenviar file_id legado do ,alive: {e}")
+
+        if sent is not None:
             deletar_depois(sent, DEL_LONGO)
-        except Exception as e:
-            logger.debug(f"[alive.py] ignorado: {e}")
-            # message já foi apagada acima — não dá pra "editar" ela, manda nova
-            sent = await client.send_message(message.chat.id, txt, disable_web_page_preview=True)
-            deletar_depois(sent, DEL_LONGO)
+            return
+
+        # nenhuma via de mídia funcionou — manda só o texto mesmo
+        sent = await client.send_message(message.chat.id, txt, disable_web_page_preview=True)
+        deletar_depois(sent, DEL_LONGO)
         return
 
     await message.edit_text(txt, disable_web_page_preview=True)

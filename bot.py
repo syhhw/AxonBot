@@ -475,7 +475,9 @@ def _kb_plugins() -> Markup:
 def _txt_alive() -> str:
     cfg   = db_carregar(_ALIVE_KEY, {})
     tipo  = cfg.get("type")
-    icone = {"animation": "🎞️ GIF", "video": "🎬 Vídeo", "photo": "🖼️ Foto"}.get(tipo, "❌ Nenhuma")
+    icone = {
+        "animation": "🎞️ GIF", "video": "🎬 Vídeo", "photo": "🖼️ Foto", "document": "📎 Arquivo",
+    }.get(tipo, "❌ Nenhuma")
     return (
         f"<b>🖼️ Mídia do ,alive</b>\n\n"
         f"├ Atual: {icone}\n"
@@ -1384,6 +1386,27 @@ async def handle_document(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> Non
         return
     uid = update.effective_user.id
     doc = update.message.document
+
+    if uid in _waiting_alive:
+        # Foto/vídeo/gif encaminhado às vezes chega como Document em vez de
+        # Photo/Video/Animation (comum ao encaminhar do iOS sem recomprimir)
+        # — handle_alive_media (filtro PHOTO|VIDEO|ANIMATION) não pega esse
+        # caso. Aceita aqui se for um mime type de imagem/vídeo e salva com
+        # type="document": reenviado sempre via send_document, que aceita
+        # qualquer file_id de documento sem risco de incompatibilidade entre
+        # métodos (diferente de tentar reusar o file_id via send_photo).
+        mime = (doc.mime_type or "")
+        if mime.startswith("image/") or mime.startswith("video/"):
+            _waiting_alive.discard(uid)
+            db_salvar(_ALIVE_KEY, {"file_id": doc.file_id, "type": "document"})
+            await update.message.reply_text(
+                "📎 <b>Mídia do ,alive definida!</b> (recebida como arquivo)",
+                reply_markup=_kb_alive(), parse_mode=ParseMode.HTML,
+            )
+            return
+        # Não é imagem/vídeo — cai pro fluxo normal de "instalar plugin"/
+        # "trocar client_secrets.json" abaixo, sem consumir _waiting_alive
+        # (deixa o usuário tentar de novo com outra mídia).
 
     if uid in _waiting_drive_secrets:
         _waiting_drive_secrets.discard(uid)

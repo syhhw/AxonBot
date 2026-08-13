@@ -41,23 +41,23 @@ def _build_text(me, inicio, versao, p) -> str:
     ut   = _uptime(inicio)
     nome = me.first_name or "?"
     return tr(
-        f"**[AxonBot]({_REPO_URL})** — userbot pessoal via Pyrogram.\n\n"
-        f"› Usuário    :   `{nome}`\n"
-        f"› Uptime     :   `{ut}`\n"
-        f"› Build      :   `{versao}`\n"
-        f"› Prefixo    :   `{p}`\n"
-        f"› Python     :   `{py}`\n"
-        f"› Pyrogram   :   `{pyro}`\n"
-        f"› SO         :   `{so}`",
+        f"[AxonBot]({_REPO_URL})\n\n"
+        f"Usuário   :  {nome}\n"
+        f"Uptime    :  {ut}\n"
+        f"Build     :  {versao}\n"
+        f"Prefixo   :  {p}\n"
+        f"Python    :  {py}\n"
+        f"Pyrogram  :  {pyro}\n"
+        f"SO        :  {so}",
 
-        f"**[AxonBot]({_REPO_URL})** — personal userbot powered by Pyrogram.\n\n"
-        f"› User       :   `{nome}`\n"
-        f"› Uptime     :   `{ut}`\n"
-        f"› Build      :   `{versao}`\n"
-        f"› Prefix     :   `{p}`\n"
-        f"› Python     :   `{py}`\n"
-        f"› Pyrogram   :   `{pyro}`\n"
-        f"› OS         :   `{so}`",
+        f"[AxonBot]({_REPO_URL})\n\n"
+        f"User      :  {nome}\n"
+        f"Uptime    :  {ut}\n"
+        f"Build     :  {versao}\n"
+        f"Prefix    :  {p}\n"
+        f"Python    :  {py}\n"
+        f"Pyrogram  :  {pyro}\n"
+        f"OS        :  {so}",
     )
 
 
@@ -72,7 +72,7 @@ async def cmd_alive(client, message):
 
     media_cfg = carregar(_ALIVE_KEY, {})
     file_id   = media_cfg.get("file_id")
-    media_type = media_cfg.get("type")  # "photo", "animation" ou "video"
+    media_type = media_cfg.get("type")  # "photo", "animation", "video" ou "document"
 
     if file_id:
         await message.delete()
@@ -83,6 +83,14 @@ async def cmd_alive(client, message):
                 )
             elif media_type == "video":
                 sent = await client.send_video(
+                    message.chat.id, file_id, caption=txt
+                )
+            elif media_type == "document":
+                # Mídia enviada ao painel como arquivo (comum em foto/gif
+                # encaminhado do iOS sem recomprimir) — reenvia do mesmo
+                # jeito que chegou, único método garantido compatível com
+                # esse file_id.
+                sent = await client.send_document(
                     message.chat.id, file_id, caption=txt
                 )
             else:

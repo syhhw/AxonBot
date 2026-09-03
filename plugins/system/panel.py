@@ -2,16 +2,18 @@
 plugins/panel.py
 IPC bridge: heartbeat de status (com métricas de sistema) + despacho de comandos do painel bot.
 """
+import asyncio
+import json
 import logging
 import os
-import json
-import asyncio
-import time
 import subprocess
+import time
+
 logger = logging.getLogger("AxonBot.panel")
 
 import psutil
 from pyrogram import Client
+
 from utils.helpers import reiniciar_processo
 
 _CMD_FILE    = "_panel_cmd.json"
@@ -104,15 +106,22 @@ async def _command_loop(client: Client) -> None:
             elif action == "update":
                 branch = getattr(client, "UPDATE_BRANCH", None)
                 if not branch:
-                    r = subprocess.run(
+                    r = await asyncio.to_thread(
+                        subprocess.run,
                         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                         capture_output=True, text=True, timeout=10,
                     )
                     branch = r.stdout.strip() or "main"
                 _write_result(ts, "ok", f"Atualizando (branch {branch}) e reiniciando...")
                 await asyncio.sleep(1)
-                subprocess.run(["git", "fetch", "origin", branch], capture_output=True, timeout=30)
-                subprocess.run(["git", "reset", "--hard", f"origin/{branch}"], capture_output=True, timeout=30)
+                await asyncio.to_thread(
+                    subprocess.run, ["git", "fetch", "origin", branch],
+                    capture_output=True, timeout=30,
+                )
+                await asyncio.to_thread(
+                    subprocess.run, ["git", "reset", "--hard", f"origin/{branch}"],
+                    capture_output=True, timeout=30,
+                )
                 reiniciar_processo()
                 return
 

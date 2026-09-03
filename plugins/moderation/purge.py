@@ -11,9 +11,8 @@ Telegram (Man-Userbot e forks).
 import asyncio
 import logging
 
-from pyrogram import filters, Client
-from utils.helpers import tr
 from utils.commands import cmd
+from utils.helpers import tr
 
 logger = logging.getLogger("AxonBot.purge")
 

@@ -8,13 +8,14 @@ utils/sysinfo.py. O userbot foca só em rodar módulos e falar com a API
 do Telegram, não em administrar a própria VPS.
 """
 import logging
-import time
 import subprocess
+import time
+
 logger = logging.getLogger("AxonBot.system")
 
-from utils.helpers import salvar, deletar_depois, DEL_PADRAO, DEL_RAPIDO
 from utils.commands import cmd
-from utils.i18n import tr, set_lang, get_lang
+from utils.helpers import DEL_PADRAO, DEL_RAPIDO, deletar_depois, salvar
+from utils.i18n import get_lang, set_lang, tr
 
 
 def _git(*args, timeout=30):

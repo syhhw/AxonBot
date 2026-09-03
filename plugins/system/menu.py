@@ -13,12 +13,12 @@ bot; numa conta de usuário (userbot) o servidor aceita a edição do texto
 e descarta o teclado silenciosamente. Testado ao vivo em PV e grupo.
 """
 import logging
+
 logger = logging.getLogger("AxonBot.menu")
 
-from utils.helpers import prefixo, deletar_depois, tr, DEL_LONGO
-from utils.commands import cmd, REGISTRY
+from utils.commands import REGISTRY, cmd
+from utils.helpers import DEL_LONGO, deletar_depois, prefixo, tr
 from utils.i18n import COMMAND_ALIASES
-
 
 _MODULO_ORDER = [
     "system.py", "alive.py", "moderation.py", "purge.py", "locks.py", "tools.py",

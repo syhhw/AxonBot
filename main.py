@@ -91,7 +91,7 @@ def _verificar_primeiro_uso():
         if not os.path.exists("setup.sh") and os.name != "nt":
             print(f"  {AMARELO}⚠️  setup.sh não encontrado (pode ser ignorado no Windows).{RESET}\n")
 
-        resp = input(f"  ❓ Deseja executar o setup agora? (S/n): ").strip().lower()
+        resp = input("  ❓ Deseja executar o setup agora? (S/n): ").strip().lower()
         if resp in ("", "s"):
             print(f"\n{VERDE}▶ Iniciando setup...{RESET}\n")
             import runpy
@@ -118,10 +118,10 @@ _verificar_primeiro_uso()
 # ══════════════════════════════════════════════════════════════════════════════
 def _garantir_dependencias():
     import importlib
+    import json
+    import os
     import subprocess
     import sys
-    import os
-    import json
 
     libs = [
         ("pyrogram",            "pyrogram>=2.0.106"),
@@ -168,14 +168,15 @@ _garantir_dependencias()
 # ══════════════════════════════════════════════════════════════════════════════
 # 🟢 IMPORTS PRINCIPAIS
 # ══════════════════════════════════════════════════════════════════════════════
-import json
-import time
-import logging
 import asyncio
+import json
+import logging
+import time
 
-from pyrogram import Client, filters, idle
-from utils.i18n import tr, get_lang
+from pyrogram import Client, idle
+
 from utils.helpers import alertar_dono_via_bot
+from utils.i18n import get_lang, tr
 
 # Cria e define o event loop ANTES do Client para que o Pyrogram
 # capture o loop correto ao inicializar o Dispatcher
@@ -374,9 +375,9 @@ def manipulador_erros(loop, context):
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _carregar_plugins():
-    import importlib
     import glob
-    from pyrogram.handlers import MessageHandler
+    import importlib
+
     plugins_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
     # recursive=True pra pegar plugins organizados em subpastas por categoria
     # (plugins/moderation/purge.py) além dos soltos na raiz (plugins/*.py).

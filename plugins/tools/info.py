@@ -5,9 +5,8 @@ plugins/info.py
 """
 import aiohttp
 
-from pyrogram import filters, Client
-from utils.helpers import prefixo, deletar_depois, tr, DEL_LONGO
 from utils.commands import cmd
+from utils.helpers import DEL_LONGO, deletar_depois, prefixo, tr
 
 _GH_API    = "https://api.github.com"
 _OMDB_BASE = "https://www.omdbapi.com/"

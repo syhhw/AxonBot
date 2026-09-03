@@ -8,9 +8,9 @@ e guarda metadados (descrição tirada da docstring, módulo de origem) num
 registro em memória — usado pelo ,menu pra montar a listagem sem precisar
 reabrir e reparsear cada arquivo de plugin a cada chamada.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from pyrogram import filters, Client
+from pyrogram import Client, filters
 
 from utils.helpers import cmd_filter
 

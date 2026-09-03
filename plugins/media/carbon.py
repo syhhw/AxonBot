@@ -5,11 +5,11 @@ plugins/carbon.py
 """
 import os
 import tempfile
+
 import aiohttp
 
-from pyrogram import filters, Client
-from utils.helpers import tr
 from utils.commands import cmd
+from utils.helpers import tr
 
 _CARBON_URL = "https://carbonara.solopov.dev/api/cook"
 _CARBON_THEMES = ["monokai", "dracula", "one-dark", "nord", "night-owl"]

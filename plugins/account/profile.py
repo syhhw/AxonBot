@@ -8,10 +8,10 @@ plugins/profile.py
 import os
 import tempfile
 
-from pyrogram import filters, Client
 from pyrogram.raw import functions
-from utils.helpers import tr
+
 from utils.commands import cmd
+from utils.helpers import tr
 
 
 @cmd("setname")
@@ -46,8 +46,8 @@ async def cmd_setbio(client, message):
 
     await client.invoke(functions.account.UpdateProfile(about=bio))
     await message.edit_text(tr(
-        f"✅ Bio atualizada.",
-        f"✅ Bio updated.",
+        "✅ Bio atualizada.",
+        "✅ Bio updated.",
     ))
 
 

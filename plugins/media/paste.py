@@ -4,9 +4,8 @@ plugins/paste.py
 """
 import aiohttp
 
-from pyrogram import filters, Client
-from utils.helpers import tr
 from utils.commands import cmd
+from utils.helpers import tr
 
 
 async def _paste_to_katbin(text: str) -> str:

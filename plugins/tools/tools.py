@@ -2,26 +2,28 @@
 plugins/tools.py
 Ferramentas e diversão: hack, type, ghost, fake, tr, voz, print, encurtar, ipinfo, clima, specs, clone, reverter
 """
+import asyncio
 import logging
 import os
-import re
-import asyncio
 import random
-import textwrap
+import re
 import tempfile
-import aiohttp
+import textwrap
 from datetime import date as _date
 from urllib.parse import quote_plus
+
+import aiohttp
+
 logger = logging.getLogger("AxonBot.tools")
 
+from deep_translator import GoogleTranslator
 from gtts import gTTS
 from PIL import Image, ImageDraw, ImageFont
-from pyrogram import filters, enums, Client
-from deep_translator import GoogleTranslator
-from utils.helpers import prefixo, resolver_alvo, carregar, salvar
-from utils.commands import cmd
-from utils.i18n import tr, get_lang
+from pyrogram import enums
 
+from utils.commands import cmd
+from utils.helpers import carregar, prefixo, resolver_alvo, salvar
+from utils.i18n import get_lang, tr
 
 _CLIMA_CODES_THUNDER = {200, 386, 389, 392, 395}
 _CLIMA_CODES_RAIN    = {176, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311}

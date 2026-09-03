@@ -8,15 +8,16 @@ então aplica na hora, sem precisar reiniciar o userbot.
 """
 import logging
 import os
-import time
-import sys
 import platform
+import sys
+import time
+
 import pyrogram
+
 logger = logging.getLogger("AxonBot.alive")
 
-from pyrogram import filters, Client
-from utils.helpers import prefixo, deletar_depois, tr, carregar, salvar, DEL_LONGO
 from utils.commands import cmd
+from utils.helpers import DEL_LONGO, carregar, deletar_depois, prefixo, salvar, tr
 
 _ALIVE_KEY = "alive_media.json"
 _REPO_URL  = "https://github.com/syhhw/AxonBot"

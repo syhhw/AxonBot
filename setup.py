@@ -3,13 +3,13 @@
 Configurador interativo cross-platform: Windows, Linux (Ubuntu/Debian), Termux Android.
 Sem venv obrigatório — instala direto no Python do sistema com as flags certas.
 """
-import os
-import sys
-import json
-import subprocess
 import importlib
-import sysconfig
+import json
+import os
 import platform
+import subprocess
+import sys
+import sysconfig
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🎨 CORES DO TERMINAL
@@ -213,9 +213,9 @@ def configurar() -> dict:
 # 🤖 PAINEL BOT (OPCIONAL)
 # ══════════════════════════════════════════════════════════════════════════════
 def configurar_painel(config: dict) -> dict:
-    print(f"  O Painel é um bot de Telegram separado (não é o userbot) que cuida da")
-    print(f"  infraestrutura da VPS (,update/,restart/,sysinfo/,speed/,term etc, tudo")
-    print(f"  por botão) e faz moderação de grupo como bot próprio.")
+    print("  O Painel é um bot de Telegram separado (não é o userbot) que cuida da")
+    print("  infraestrutura da VPS (,update/,restart/,sysinfo/,speed/,term etc, tudo")
+    print("  por botão) e faz moderação de grupo como bot próprio.")
     print(f"  {AMARELO}Você pode pular e configurar depois editando config.json.{RESET}\n")
 
     usar = perguntar("Deseja configurar o Painel Bot agora? [s/N]", "n").lower()
@@ -246,7 +246,7 @@ def configurar_painel(config: dict) -> dict:
 # 📂 GOOGLE DRIVE (OPCIONAL)
 # ══════════════════════════════════════════════════════════════════════════════
 def configurar_drive(config: dict) -> dict:
-    print(f"  O Google Drive permite backup e organização automática de arquivos.")
+    print("  O Google Drive permite backup e organização automática de arquivos.")
     print(f"  {AMARELO}Você pode pular e configurar depois editando config.json.{RESET}\n")
 
     usar = perguntar("Deseja configurar o Google Drive agora? [s/N]", "n").lower()
@@ -262,9 +262,9 @@ def configurar_drive(config: dict) -> dict:
         aviso("client_secrets.json não encontrado.")
         print(f"\n  {CIANO}Como obter:{RESET}")
         print(f"   1. Acesse: {AMARELO}https://console.cloud.google.com{RESET}")
-        print(f"   2. Crie um projeto → Ative a Google Drive API")
-        print(f"   3. Credenciais → Criar credencial → ID do cliente OAuth")
-        print(f"   4. Tipo: Aplicativo para computador")
+        print("   2. Crie um projeto → Ative a Google Drive API")
+        print("   3. Credenciais → Criar credencial → ID do cliente OAuth")
+        print("   4. Tipo: Aplicativo para computador")
         print(f"   5. Baixe o JSON e salve como {VERDE}client_secrets.json{RESET} nesta pasta")
         print(f"\n  {AMARELO}Cole o arquivo e execute o setup novamente para continuar.{RESET}")
     else:
@@ -295,31 +295,31 @@ def instrucoes_finais():
 
     if _IS_WINDOWS:
         print(f"  {VERDE}▶ Iniciar o bot:{RESET}")
-        print(f"     python main.py\n")
+        print("     python main.py\n")
         print(f"  {VERDE}▶ Rodar em segundo plano (fecha com o terminal):{RESET}")
-        print(f"     pythonw main.py --background\n")
+        print("     pythonw main.py --background\n")
 
     elif _IS_ANDROID:
         print(f"  {VERDE}▶ Iniciar o bot:{RESET}")
-        print(f"     python main.py\n")
+        print("     python main.py\n")
         print(f"  {VERDE}▶ Rodar em segundo plano (continua após fechar Termux):{RESET}")
-        print(f"     nohup python main.py --background > userbot.log 2>&1 &\n")
+        print("     nohup python main.py --background > userbot.log 2>&1 &\n")
         print(f"  {VERDE}▶ Ver logs:{RESET}")
-        print(f"     tail -f userbot.log\n")
+        print("     tail -f userbot.log\n")
 
     else:  # Linux
         print(f"  {VERDE}▶ Iniciar o bot:{RESET}")
-        print(f"     python3 main.py\n")
+        print("     python3 main.py\n")
         print(f"  {VERDE}▶ Rodar em segundo plano (recomendado no servidor):{RESET}")
-        print(f"     nohup python3 main.py --background > userbot.log 2>&1 &\n")
+        print("     nohup python3 main.py --background > userbot.log 2>&1 &\n")
         print(f"  {VERDE}▶ Ou usando screen (persiste após fechar SSH):{RESET}")
-        print(f"     screen -S userbot\n")
-        print(f"     python3 main.py\n")
-        print(f"     # Ctrl+A, D para desanexar\n")
+        print("     screen -S userbot\n")
+        print("     python3 main.py\n")
+        print("     # Ctrl+A, D para desanexar\n")
         print(f"  {VERDE}▶ Ver logs:{RESET}")
-        print(f"     tail -f userbot.log\n")
+        print("     tail -f userbot.log\n")
         print(f"  {VERDE}▶ Parar o bot:{RESET}")
-        print(f"     kill $(pgrep -f 'python.*main.py')\n")
+        print("     kill $(pgrep -f 'python.*main.py')\n")
 
     print(f"  {CIANO}Dica: use o comando ,menu no Telegram para ver todos os comandos.{RESET}\n")
 

@@ -4,17 +4,19 @@ Baixador universal: tikwm API (TikTok), yt-dlp, instaloader (Instagram).
   ,dlinfo [link] — mostra título, duração, canal e tamanho estimado
   ,dl [link]     — baixa e envia o arquivo (vídeo, imagem ou áudio)
 """
+import asyncio
 import logging
 import os
 import re
-import glob
 import shutil
 import tempfile
-import asyncio
+
+import aiofiles
 import aiohttp
-from pyrogram import filters, Client
-from utils.helpers import prefixo, tr
+
 from utils.commands import cmd
+from utils.helpers import prefixo, tr
+
 logger = logging.getLogger("AxonBot.downloader")
 
 try:
@@ -29,7 +31,7 @@ try:
 except ImportError:
     HAS_INSTALOADER = False
 
-_IG_RE = re.compile(r'instagram\.com/(?:p|reel|tv|reels)/([A-Za-z0-9_-]+)', re.I)
+_IG_RE = re.compile(r'instagram\.com/(?:p|reel|tv|reels)/([A-Za-z0-9_-]+)', re.IGNORECASE)
 
 
 def _formatar_duracao(segundos: int) -> str:
@@ -98,8 +100,8 @@ def _baixar_instaloader(url: str, tmp_dir: str):
     )
 
 
-_IS_TIKTOK = re.compile(r'tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com', re.I)
-_IS_FACEBOOK = re.compile(r'facebook\.com|fb\.watch|fb\.com', re.I)
+_IS_TIKTOK = re.compile(r'tiktok\.com|vm\.tiktok\.com|vt\.tiktok\.com', re.IGNORECASE)
+_IS_FACEBOOK = re.compile(r'facebook\.com|fb\.watch|fb\.com', re.IGNORECASE)
 _TIKWM_API = "https://www.tikwm.com/api/"
 
 _DL_UA = (
@@ -190,9 +192,9 @@ async def _baixar_saveinsta(url: str, tmp_dir: str):
     async with aiohttp.ClientSession(timeout=dl_timeout) as sess:
         async with sess.get(video_url, headers={**_DL_HDRS, 'Referer': 'https://saveinsta.to/'}) as r:
             r.raise_for_status()
-            with open(path, 'wb') as f:
+            async with aiofiles.open(path, 'wb') as f:
                 async for chunk in r.content.iter_chunked(65536):
-                    f.write(chunk)
+                    await f.write(chunk)
 
     return path, shortcode
 
@@ -228,9 +230,9 @@ async def _baixar_tiktok_api(url: str, tmp_dir: str):
             headers={"Referer": "https://www.tiktok.com/"},
         ) as resp:
             resp.raise_for_status()
-            with open(path, "wb") as f:
+            async with aiofiles.open(path, "wb") as f:
                 async for chunk in resp.content.iter_chunked(65536):
-                    f.write(chunk)
+                    await f.write(chunk)
 
     return path, titulo
 

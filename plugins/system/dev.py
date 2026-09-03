@@ -8,18 +8,20 @@ plugins agora é responsabilidade do painel, não do userbot. ,eval fica
 aqui porque é scripting da própria conta (usa client/message do
 Pyrogram), não administração de VPS.
 """
+import asyncio
+import contextlib
+import io
 import logging
 import os
 import sys
-import io
 import traceback
-import asyncio
-import contextlib
+
 logger = logging.getLogger("AxonBot.dev")
 
-from utils.helpers import prefixo
 from utils.commands import cmd
+from utils.helpers import prefixo
 from utils.i18n import tr
+
 
 @cmd("eval")
 async def cmd_eval(client, message):

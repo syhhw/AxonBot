@@ -2,11 +2,12 @@
 plugins/ai.py
 Integração com Google Gemini (Inteligência Artificial)
 """
-import logging
 import asyncio
-from pyrogram import filters, Client
-from utils.helpers import tr
+import logging
+
 from utils.commands import cmd
+from utils.helpers import tr
+
 logger = logging.getLogger("AxonBot.ai")
 
 try:

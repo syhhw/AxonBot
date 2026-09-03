@@ -7,11 +7,17 @@ plugins/locks.py
 Créditos: ,lock/,unlock são comandos padrão de moderação em userbots
 Telegram (Man-Userbot e forks).
 """
-from pyrogram import filters, Client
 from pyrogram.types import ChatPermissions
-from utils.helpers import prefixo, verificar_admin, deletar_depois, tr, DEL_LONGO, DEL_PADRAO
-from utils.commands import cmd
 
+from utils.commands import cmd
+from utils.helpers import (
+    DEL_LONGO,
+    DEL_PADRAO,
+    deletar_depois,
+    prefixo,
+    tr,
+    verificar_admin,
+)
 
 # Mapa tipo → campo em ChatPermissions
 _CAMPOS: dict[str, str] = {

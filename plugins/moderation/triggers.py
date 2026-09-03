@@ -3,9 +3,11 @@ plugins/triggers.py
 Sistema de Auto-Respostas Passivas (Gatilhos)
 """
 import re
-from pyrogram import filters, Client
-from utils.helpers import prefixo, carregar, salvar, tr
+
+from pyrogram import Client, filters
+
 from utils.commands import cmd
+from utils.helpers import carregar, prefixo, salvar, tr
 
 
 def _trigger_matches(gatilho: str, texto: str) -> bool:

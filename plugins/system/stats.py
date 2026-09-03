@@ -4,12 +4,13 @@ plugins/stats.py
 """
 import logging
 import time
+
 logger = logging.getLogger("AxonBot.stats")
 
-from pyrogram import filters, Client
 from pyrogram.enums import ChatType
-from utils.helpers import tr
+
 from utils.commands import cmd
+from utils.helpers import tr
 
 
 @cmd("stats")
@@ -49,9 +50,7 @@ async def cmd_stats(client, message):
             try:
                 me_member = await client.get_chat_member(dialog.chat.id, "me")
                 from pyrogram.enums import ChatMemberStatus
-                if me_member.status == ChatMemberStatus.OWNER:
-                    admin_canais += 1
-                elif me_member.status == ChatMemberStatus.ADMINISTRATOR:
+                if me_member.status == ChatMemberStatus.OWNER or me_member.status == ChatMemberStatus.ADMINISTRATOR:
                     admin_canais += 1
             except Exception as e:
                 logger.debug(f"[stats.py] ignorado: {e}")

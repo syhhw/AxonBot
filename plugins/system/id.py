@@ -2,9 +2,8 @@
 plugins/id.py
   ,id — retorna o ID do chat, usuário ou mensagem respondida.
 """
-from pyrogram import filters, Client
-from utils.helpers import tr
 from utils.commands import cmd
+from utils.helpers import tr
 
 
 @cmd("id")

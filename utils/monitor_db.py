@@ -6,9 +6,9 @@ isso cresce muito e precisa de consulta por data (GROUP BY, WHERE data
 = X). Framework-agnostic (só sqlite3) — usado pelo userbot (grava) e
 pelo painel bot (lê os relatórios). Compartilha o mesmo userbot.db.
 """
+import logging
 import sqlite3
 import time
-import logging
 from datetime import datetime
 
 logger = logging.getLogger("AxonBot.monitor_db")

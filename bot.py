@@ -20,15 +20,15 @@ Gerenciamento (admins do grupo):
 Painel admin (apenas dono — acessado via /painel ou botão em /start):
   Status, Logs (live), Plugins, Sistema, Config, Reiniciar/Atualizar/Desligar
 """
+import asyncio
 import html
 import json
-import time
-import os
-import sys
-import re
 import logging
-import asyncio
 import mimetypes
+import os
+import re
+import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -42,27 +42,38 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger("KiraBot")
 
-from utils import sysinfo
-from utils.db import salvar as db_salvar, carregar as db_carregar
-from utils.monitor_db import contagem_por_dia, mensagens_do_dia, total_do_dia, total_geral
-
 from telegram import (
-    Update,
-    InlineKeyboardButton as Btn,
-    InlineKeyboardMarkup as Markup,
     ChatPermissions,
+    Update,
 )
+from telegram import (
+    InlineKeyboardButton as Btn,
+)
+from telegram import (
+    InlineKeyboardMarkup as Markup,
+)
+from telegram.constants import ChatMemberStatus, ParseMode
+from telegram.error import BadRequest, Forbidden
 from telegram.ext import (
     Application,
-    CommandHandler,
     CallbackQueryHandler,
-    MessageHandler,
-    ChatMemberHandler,
-    filters as tfilters,
+    CommandHandler,
     ContextTypes,
+    MessageHandler,
 )
-from telegram.constants import ParseMode, ChatMemberStatus
-from telegram.error import BadRequest, Forbidden
+from telegram.ext import (
+    filters as tfilters,
+)
+
+from utils import sysinfo
+from utils.db import carregar as db_carregar
+from utils.db import salvar as db_salvar
+from utils.monitor_db import (
+    contagem_por_dia,
+    mensagens_do_dia,
+    total_do_dia,
+    total_geral,
+)
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 try:

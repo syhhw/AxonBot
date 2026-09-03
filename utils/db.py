@@ -3,11 +3,11 @@ utils/db.py
 Camada de persistência: SQLite KV-store com cache em memória (TTL 30s).
 Exportado por utils/helpers.py — plugins não precisam mudar os imports.
 """
-import os
 import json
-import time
-import sqlite3
 import logging
+import os
+import sqlite3
+import time
 from typing import Any
 
 logger = logging.getLogger("AxonBotDB")

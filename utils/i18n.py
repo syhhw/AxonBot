@@ -3,8 +3,8 @@ utils/i18n.py
 Módulo profissional de internacionalização (i18n).
 Centraliza o gerenciamento de idioma e as traduções do bot.
 """
-import os
 import json
+import os
 
 _LANG     = "pt"
 _LOG_LANG = "pt"   # idioma do canal de logs (pode ser diferente do bot)

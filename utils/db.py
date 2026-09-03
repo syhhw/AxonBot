@@ -82,8 +82,8 @@ def salvar(arquivo: str, dados: Any) -> None:
                     (arquivo, serializado),
                 )
             _cache_put(arquivo, dados)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Falha ao regravar '{arquivo}' apos recriar o banco: {e}")
 
 
 def carregar(arquivo: str, padrao: Any) -> Any:
@@ -93,8 +93,8 @@ def carregar(arquivo: str, padrao: Any) -> Any:
             try:
                 with open(arquivo, "r", encoding="utf-8") as f:
                     return json.load(f)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"'{arquivo}' ilegivel, usando padrao: {e}")
         return padrao
 
     hit, val = _cache_hit(arquivo)
@@ -112,8 +112,8 @@ def carregar(arquivo: str, padrao: Any) -> Any:
                     val = json.loads(row[0])
                     _cache_put(arquivo, val)
                     return val
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Valor de '{arquivo}' no banco nao e JSON valido: {e}")
     except sqlite3.DatabaseError:
         logger.warning(f"⚠️  Falha ao carregar '{arquivo}'. Banco corrompido — recriando.")
         _init_db()
@@ -126,7 +126,7 @@ def carregar(arquivo: str, padrao: Any) -> Any:
             salvar(arquivo, dados)
             os.remove(arquivo)
             return dados
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Migracao JSON->SQLite de '{arquivo}' falhou: {e}")
 
     return padrao

@@ -178,8 +178,8 @@ def _load(name: str) -> dict:
 def _save(name: str, data: dict) -> None:
     try:
         _data_path(name).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Falha ao salvar '{name}': {e}")
 
 
 def _gid(chat_id: int) -> str:
@@ -978,8 +978,8 @@ async def cmd_warn(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
     if count >= limit:
         try:
             await ctx.bot.ban_chat_member(update.effective_chat.id, uid)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Falha ao banir {uid} por acumulo de avisos: {e}")
         warns[gid][str(uid)] = 0
         _save_warns(warns)
         await update.message.reply_text(

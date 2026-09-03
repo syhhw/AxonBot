@@ -6,6 +6,7 @@ Configuração da mídia exibida (foto/vídeo/gif) é feita só pelo painel
 bot agora (/painel → 🖼️ Alive) — escreve na mesma chave via utils.db,
 então aplica na hora, sem precisar reiniciar o userbot.
 """
+import html
 import logging
 import os
 import platform
@@ -41,25 +42,25 @@ def _build_text(me, inicio, versao, p) -> str:
     pyro = pyrogram.__version__
     so   = f"{platform.system()} {platform.release()}"
     ut   = _uptime(inicio)
-    nome = me.first_name or "?"
+    nome = html.escape(me.first_name or "?")
     return tr(
-        f"[AxonBot]({_REPO_URL})\n\n"
-        f"Usuário   :  {nome}\n"
-        f"Uptime    :  {ut}\n"
-        f"Build     :  {versao}\n"
-        f"Prefixo   :  {p}\n"
-        f"Python    :  {py}\n"
-        f"Pyrogram  :  {pyro}\n"
-        f"SO        :  {so}",
+        f'⚡ <b><a href="{_REPO_URL}">AxonBot</a></b> — online\n\n'
+        f"👤 <b>Usuário</b>  ·  {nome}\n"
+        f"⏱️ <b>Uptime</b>   ·  <code>{ut}</code>\n"
+        f"🏷️ <b>Build</b>    ·  <code>{versao}</code>\n"
+        f"⌨️ <b>Prefixo</b>  ·  <code>{p}</code>\n"
+        f"🐍 <b>Python</b>   ·  <code>{py}</code>\n"
+        f"📨 <b>Pyrogram</b> ·  <code>{pyro}</code>\n"
+        f"💻 <b>Sistema</b>  ·  <code>{so}</code>",
 
-        f"[AxonBot]({_REPO_URL})\n\n"
-        f"User      :  {nome}\n"
-        f"Uptime    :  {ut}\n"
-        f"Build     :  {versao}\n"
-        f"Prefix    :  {p}\n"
-        f"Python    :  {py}\n"
-        f"Pyrogram  :  {pyro}\n"
-        f"OS        :  {so}",
+        f'⚡ <b><a href="{_REPO_URL}">AxonBot</a></b> — online\n\n'
+        f"👤 <b>User</b>     ·  {nome}\n"
+        f"⏱️ <b>Uptime</b>   ·  <code>{ut}</code>\n"
+        f"🏷️ <b>Build</b>    ·  <code>{versao}</code>\n"
+        f"⌨️ <b>Prefix</b>   ·  <code>{p}</code>\n"
+        f"🐍 <b>Python</b>   ·  <code>{py}</code>\n"
+        f"📨 <b>Pyrogram</b> ·  <code>{pyro}</code>\n"
+        f"💻 <b>System</b>   ·  <code>{so}</code>",
     )
 
 

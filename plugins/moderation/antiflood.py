@@ -15,7 +15,7 @@ from pyrogram import Client, filters
 from pyrogram.types import ChatPermissions
 
 from utils.commands import cmd
-from utils.helpers import carregar, prefixo, salvar, tr
+from utils.helpers import carregar, criar_task, prefixo, salvar, tr
 
 logger = logging.getLogger("AxonBot.antiflood")
 
@@ -191,4 +191,4 @@ async def flood_watcher(client, message):
             _MUTADOS.discard((cid, uid))
             return
 
-        asyncio.create_task(_unmute_after(client, cid, uid, delay=duracao))
+        criar_task(_unmute_after(client, cid, uid, delay=duracao))

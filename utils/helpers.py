@@ -29,7 +29,7 @@ __all__ = [
     # próprios
     "deletar_depois", "prefixo", "listen", "cmd_filter",
     "verificar_admin", "auditoria", "resolver_alvo", "reiniciar_processo",
-    "alertar_dono_via_bot",
+    "alertar_dono_via_bot", "criar_task",
     "DEL_RAPIDO", "DEL_PADRAO", "DEL_LONGO",
 ]
 
@@ -41,6 +41,20 @@ DEL_PADRAO = 10   # confirmação padrão de uma ação (ban, mute, purge, etc.)
 DEL_LONGO  = 30   # listagens e telas informativas maiores
 
 
+# Referência forte das tasks de background — sem isto o CPython pode coletar
+# a task (weakref interna do event loop) antes de ela terminar. Ver RUF006 /
+# docs asyncio: "Save a reference to the result of this function".
+_BG_TASKS: set = set()
+
+
+def criar_task(coro):
+    """Cria uma task de background guardando referência forte até ela concluir."""
+    t = asyncio.create_task(coro)
+    _BG_TASKS.add(t)
+    t.add_done_callback(_BG_TASKS.discard)
+    return t
+
+
 def deletar_depois(message, tempo: int = 30) -> None:
     """Agenda a deleção de uma mensagem sem travar o event loop."""
     async def _tarefa():
@@ -49,7 +63,7 @@ def deletar_depois(message, tempo: int = 30) -> None:
             await message.delete()
         except Exception:
             pass
-    asyncio.create_task(_tarefa())
+    criar_task(_tarefa())
 
 
 def prefixo(client) -> str:

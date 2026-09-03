@@ -14,7 +14,7 @@ logger = logging.getLogger("AxonBot.panel")
 import psutil
 from pyrogram import Client
 
-from utils.helpers import reiniciar_processo
+from utils.helpers import criar_task, reiniciar_processo
 
 _CMD_FILE    = "_panel_cmd.json"
 _RESULT_FILE = "_panel_result.json"
@@ -38,8 +38,8 @@ def _write_result(ts: int, status: str, data: str) -> None:
 
 async def _on_start(client: Client) -> None:
     """Hook chamado por main.py após carregar todos os plugins."""
-    asyncio.create_task(_heartbeat_loop(client))
-    asyncio.create_task(_command_loop(client))
+    criar_task(_heartbeat_loop(client))
+    criar_task(_command_loop(client))
 
 
 async def _heartbeat_loop(client: Client) -> None:

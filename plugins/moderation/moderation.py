@@ -142,7 +142,6 @@ async def cmd_admins(client, message):
 @cmd("zombies")
 async def cmd_zombies(client, message):
     """Detecta e remove contas deletadas do grupo (pede confirmação)."""
-    p   = prefixo(client)
     msg = await message.edit_text(tr(
         "🔍 **Varrendo membros do grupo...**",
         "🔍 **Scanning group members...**",

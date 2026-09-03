@@ -175,7 +175,7 @@ import time
 
 from pyrogram import Client, idle
 
-from utils.helpers import alertar_dono_via_bot
+from utils.helpers import alertar_dono_via_bot, criar_task
 from utils.i18n import get_lang, tr
 
 # Cria e define o event loop ANTES do Client para que o Pyrogram
@@ -399,7 +399,7 @@ def _carregar_plugins():
             # Hook opcional: _on_start(client) para tarefas de background
             startup = getattr(mod, "_on_start", None)
             if startup and asyncio.iscoroutinefunction(startup):
-                asyncio.create_task(startup(app))
+                criar_task(startup(app))
                 logger.info(f"  ↳ _on_start() agendado para {nome}")
         except Exception as e:
             logger.warning(f"⚠️ Falha ao carregar plugin {nome}: {e}")

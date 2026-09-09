@@ -1,189 +1,186 @@
 """
-🚀 AXONBOT v2.3 - main.py
-Núcleo central que carrega configurações, conecta ao Google Drive
-e inicializa o cliente Pyrogram com os plugins.
+AxonBot — main.py
+Ponto de entrada: carrega config, conecta ao Google Drive (opcional) e
+sobe o cliente Pyrogram com os plugins.
 
-Inteligência automática:
-  - Detecta se está rodando dentro de uma venv; se não estiver, reinicia
-    automaticamente usando o Python da venv local (./venv/).
-  - Detecta se é novo usuário (config.json ausente) e redireciona para
-    o setup.py interativo antes de iniciar.
-  - Pergunta se o usuário quer rodar em segundo plano via nohup.
-    Se sim, relança o processo com nohup e encerra o processo atual.
+Antes de subir, resolve sozinho os três tropeços de primeira execução:
+  1. config.json ausente     → chama o setup.py interativo;
+  2. dependências faltando   → instala e reinicia;
+  3. terminal que vai fechar → oferece rodar em segundo plano.
 """
 import os
 import sys
 
-AMARELO  = "\033[93m"
-VERDE    = "\033[92m"
-AZUL     = "\033[94m"
-VERMELHO = "\033[91m"
-NEGRITO  = "\033[1m"
-RESET    = "\033[0m"
+# Console do Windows em cp1252 (e saída redirecionada pro userbot.log) não
+# aguenta acento nem emoji: sem isto o processo morre com UnicodeEncodeError.
+for _saida in (sys.stdout, sys.stderr):
+    try:
+        _saida.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟡 BLOCO 1 — PASSO 2: SEGUNDO PLANO VIA NOHUP
-# Pergunta se quer rodar em background. Se sim, relança com nohup e encerra.
-# A flag --background evita que o processo filho pergunte de novo.
-# ══════════════════════════════════════════════════════════════════════════════
+_COR = hasattr(sys.stdout, "isatty") and sys.stdout.isatty()
+VERDE, AMARELO, VERMELHO, AZUL, NEGRITO, RESET = (
+    ("\033[92m", "\033[93m", "\033[91m", "\033[94m", "\033[1m", "\033[0m")
+    if _COR else ("", "", "", "", "", "")
+)
 
-def _ja_esta_em_screen() -> bool:
-    """Detecta se já está dentro de uma sessão screen (para o aviso no log)."""
+
+def _em_screen() -> bool:
+    """Detecta sessão screen/tmux — conta como segundo plano."""
     return "STY" in os.environ or os.environ.get("TERM") == "screen"
 
-if "--background" not in sys.argv and "--debug" not in sys.argv:
-    print(f"\n{AZUL}{NEGRITO}╔════════════════════════════════════════════╗{RESET}")
-    print(f"{AZUL}{NEGRITO}║   🖥️  MODO DE EXECUÇÃO                      ║{RESET}")
-    print(f"{AZUL}{NEGRITO}╚════════════════════════════════════════════╝{RESET}\n")
-    print(f"  {VERDE}• Primeiro plano:{RESET} o bot para quando você fechar o terminal.")
-    print(f"  {VERDE}• Segundo plano:{RESET}  o bot continua rodando mesmo após fechar o terminal.\n")
 
-    _resp = input("  ❓ Rodar em segundo plano? (S/n): ").strip().lower()
+# ── 1. Primeira execução: sem config.json não há o que iniciar ────────────────
+def _verificar_primeiro_uso() -> None:
+    if os.path.exists("config.json"):
+        return
 
-    if _resp in ("", "s"):
-        _script = os.path.abspath(__file__)
-        _log    = os.path.join(os.path.dirname(_script), "userbot.log")
-        
-        if os.name == "nt":
-            import subprocess
-            _python_bg = sys.executable.replace("python.exe", "pythonw.exe")
-            if not os.path.exists(_python_bg):
-                _python_bg = sys.executable
+    print(f"\n{AZUL}{NEGRITO}  AxonBot — primeira execução{RESET}")
+    print(f"  {AMARELO}config.json não encontrado — o bot ainda não foi configurado.{RESET}\n")
 
-            with open(_log, "a") as f:
-                subprocess.Popen(
-                    [_python_bg, _script, "--background"],
-                    stdout=f,
-                    stderr=f,
-                    stdin=subprocess.DEVNULL,
-                    creationflags=getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-                )
-            _stop_cmd = "taskkill /F /IM pythonw.exe"
-        else:
-            import subprocess
-            _stop_cmd = "kill $(pgrep -f 'python.*main.py')"
-            with open(_log, "a") as _f:
-                subprocess.Popen(
-                    [sys.executable, _script, "--background"],
-                    stdout=_f, stderr=_f, stdin=subprocess.DEVNULL,
-                    start_new_session=True,
-                )
-        print(f"\n{VERDE}✅ Bot iniciado em segundo plano!{RESET}")
-        print(f"   Log em: {_log}")
-        print(f"   Para parar: {AMARELO}{_stop_cmd}{RESET}\n")
+    if not os.path.exists("setup.py"):
+        print(f"  {VERMELHO}setup.py também não está aqui. Baixe o projeto completo:{RESET}")
+        print("  git clone https://github.com/syhhw/AxonBot.git\n")
+        sys.exit(1)
+
+    if input("  Rodar o setup agora? [S/n]: ").strip().lower() not in ("", "s"):
+        py = "python" if os.name == "nt" else "python3"
+        print(f"\n  {AMARELO}Beleza. Rode `{py} setup.py` quando quiser configurar.{RESET}\n")
         sys.exit(0)
-    else:
-        print(f"\n  {VERDE}▶ Rodando em primeiro plano...{RESET}\n")
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟡 BLOCO 2 — DETECÇÃO DE NOVO USUÁRIO (config.json ausente)
-# ══════════════════════════════════════════════════════════════════════════════
-def _verificar_primeiro_uso():
+    print()
+    import runpy
+    runpy.run_path("setup.py", run_name="__main__")
+
     if not os.path.exists("config.json"):
-        print(f"\n{AZUL}{NEGRITO}╔════════════════════════════════════════════╗{RESET}")
-        print(f"{AZUL}{NEGRITO}║   🚀 AXONBOT — PRIMEIRO USO DETECTADO  ║{RESET}")
-        print(f"{AZUL}{NEGRITO}╚════════════════════════════════════════════╝{RESET}\n")
-        print(f"  {AMARELO}⚠️  config.json não encontrado.{RESET}")
-        print(f"  {AMARELO}    É necessário configurar o bot antes de iniciá-lo.{RESET}\n")
+        print(f"\n  {AMARELO}Setup encerrado sem salvar config.json. Bot não iniciado.{RESET}\n")
+        sys.exit(0)
+    print(f"\n{VERDE}  Configurado. Iniciando...{RESET}\n")
 
-        if not os.path.exists("setup.py"):
-            print(f"  {AMARELO}❌ setup.py também não encontrado. Baixe o projeto completo.{RESET}\n")
-        if not os.path.exists("setup.sh") and os.name != "nt":
-            print(f"  {AMARELO}⚠️  setup.sh não encontrado (pode ser ignorado no Windows).{RESET}\n")
-
-        resp = input("  ❓ Deseja executar o setup agora? (S/n): ").strip().lower()
-        if resp in ("", "s"):
-            print(f"\n{VERDE}▶ Iniciando setup...{RESET}\n")
-            import runpy
-            runpy.run_path("setup.py", run_name="__main__")
-            
-            import subprocess
-            if os.path.exists("setup.sh") and os.name != "nt":
-                subprocess.run(["bash", "setup.sh"])
-
-            if not os.path.exists("config.json"):
-                print(f"\n  {AMARELO}⚠️  Setup encerrado sem criar config.json. Bot não iniciado.{RESET}\n")
-                sys.exit(0)
-
-            print(f"\n{VERDE}✅ Setup concluído! Iniciando o bot...{RESET}\n")
-        else:
-            cmd_run = "python setup.py" if os.name == "nt" else "python3 setup.py"
-            print(f"\n  {AMARELO}Setup cancelado. Execute '{cmd_run}' quando estiver pronto.{RESET}\n")
-            sys.exit(0)
 
 _verificar_primeiro_uso()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟡 BLOCO 3 — DETECÇÃO AUTOMÁTICA E AUTO-REPAIR DE DEPENDÊNCIAS
-# ══════════════════════════════════════════════════════════════════════════════
-def _garantir_dependencias():
+
+# ── 2. Dependências: instala o que faltar e reinicia ──────────────────────────
+LIBS = [
+    ("pyrogram", "pyrogram>=2.0.106"), ("tgcrypto", "TgCrypto"),
+    ("requests", "requests"), ("aiohttp", "aiohttp"), ("aiofiles", "aiofiles"),
+    ("humanize", "humanize"), ("psutil", "psutil"), ("PIL", "Pillow"),
+    ("gtts", "gTTS"), ("deep_translator", "deep-translator"),
+    ("google.genai", "google-genai"), ("yt_dlp", "yt-dlp"),
+    ("instaloader", "instaloader"), ("pydrive2", "PyDrive2"),
+]
+
+
+def _garantir_dependencias() -> None:
     import importlib
     import json
-    import os
     import subprocess
-    import sys
-
-    libs = [
-        ("pyrogram",            "pyrogram>=2.0.106"),
-        ("requests",            "requests"),
-        ("humanize",            "humanize"),
-        ("speedtest",           "speedtest-cli"),
-        ("PIL",                 "Pillow"),
-        ("gtts",                "gTTS"),
-        ("deep_translator",     "deep-translator"),
-        ("psutil",              "psutil"),
-        ("tgcrypto",            "TgCrypto"),
-        ("aiofiles",            "aiofiles"),
-        ("aiohttp",             "aiohttp"),
-        ("google.genai", "google-genai"),
-        ("yt_dlp",              "yt-dlp"),
-        ("pydrive2",            "PyDrive2")
-    ]
 
     faltando = []
-    for lib_import, lib_name in libs:
+    for modulo, pacote in LIBS:
         try:
-            importlib.import_module(lib_import)
+            importlib.import_module(modulo)
         except ImportError:
-            faltando.append(lib_name)
-            
-    if faltando:
-        print(f"\n{AMARELO}⚠️  Dependências ausentes detectadas: {', '.join(faltando)}{RESET}")
-        print(f"{AZUL}▶  Baixando e instalando em background (isso pode levar alguns segundos)...{RESET}")
-        try:
-            subprocess.run([sys.executable, "-m", "pip", "install", *faltando, "-q"], check=True)
-            print(f"{VERDE}✅ Instalação concluída! Reiniciando o bot...{RESET}\n")
-            with open(".deps_updated.json", "w", encoding="utf-8") as f:
-                json.dump(faltando, f)
-            if os.name == "nt":
-                sys.exit(subprocess.call([sys.executable] + sys.argv))
-            else:
-                os.execv(sys.executable, [sys.executable] + sys.argv)
-        except Exception as e:
-            print(f"{VERMELHO}❌ Falha crítica ao tentar instalar pacotes automaticamente: {e}{RESET}")
-            sys.exit(1)
+            faltando.append(pacote)
+    if not faltando:
+        return
+
+    print(f"\n{AMARELO}  Faltam dependências: {', '.join(faltando)}{RESET}")
+    print(f"{AZUL}  Instalando...{RESET}")
+    try:
+        subprocess.run([sys.executable, "-m", "pip", "install", *faltando, "-q"], check=True)
+    except Exception as e:
+        print(f"{VERMELHO}  Falha ao instalar: {e}{RESET}")
+        print("  Tente manualmente: pip install -r requirements.txt\n")
+        sys.exit(1)
+
+    print(f"{VERDE}  Pronto. Reiniciando...{RESET}\n")
+    with open(".deps_updated.json", "w", encoding="utf-8") as f:
+        json.dump(faltando, f)
+    if os.name == "nt":
+        sys.exit(subprocess.call([sys.executable] + sys.argv))
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
 
 _garantir_dependencias()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 IMPORTS PRINCIPAIS
-# ══════════════════════════════════════════════════════════════════════════════
+
+# ── 3. Segundo plano: relança destacado do terminal e sai ─────────────────────
+SESSAO = "meu_userbot.session"
+
+
+def _oferecer_background() -> None:
+    if "--background" in sys.argv or "--debug" in sys.argv or _em_screen():
+        return
+
+    # Sem sessão salva, o Pyrogram vai pedir telefone e código aqui no
+    # terminal. Em segundo plano o stdin é /dev/null: ele leria EOF e
+    # morreria dentro do userbot.log, que ninguém abre. Então o primeiro
+    # login é sempre em primeiro plano, sem perguntar.
+    if not os.path.exists(SESSAO):
+        print(f"\n{AZUL}{NEGRITO}  Primeiro login{RESET}")
+        print("  O Telegram vai pedir seu telefone e o código de confirmação aqui.")
+        print(f"  {AMARELO}Depois disso, os próximos starts já podem ir pra segundo plano.{RESET}\n")
+        return
+
+    print(f"\n{AZUL}{NEGRITO}  Como quer rodar?{RESET}")
+    print(f"  {VERDE}Segundo plano{RESET}  — continua vivo depois que você fechar o terminal.")
+    print(f"  {VERDE}Primeiro plano{RESET} — para junto com o terminal (bom pra ver erro na hora).\n")
+
+    if input("  Rodar em segundo plano? [S/n]: ").strip().lower() not in ("", "s"):
+        print(f"\n  {VERDE}Primeiro plano. Ctrl+C encerra.{RESET}\n")
+        return
+
+    import subprocess
+    script = os.path.abspath(__file__)
+    log = os.path.join(os.path.dirname(script), "userbot.log")
+
+    if os.name == "nt":
+        python = sys.executable.replace("python.exe", "pythonw.exe")
+        if not os.path.exists(python):
+            python = sys.executable
+        extras = {"creationflags": getattr(subprocess, "DETACHED_PROCESS", 0x8)
+                                   | getattr(subprocess, "CREATE_NO_WINDOW", 0x8000000)}
+        parar = "taskkill /F /IM pythonw.exe"
+    else:
+        python, extras = sys.executable, {"start_new_session": True}
+        parar = "kill $(pgrep -f 'python.*main.py')"
+
+    with open(log, "a", encoding="utf-8") as f:
+        subprocess.Popen([python, script, "--background"], stdout=f, stderr=f,
+                         stdin=subprocess.DEVNULL, **extras)
+
+    print(f"\n{VERDE}  Rodando em segundo plano.{RESET}")
+    print(f"  Logs:  {log}")
+    print(f"  Parar: {AMARELO}{parar}{RESET}\n")
+    sys.exit(0)
+
+
+_oferecer_background()
+
+
+# ── Imports principais ────────────────────────────────────────────────────────
 import asyncio
 import json
 import logging
+import subprocess
 import time
+from logging.handlers import RotatingFileHandler
 
-from pyrogram import Client, idle
-
-from utils.helpers import alertar_dono_via_bot, criar_task
-from utils.i18n import get_lang, tr
-
-# Cria e define o event loop ANTES do Client para que o Pyrogram
-# capture o loop correto ao inicializar o Dispatcher
+# O loop precisa existir ANTES de importar o pyrogram: no Python 3.14 o
+# asyncio.get_event_loop() não cria mais um loop sozinho, e o pyrogram/sync.py
+# chama isso já no import — sem esta linha, o import estoura com RuntimeError.
+# Também garante que o Dispatcher do Client capture este loop, e não outro.
 _loop = asyncio.new_event_loop()
 asyncio.set_event_loop(_loop)
 
-# Google Drive é opcional
+from pyrogram import Client, idle
+
+from utils.helpers import criar_task
+from utils.i18n import get_lang, tr
+
 drive = None
 try:
     from pydrive2.auth import GoogleAuth
@@ -192,65 +189,45 @@ try:
 except ImportError:
     _DRIVE_DISPONIVEL = False
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 IDENTIDADE DO PROJETO
-# ══════════════════════════════════════════════════════════════════════════════
-def _commit_atual() -> str:
-    """Hash curto do commit local — serve de identidade do build, sem precisar
-    manter um número de versão manualmente. ,versao/,atualizar já comparam
-    esse hash contra origin/<branch> pra saber se há atualização disponível."""
-    import subprocess
+
+def _git(*args, timeout: int = 5) -> str:
+    """Saída de um comando git, ou string vazia se ele falhar."""
     try:
-        r = subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5,
-        )
-        return r.stdout.strip() if r.returncode == 0 else "dev"
+        r = subprocess.run(["git", *args], capture_output=True, text=True, timeout=timeout)
+        return r.stdout.strip() if r.returncode == 0 else ""
     except Exception:
-        return "dev"
+        return ""
 
-__VERSAO__     = _commit_atual()
-UPDATE_FLAG    = ".update_pending.json"
-UPDATE_BRANCH  = "AxonBot"
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 LOGS COLORIDOS NO TERMINAL
-# ══════════════════════════════════════════════════════════════════════════════
-from logging.handlers import RotatingFileHandler as _RFH
+# O hash curto do commit é a identidade do build — dispensa versionar à mão.
+__VERSAO__    = _git("rev-parse", "--short", "HEAD") or "dev"
+UPDATE_BRANCH = _git("rev-parse", "--abbrev-ref", "HEAD") or "main"
+UPDATE_FLAG   = ".update_pending.json"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-    datefmt="%H:%M:%S",
-)
-_file_handler = _RFH("userbot.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
-_file_handler.setFormatter(
-    logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s", datefmt="%H:%M:%S")
-)
-logging.getLogger().addHandler(_file_handler)
+# ── Logs ──────────────────────────────────────────────────────────────────────
+_FORMATO = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+_DATA    = "%H:%M:%S"
 
-logger = logging.getLogger("AxonBotCore")
+logging.basicConfig(level=logging.INFO, format=_FORMATO, datefmt=_DATA)
+_arquivo = RotatingFileHandler("userbot.log", maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
+_arquivo.setFormatter(logging.Formatter(_FORMATO, datefmt=_DATA))
+logging.getLogger().addHandler(_arquivo)
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 CARREGAMENTO DE CONFIGURAÇÕES
-# ══════════════════════════════════════════════════════════════════════════════
+logger = logging.getLogger("AxonBotCore")
+
+# ── Configuração ──────────────────────────────────────────────────────────────
 try:
     with open("config.json", "r", encoding="utf-8") as f:
         config = json.load(f)
 except json.JSONDecodeError as e:
-    logger.error(f"❌ config.json está malformado: {e}")
+    logger.error(f"config.json está malformado: {e}")
     sys.exit(1)
 
-PREFIXO = config.get("PREFIXO", ",")
-logger.info(f"🔧 Prefixo carregado: '{PREFIXO}'")
+PREFIXO  = config.get("PREFIXO", ",")
 LANGUAGE = get_lang()
-logger.info(f"🌐 Idioma / Language: '{LANGUAGE.upper()}'")
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 AUTENTICAÇÃO GOOGLE DRIVE (opcional)
-# ══════════════════════════════════════════════════════════════════════════════
-# Ativa Drive automaticamente se: pydrive2 instalado + credenciais existem + pasta configurada
+# ── Google Drive (opcional) ───────────────────────────────────────────────────
 _drive_configurado = (
     config.get("ID_PASTA_RAIZ_DRIVE")
     and os.path.exists("meu_drive.json")
@@ -262,30 +239,21 @@ if _DRIVE_DISPONIVEL and _drive_configurado:
         gauth = GoogleAuth()
         gauth.LoadCredentialsFile("meu_drive.json")
         if gauth.credentials is None:
-            logger.warning("⚠️ Credenciais do Drive não encontradas em meu_drive.json — Drive offline.")
-        elif gauth.access_token_expired:
-            gauth.Refresh()
-            gauth.SaveCredentialsFile("meu_drive.json")
-            drive = GoogleDrive(gauth)
-            logger.info("✅ Google Drive conectado (token renovado).")
+            logger.warning("Credenciais do Drive ausentes em meu_drive.json — Drive offline.")
         else:
-            gauth.Authorize()
+            if gauth.access_token_expired:
+                gauth.Refresh()
+                gauth.SaveCredentialsFile("meu_drive.json")
+            else:
+                gauth.Authorize()
             drive = GoogleDrive(gauth)
-            logger.info("✅ Google Drive conectado.")
+            logger.info("Google Drive conectado.")
     except Exception as e:
-        logger.error(f"❌ Falha ao conectar Drive: {e}")
+        logger.error(f"Falha ao conectar o Drive: {e}")
 elif _drive_configurado and not _DRIVE_DISPONIVEL:
-    logger.warning("⚠️ pydrive2 não instalado. Instale com: pip install pydrive2")
-elif config.get("ID_PASTA_RAIZ_DRIVE") and not os.path.exists("client_secrets.json"):
-    logger.warning("⚠️ client_secrets.json não encontrado — Drive offline. Baixe em console.cloud.google.com.")
-else:
-    logger.info("ℹ️  Google Drive não configurado (opcional).")
+    logger.warning("pydrive2 não instalado — Drive offline. Instale com: pip install pydrive2")
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 INICIALIZAÇÃO DO CLIENTE PYROGRAM
-# ══════════════════════════════════════════════════════════════════════════════
-os.makedirs("plugins", exist_ok=True)
-
+# ── Cliente ───────────────────────────────────────────────────────────────────
 app = Client(
     "meu_userbot",
     api_id=config["API_ID"],
@@ -294,192 +262,123 @@ app = Client(
     system_version="Android 14",
 )
 
-app.config       = config
-app.drive        = drive
-app.tempo_inicio = time.time()
-app.PREFIXO      = PREFIXO
-app.LANG         = LANGUAGE
+app.config        = config
+app.drive         = drive
+app.tempo_inicio  = time.time()
+app.PREFIXO       = PREFIXO
+app.LANG          = LANGUAGE
 app.VERSAO        = __VERSAO__
 app.UPDATE_FLAG   = UPDATE_FLAG
 app.UPDATE_BRANCH = UPDATE_BRANCH
 
-# ── Companion bot ─────────────────────────────────────────────────────────────
-def _matar_companion_anterior(pid_file: str) -> None:
-    """Encerra uma instância anterior do bot.py ainda viva, se houver.
 
-    Sem isso, cada restart (,restart/,atualizar) empilhava mais um bot.py
-    disputando o mesmo BOT_TOKEN via getUpdates, causando
-    'Conflict: terminated by other getUpdates request' no Telegram.
-    """
-    if not os.path.exists(pid_file):
-        return
-    try:
-        with open(pid_file, "r") as f:
-            pid_antigo = int(f.read().strip())
-        if os.name == "nt":
-            import subprocess as _sp
-            _sp.run(["taskkill", "/F", "/PID", str(pid_antigo)], capture_output=True)
-        else:
-            import signal
-            os.kill(pid_antigo, signal.SIGTERM)
-        logger.info(f"🤖 bot.py anterior (PID {pid_antigo}) encerrado.")
-    except (ProcessLookupError, ValueError, OSError):
-        pass
-    except Exception as e:
-        logger.debug(f"Falha ao encerrar bot.py anterior: {e}")
-
-
-def _launch_companion_bot() -> None:
-    """Sobe bot.py junto se configurado e main.py não foi iniciado por ele."""
-    if os.environ.get("PANEL_CHILD"):
-        return
-    if not config.get("BOT_TOKEN"):
-        return
-    import subprocess as _sp
-    _dir     = os.path.dirname(os.path.abspath(__file__))
-    bot_py   = os.path.join(_dir, "bot.py")
-    pid_file = os.path.join(_dir, ".bot_companion.pid")
-    if not os.path.exists(bot_py):
-        return
-
-    _matar_companion_anterior(pid_file)
-
-    env = os.environ.copy()
-    env["PANEL_CHILD"] = "1"
-    try:
-        proc = _sp.Popen([sys.executable, bot_py], env=env, cwd=_dir)
-        with open(pid_file, "w") as f:
-            f.write(str(proc.pid))
-        logger.info(f"🤖 bot.py iniciado (PID {proc.pid}).")
-    except Exception as e:
-        logger.warning(f"⚠️ Falha ao iniciar bot.py: {e}")
-
-_launch_companion_bot()
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 TRATAMENTO SILENCIOSO DE ERROS COMUNS
-# ══════════════════════════════════════════════════════════════════════════════
-def manipulador_erros(loop, context):
+def manipulador_erros(loop, context) -> None:
+    """Silencia o ruído conhecido do Pyrogram; o resto vai pro canal de logs."""
     erro = str(context.get("exception", ""))
-    if any(x in erro for x in ["Peer id invalid", "Message to delete not found", "MESSAGE_NOT_MODIFIED"]):
+    if any(x in erro for x in ("Peer id invalid", "Message to delete not found", "MESSAGE_NOT_MODIFIED")):
         return
-    try:
-        msg = tr(f"⚠️ **ALERTA DO SISTEMA:**\nErro interno detectado em uma das tarefas de execução:\n`{erro}`", f"⚠️ **SYSTEM ALERT:**\nInternal error detected in an execution task:\n`{erro}`")
-        app.loop.create_task(app.send_message(config["ID_CANAL_LOGS"], msg))
-    except Exception:
-        pass
+    log_id = config.get("ID_CANAL_LOGS")
+    if log_id:
+        criar_task(app.send_message(log_id, tr(
+            f"⚠️ **Erro interno**\n`{erro}`",
+            f"⚠️ **Internal error**\n`{erro}`",
+        )))
     loop.default_exception_handler(context)
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 🟢 ROTINA PRINCIPAL
-# ══════════════════════════════════════════════════════════════════════════════
 
-def _carregar_plugins():
+def _carregar_plugins() -> None:
     import glob
     import importlib
 
     plugins_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
-    # recursive=True pra pegar plugins organizados em subpastas por categoria
-    # (plugins/moderation/purge.py) além dos soltos na raiz (plugins/*.py).
+    # recursive=True pega os plugins organizados em subpastas por categoria
+    # (plugins/moderation/purge.py) além dos soltos na raiz.
     for path in sorted(glob.glob(os.path.join(plugins_dir, "**", "*.py"), recursive=True)):
         nome = os.path.basename(path)[:-3]
         if nome.startswith("_"):
             continue
         rel = os.path.relpath(path, plugins_dir)[:-3]
-        mod_name = "plugins." + rel.replace(os.sep, ".")
         try:
-            mod = importlib.import_module(mod_name)
-            count = 0
+            mod = importlib.import_module("plugins." + rel.replace(os.sep, "."))
+            total = 0
             for attr in vars(mod).values():
                 if callable(attr) and hasattr(attr, "handlers"):
                     for handler, group in attr.handlers:
                         app.add_handler(handler, group)
-                        count += 1
-            logger.info(f"✅ Plugin carregado: {nome} ({count} handler(s))")
-            # Hook opcional: _on_start(client) para tarefas de background
-            startup = getattr(mod, "_on_start", None)
-            if startup and asyncio.iscoroutinefunction(startup):
-                criar_task(startup(app))
-                logger.info(f"  ↳ _on_start() agendado para {nome}")
+                        total += 1
+            logger.info(f"Plugin carregado: {nome} ({total} handler(s))")
+            # Hook opcional pra tarefas de background do plugin.
+            inicio = getattr(mod, "_on_start", None)
+            if inicio and asyncio.iscoroutinefunction(inicio):
+                criar_task(inicio(app))
         except Exception as e:
-            logger.warning(f"⚠️ Falha ao carregar plugin {nome}: {e}")
+            logger.warning(f"Falha ao carregar o plugin {nome}: {e}")
 
 
-async def _notificar_status(texto: str) -> None:
-    """Avisos de status do boot (online/atualizado/desligado) — prefere PV
-    direto do dono via bot do painel (discreto); só cai pro canal de logs
-    se o painel não estiver configurado ou o envio falhar."""
-    if await alertar_dono_via_bot(config, texto, parse_mode=None):
-        return
+async def _avisar(texto: str) -> None:
+    """Aviso de status no canal de logs, se houver um configurado."""
     log_id = config.get("ID_CANAL_LOGS")
     if not log_id:
         return
     try:
         await app.send_message(log_id, texto)
     except Exception as e:
-        logger.warning(f"⚠️ Falha ao avisar status: {e}")
+        logger.warning(f"Falha ao enviar aviso de status: {e}")
 
 
-async def iniciar():
+def _consumir_flag(caminho: str):
+    """Lê e apaga um arquivo de flag deixado por um restart anterior."""
+    if not os.path.exists(caminho):
+        return None
+    dados = None
+    try:
+        with open(caminho, "r", encoding="utf-8") as f:
+            dados = json.load(f)
+    except Exception as e:
+        logger.warning(f"Flag '{caminho}' ilegível: {e}")
+    try:
+        os.remove(caminho)
+    except OSError:
+        pass
+    return dados
+
+
+async def iniciar() -> None:
     asyncio.get_event_loop().set_exception_handler(manipulador_erros)
-    logger.info(f"🚀 INICIANDO AXONBOT (`{__VERSAO__}`)...")
+    logger.info(f"Iniciando AxonBot ({__VERSAO__})...")
     await app.start()
     _carregar_plugins()
 
-    em_background = "--background" in sys.argv or _ja_esta_em_screen()
-    modo = tr("segundo plano", "background") if em_background else tr("primeiro plano", "foreground")
+    em_bg = "--background" in sys.argv or _em_screen()
+    modo  = tr("segundo plano", "background") if em_bg else tr("primeiro plano", "foreground")
 
-    if os.path.exists(UPDATE_FLAG):
-        try:
-            with open(UPDATE_FLAG, "r", encoding="utf-8") as f:
-                info_update = json.load(f)
-            await _notificar_status(
-                f"AxonBot atualizado ({info_update.get('commit', __VERSAO__)}).\n"
-                f"{info_update.get('mensagem', 'n/a')}\n"
-                f"Rodando em {modo}."
-            )
-        except Exception as e:
-            logger.warning(f"⚠️ Falha ao ler flag de update: {e}")
-        finally:
-            try:
-                os.remove(UPDATE_FLAG)
-            except OSError:
-                pass
-    elif os.path.exists(".deps_updated.json"):
-        try:
-            with open(".deps_updated.json", "r", encoding="utf-8") as f:
-                libs_instaladas = json.load(f)
-            await _notificar_status(
-                f"Instalei automaticamente as libs que faltavam: {', '.join(libs_instaladas)}.\n"
-                f"AxonBot online."
-            )
-        except Exception as e:
-            logger.warning(f"⚠️ Falha ao notificar libs instaladas: {e}")
-        finally:
-            try:
-                os.remove(".deps_updated.json")
-            except OSError:
-                pass
+    if (update := _consumir_flag(UPDATE_FLAG)) is not None:
+        await _avisar(
+            f"AxonBot atualizado ({update.get('commit', __VERSAO__)}).\n"
+            f"{update.get('mensagem', 'n/a')}\nRodando em {modo}."
+        )
+    elif (deps := _consumir_flag(".deps_updated.json")) is not None:
+        await _avisar(f"Dependências instaladas: {', '.join(deps)}.\nAxonBot online.")
     else:
-        await _notificar_status(
+        await _avisar(
             f"AxonBot online. Build {__VERSAO__} · prefixo {PREFIXO} · "
             f"Drive {'conectado' if drive else 'offline'}. Rodando em {modo}."
         )
 
-    logger.info(f"✅ AXONBOT ONLINE | Prefixo: '{PREFIXO}' | Aguardando comandos...")
+    logger.info(f"AxonBot online | prefixo '{PREFIXO}' | idioma {LANGUAGE.upper()}")
     await idle()
-    await _notificar_status("AxonBot encerrado.")
+    await _avisar("AxonBot encerrado.")
     await app.stop()
-    logger.info("👋 AxonBot encerrado.")
+    logger.info("AxonBot encerrado.")
 
 
 if __name__ == "__main__":
     try:
         _loop.run_until_complete(iniciar())
     except KeyboardInterrupt:
-        logger.info("👋 Encerrado pelo usuário.")
+        logger.info("Encerrado pelo usuário.")
     except Exception as e:
-        logger.error(f"❌ Erro fatal: {e}")
+        logger.error(f"Erro fatal: {e}")
         sys.exit(1)
     finally:
         _loop.close()

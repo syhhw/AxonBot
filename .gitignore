@@ -8,7 +8,6 @@ admin_cache.json
 feds.json
 permitidos.json
 triggers.json
-clone_backup.json
 .update_pending.json
 .deps_updated.json
 
@@ -23,12 +22,6 @@ client_secrets.json
 userbot.log
 __pycache__/
 *.pyc
-
-# IPC do painel bot (arquivos temporários de comunicação)
-_panel_cmd.json
-_panel_result.json
-_panel_status.json
-.bot_companion.pid
 
 # Ferramentas locais (não vai pro repositório)
 debug.py

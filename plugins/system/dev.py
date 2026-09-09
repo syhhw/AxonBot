@@ -1,12 +1,6 @@
 """
-plugins/dev.py
-Desenvolvimento: eval.
-
-,term e ,instalar/,desinstalar foram movidos pro painel bot (/painel →
-💻 Sistema → Shell, e 🔌 Plugins) — gerenciamento de infraestrutura e
-plugins agora é responsabilidade do painel, não do userbot. ,eval fica
-aqui porque é scripting da própria conta (usa client/message do
-Pyrogram), não administração de VPS.
+plugins/system/dev.py
+  ,eval — executa código Python no contexto do userbot.
 """
 import asyncio
 import contextlib

@@ -9,15 +9,20 @@ import os
 _LANG     = "pt"
 _LOG_LANG = "pt"   # idioma do canal de logs (pode ser diferente do bot)
 
+# Só entram aqui os comandos cujo nome em PT difere do nome em EN — o
+# cmd_filter aceita as duas grafias, independente do idioma configurado.
 COMMAND_ALIASES = {
-    # core
-    "versao": "version", "atualizar": "update", "processos": "processes",
-    "organizar": "organize", "procurar": "search", "apagar": "delete",
+    # sistema
+    "versao": "version", "atualizar": "update", "reiniciar": "restart",
+    "desligar": "shutdown", "idioma": "lang",
+    # conta
+    "permitidos": "allowed",
+    # ferramentas
     "encurtar": "shorten", "clima": "weather", "voz": "voice",
-    "direto": "direct", "resumir": "summarize", "idioma": "lang",
-    "zombies": "zombies", "reverter": "revert", "desligar": "shutdown",
-    "instalar": "install", "desinstalar": "uninstall", "perguntar": "ask",
-    "filme": "movie",
+    "perguntar": "ask", "resumir": "summarize", "filme": "movie",
+    # drive
+    "organizar": "organize", "procurar": "search", "apagar": "delete",
+    "direto": "direct",
     # locks
     "travar": "lock", "destravar": "unlock", "travas": "locks",
     # moderation (pin)

@@ -1,582 +1,359 @@
 <div align="center">
-  <img src="https://img.shields.io/badge/Telegram-AxonBot-blue?style=for-the-badge&logo=telegram" alt="Telegram AxonBot">
-  <img src="https://img.shields.io/badge/Python-3.10+-yellow?style=for-the-badge&logo=python" alt="Python 3.10+">
-  <img src="https://img.shields.io/badge/Pyrogram-v2.0+-green?style=for-the-badge" alt="Pyrogram">
-  <img src="https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Termux-lightgrey?style=for-the-badge" alt="Platforms">
+
+# ⚡ AxonBot
+
+**Um userbot de Telegram que roda na sua própria conta.**
+87 comandos: moderação, download, figurinhas, IA, Google Drive e automação — tudo por mensagem, sem app extra.
+
+<img src="https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
+<img src="https://img.shields.io/badge/Pyrogram-2.0+-red?style=flat-square" alt="Pyrogram 2.0+">
+<img src="https://img.shields.io/badge/Windows%20·%20Linux%20·%20Termux-lightgrey?style=flat-square" alt="Plataformas">
+
 </div>
 
-<br>
+---
 
-<div align="center">
-  <a href="#-userbot-pro-v23--english">🇺🇸 English</a> &nbsp;|&nbsp; <a href="#-userbot-pro-v23--português">🇧🇷 Português</a>
-</div>
+## O que é um userbot
+
+Um bot comum é uma conta separada, criada no @BotFather, que só enxerga o que mandam pra ele.
+
+Um **userbot** é diferente: ele se conecta como **você**. Os comandos são mensagens que *você* escreve, em qualquer conversa, e o bot edita a própria mensagem com a resposta. Ninguém precisa te adicionar em nada — onde você está, ele está.
+
+> [!WARNING]
+> Automatizar uma conta pessoal é tolerado pelo Telegram, mas **spam derruba conta**. Não use `,mencionar` a cada cinco minutos, não use `,gban` como brincadeira e não saia mandando PV em massa. A conta é sua, o risco é seu.
 
 ---
 
-# 🇺🇸 AXONBOT — English
+## Instalação
 
-**AxonBot** is an advanced personal assistant for Telegram built with [Pyrogram](https://docs.pyrogram.org/). It runs directly on your account, automating tasks, moderating groups, cloning stickers, integrating AI, and backing up files to Google Drive — all from a simple command in the chat.
-
-Runs natively on **Windows**, **Linux** (Ubuntu/Debian/servers), and **Android** (Termux). No virtual environment needed.
-
----
-
-## ✨ Features
-
-| | Feature |
-|---|---|
-| 🧠 | **Gemini AI** — ask questions and summarize conversations |
-| ☁️ | **Google Drive** — upload Telegram files, search, organize and manage your cloud storage |
-| 🛡️ | **Moderation** — ban, mute, purge, remove zombie accounts, global ban |
-| 🔒 | **PM Firewall** — math captcha for unauthorized private messages, AFK auto-reply |
-| 🎭 | **Stickers** — auto-kang (steal and create packs autonomously) |
-| ⬇️ | **Downloader** — YouTube, Instagram, TikTok via `yt-dlp` |
-| 🔄 | **Auto-update** — pull latest version from GitHub and restart with one command |
-| 🔌 | **Dynamic plugins** — hot-install new plugins from a URL |
-| 🌐 | **Bilingual** — English and Portuguese, toggle anytime |
-
----
-
-## 📋 Requirements
-
-- **Python 3.10+**
-- **Git**
-- A Telegram account with `API_ID` and `API_HASH` from [my.telegram.org](https://my.telegram.org)
-- A private channel or group to receive bot logs (you'll need its ID)
-
----
-
-## 📥 Installation
-
-### Step 1 — Clone the repository
+Precisa de **Python 3.10 ou mais novo** e **Git**.
 
 ```bash
 git clone https://github.com/syhhw/AxonBot.git
 cd AxonBot
-```
-
-### Step 2 — Run the interactive setup
-
-The setup script auto-detects your platform, checks Python version, installs all dependencies, and guides you through the configuration.
-
-**Windows:**
-```cmd
 python setup.py
 ```
 
-**Linux / Termux:**
+O `setup.py` cuida de tudo em 5 etapas: confere o Python, instala as dependências, pergunta as credenciais, oferece o Google Drive e faz seu login no Telegram. No fim ele te diz exatamente como iniciar.
+
+<details>
+<summary><b>Linux e Termux — dependências do sistema</b></summary>
+
+Alguns recursos (converter vídeo, gerar figurinha) precisam de `ffmpeg` e `libwebp`. Rode antes do setup:
+
 ```bash
-python3 setup.py
+bash setup.sh
 ```
 
-> **Note for Ubuntu/Debian:** The script automatically handles the `--break-system-packages` restriction from Python 3.12+. No manual workaround needed.
+Se o `pip` reclamar de *externally-managed-environment* (Debian 12+, Ubuntu 24.04+), o setup já contorna sozinho com `--break-system-packages`. Preferindo isolar:
 
-> **Note for Termux:** Make sure you have Python and Git installed first:
-> ```bash
-> pkg update && pkg install python git
-> ```
+```bash
+python3 -m venv venv && source venv/bin/activate
+```
 
-### Step 3 — Follow the prompts
-
-The setup will ask for:
-1. `API_ID` and `API_HASH` — from [my.telegram.org](https://my.telegram.org)
-2. **Log channel ID** — a private channel/group where the bot sends system alerts (format: `-1001234567890`)
-3. **Command prefix** — default is `,` (comma)
-4. **Language** — `pt` (Portuguese) or `en` (English)
-5. *(Optional)* Google Gemini API key — free at [aistudio.google.com](https://aistudio.google.com/app/apikey)
-6. *(Optional)* Google Drive setup
+</details>
 
 ---
 
-## 🚀 Starting the Bot
+## Configuração
 
-**Windows (foreground):**
-```cmd
+Tudo mora num único `config.json`, criado pelo setup. Você **não precisa editar nada à mão** — mas aqui está o que cada campo significa, caso queira mexer depois.
+
+| Campo | Obrigatório | O que é |
+|---|:---:|---|
+| `API_ID` | **sim** | Número que identifica seu app no Telegram |
+| `API_HASH` | **sim** | Chave secreta que vem junto do `API_ID` |
+| `PREFIXO` | não | Caractere que inicia os comandos. Padrão: `,` |
+| `LANGUAGE` | não | `pt` ou `en`. Padrão: `pt` |
+| `ID_CANAL_LOGS` | não | Canal privado onde o bot registra o que acontece |
+| `GEMINI_API_KEY` | não | Libera `,perguntar` e `,resumir` |
+| `ID_PASTA_RAIZ_DRIVE` | não | Pasta do Google Drive usada como raiz |
+| `LIMITE_AUTO_UPLOAD` | não | Tamanho máximo, em bytes, do envio automático pro Drive |
+
+### 1. API_ID e API_HASH — os únicos itens obrigatórios
+
+São as chaves que provam que o app é seu. O Telegram dá de graça:
+
+1. Abra **[my.telegram.org](https://my.telegram.org)** e entre com o seu número
+2. Clique em **API development tools**
+3. Preencha qualquer nome de app (`axonbot` serve) e qualquer plataforma
+4. Copie o **`api_id`** (números) e o **`api_hash`** (letras e números)
+
+> [!CAUTION]
+> Essas duas chaves dão acesso à sua conta. Elas ficam só no `config.json`, que o `.gitignore` já bloqueia — **nunca** poste print delas nem suba o arquivo pro GitHub.
+
+### 2. Prefixo
+
+O caractere que transforma uma mensagem sua em comando. Com o padrão `,`, você digita `,ping`.
+
+Escolha algo que você **não usa escrevendo normalmente**. Vírgula funciona bem porque ninguém começa frase com vírgula. Evite `/`, que é o prefixo dos bots comuns e ia conflitar em grupos.
+
+### 3. Canal de logs (opcional)
+
+Um canal privado só seu onde o bot avisa que ligou, reporta erros e registra cada moderação — útil pra saber o que aconteceu enquanto você não estava olhando.
+
+1. No Telegram, crie um **canal** (não grupo) e deixe como privado
+2. Mande qualquer mensagem nele
+3. Encaminhe essa mensagem para **[@userinfobot](https://t.me/userinfobot)**
+4. Ele responde com o ID do canal, algo como `-1001234567890` — cole no setup
+
+Pulando essa etapa, o bot funciona igual: ele só deixa de ter onde escrever o histórico.
+
+### 4. Login no Telegram
+
+Na última etapa o setup pede seu telefone e o código que o Telegram manda no app. Se você usa verificação em duas etapas, ele pede a senha também.
+
+Isso cria o arquivo `meu_userbot.session` — é ele que mantém você logado. Trate como senha: **quem tiver esse arquivo entra na sua conta.** Ele também já está no `.gitignore`.
+
+### Reconfigurar depois
+
+Rodar `python setup.py` de novo mostra o que já está salvo e pergunta se você quer refazer. Para trocar só o idioma, nem precisa: `,idioma en` resolve na hora.
+
+---
+
+## Rodando
+
+```bash
 python main.py
 ```
 
-**Linux / Termux (foreground):**
-```bash
-python3 main.py
-```
+No primeiro start ele fica em primeiro plano de propósito — o login precisa do terminal. Depois disso, ele passa a perguntar como você quer rodar:
 
-**Linux — background (stays running after closing the terminal):**
-```bash
-nohup python3 main.py --background > userbot.log 2>&1 &
-```
+- **Segundo plano** — continua vivo depois que você fechar o terminal. É o que você quer numa VPS.
+- **Primeiro plano** — para junto com o terminal. Bom pra ver erro acontecendo.
 
-**Linux — with screen (recommended for servers):**
-```bash
-screen -S userbot
-python3 main.py
-# Press Ctrl+A, D to detach
-```
+| | Linux / Termux | Windows |
+|---|---|---|
+| **Parar** | `kill $(pgrep -f 'python.*main.py')` | `taskkill /F /IM pythonw.exe` |
+| **Ver logs** | `tail -f userbot.log` | `Get-Content userbot.log -Wait` |
 
-**View logs:**
-```bash
-tail -f userbot.log
-```
-
-**Stop the bot:**
-```bash
-kill $(pgrep -f 'python.*main.py')
-```
-
-> On first run, the bot will log in to your Telegram account (enter your phone number and the code). This session is saved locally — you won't need to log in again.
+Confirme que funcionou digitando **`,alive`** em qualquer conversa do Telegram. Depois **`,menu`** pra ver tudo.
 
 ---
 
-## 📚 Commands
+## Comandos
 
-Type `,menu` in any chat to see all commands grouped by module.
+São 87, em 25 módulos. `,menu` lista as categorias; `,menu mod` abre uma delas.
 
-### 🖥️ System
-| Command | Description |
-|:---|:---|
-| `,menu` | List all available commands by module |
-| `,version` | Check local vs remote version on GitHub |
-| `,ping` | Measure bot latency |
-| `,lang [pt/en]` | Switch language |
-| `,id` | Get the ID of the chat, a user, or a replied message |
-| `,stats` | Show account stats (groups, channels, contacts, bots) |
-| `,alive` | Show full userbot status (uptime, build, owner) |
-| `,github [user/repo]` | Look up a GitHub user or repository |
-| `,movie [name]` | Look up a movie or TV show (OMDb) |
+Os comandos têm nome em português e em inglês — `,atualizar` e `,update` fazem a mesma coisa, independente do idioma configurado.
 
-> VPS/infrastructure management (`update`, `restart`, `sysinfo`, `speed`, `processes`, `shutdown`, `term`) and the `,alive` photo/video/gif live entirely in the **Panel Bot** now — see the Panel Bot section below. The userbot only runs modules and talks to the Telegram API.
+<details open>
+<summary><b>🖥️ Sistema</b></summary>
 
-### 👮 Moderation
-| Command | Description |
-|:---|:---|
-| `,ban` / `,unban` | Ban or unban a user |
-| `,mute` / `,unmute` | Mute or unmute a user |
-| `,del` | Delete the replied message |
-| `,purge` | Delete all messages from the replied one to the command |
-| `,purgeme [N]` | Delete your own last N messages in the chat |
-| `,sd [seconds] [text]` | Send a message that self-destructs after N seconds |
-| `,admins` | List all group admins |
-| `,zombies` | Remove deleted accounts from the group |
-| `,gban` | Ban a user across all your admin groups |
-| `,fban` | Ban a user across all federation groups |
-| `,addfed` / `,delfed` / `,feds` | Manage which groups belong to your federation |
-| `,pin` / `,unpin` | Pin or unpin the replied message |
-| `,lock [type]` / `,unlock [type]` | Lock or unlock a group permission |
-| `,locks` | Show the status of all group permissions |
-| `,setflood [msgs] [seconds]` | Auto-mute users who flood past this limit |
-| `,noflood` / `,flood` | Disable antiflood / show its current status |
-
-### 👤 Account & AFK
-| Command | Description |
-|:---|:---|
-| `,afk [reason]` | Activate AFK mode with auto-reply |
-| `,unafk` | Deactivate AFK mode manually |
-| `,permit` | Authorize a user to send you private messages |
-
-### 🧠 AI (Gemini)
-| Command | Description |
-|:---|:---|
-| `,ask [question]` | Ask anything to Google Gemini |
-| `,summarize` | Summarize the last 50 messages in bullet points |
-
-### 🎭 Stickers
-| Command | Description |
-|:---|:---|
-| `,kang [emoji]` | Reply to a sticker/photo to steal it into your pack |
-| `,packinfo` | List your sticker packs with links |
-
-### ⬇️ Downloader
-| Command | Description |
-|:---|:---|
-| `,dlinfo [url]` | Show title, duration, channel and estimated size before downloading |
-| `,dl [url]` | Download video from YouTube, Instagram, TikTok |
-
-### 📂 Google Drive
-| Command | Description |
-|:---|:---|
-| `,status` | Show Drive usage (space bar) |
-| `,get [url]` | Download a file from a URL directly to Drive |
-| `,direct` | Reply to a Telegram file to upload it to Drive |
-| `,search [name]` | Search files in your Drive |
-| `,delete [N]` | Delete file from search results |
-| `,organize` | Sort root folder files into category subfolders |
-
-### 👋 Group Management
-| Command | Description |
-|:---|:---|
-| `,setwelcome [message]` | Set the welcome message for new members (`{name}`, `{mention}`, `{chat}`, `{count}`) |
-| `,delwelcome` / `,welcome` | Remove or preview the current welcome message |
-| `,note [name]` / `,delnote [name]` / `,notes` | Save, remove, or list quick replies (recall with `#name`) |
-| `,addfilter "word" "reply"` / `,delfilter "word"` / `,filters` | Manage per-group auto-reply filters |
-| `,tagall [message]` | Mention every member of the group in batches of 5 |
-
-### 🪪 Profile
-| Command | Description |
-|:---|:---|
-| `,setname [name]` | Change your Telegram display name |
-| `,setbio [text]` | Change your bio |
-| `,setpfp` | Set your profile photo (reply to a photo) |
-| `,delpfp` | Remove your current profile photo |
-| `,clone` | Clone another user's name, bio and photo onto your account |
-| `,revert` | Restore your original profile after `,clone` |
-
-### 🛠️ Utilities & Fun
-| Command | Description |
-|:---|:---|
-| `,carbon [code]` | Render a styled code screenshot via carbon.now.sh |
-| `,paste` | Paste text (or the replied message) to a pastebin and get the link |
-| `,hack` | Interactive fake-hack simulator using real target data |
-| `,type [text]` | Simulate typing the text letter by letter |
-| `,ghost [seconds] [text]` | Send a message that self-destructs after N seconds |
-| `,fake [typing/recording/...]` | Simulate a chat action (typing, recording audio/video, etc.) |
-| `,tr [lang]` | Translate the replied message |
-| `,voice [text]` | Convert text to speech (br, pt, en, es, ja, ru) |
-| `,print` | Render the replied message as a styled image |
-| `,shorten [url]` | Shorten a URL via TinyURL |
-| `,ipinfo [ip]` | Show information about an IP address |
-| `,weather [city]` | Current weather and 3-day forecast for a city |
-| `,specs [model]` | Phone specs lookup via GSMArena |
-
-### ⚙️ Developer
-| Command | Description |
-|:---|:---|
-| `,eval [code]` | Execute Python code dynamically |
-
-> Shell access (`,term`) and plugin install/removal moved to the Panel Bot's `/painel` — file upload instead of a URL, with a confirm step before deleting.
-
-### ⚡ Triggers
-| Command | Description |
-|:---|:---|
-| `,addtrigger "word" "reply"` | Add an auto-reply trigger |
-| `,deltrigger "word"` | Remove a trigger |
-| `,triggers` | List all active triggers |
-
----
-
-## 🔑 Optional Integrations
-
-### Google Gemini AI
-1. Get a free API key at [aistudio.google.com](https://aistudio.google.com/app/apikey)
-2. During `setup.py`, paste it when asked — or add it manually to `config.json`:
-```json
-"GEMINI_API_KEY": "your-key-here"
-```
-
-### Google Drive
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a project → Enable the **Google Drive API**
-3. Go to **Credentials** → Create Credential → **OAuth 2.0 Client ID**
-4. Application type: **Desktop app**
-5. Download the JSON and save it as **`client_secrets.json`** in the bot's root folder
-6. Run `setup.py` and choose Drive setup — or restart the bot; it will auto-detect the file
-7. On first run with Drive enabled, a browser window will open to authorize — after that it saves automatically to `meu_drive.json`
-
-### Panel Bot
-A separate Telegram **bot** account (`bot.py`, run alongside the userbot) that owns VPS infrastructure and plugin management through a button-based `/painel` — restart, update, sysinfo, speed test, top processes, a shell prompt, plugin install/removal (file upload), and the `,alive` photo/video/gif, all with real inline keyboards. That last part matters: **inline buttons only render for bot accounts**, not for a personal user session — Telegram silently drops `reply_markup` sent by a userbot. So anything interactive belongs here, not in the userbot.
-1. Create a bot with [@BotFather](https://t.me/BotFather) and grab the token
-2. During `setup.py`, choose to configure the Panel Bot and paste the token + your numeric Telegram user ID — or add manually to `config.json`:
-```json
-"BOT_TOKEN": "your-bot-token-here",
-"DONO_ID": 123456789
-```
-3. Run `python bot.py` alongside `main.py` (it's started automatically by the userbot if `BOT_TOKEN` is set)
-4. DM the bot and send `/painel`
-
----
-
-## 🛡️ PM Firewall
-
-When an unknown user messages you in private, the bot intercepts and sends a **math captcha**. Only after solving it does the conversation reach you. Use `,permit` in the user's chat to bypass it manually.
-
----
-
-## ⚠️ Disclaimer
-
-This project is for educational purposes only. AxonBot usage is not officially supported by Telegram's Terms of Service. Heavy automation or spam may result in account restrictions. **Use responsibly.**
-
----
-
-# 🇧🇷 AXONBOT — Português
-
-O **AxonBot** é um assistente pessoal avançado para Telegram construído com [Pyrogram](https://docs.pyrogram.org/). Ele roda diretamente na sua conta, automatizando tarefas, moderando grupos, clonando figurinhas, integrando IA e fazendo backup no Google Drive — tudo por um comando simples no chat.
-
-Funciona nativamente no **Windows**, **Linux** (Ubuntu/Debian/servidores) e **Android** (Termux). Sem ambiente virtual obrigatório.
-
----
-
-## ✨ Funcionalidades
-
-| | Funcionalidade |
+| Comando | O que faz |
 |---|---|
-| 🧠 | **Gemini IA** — faça perguntas e resuma conversas |
-| ☁️ | **Google Drive** — envie arquivos do Telegram, pesquise, organize e gerencie sua nuvem |
-| 🛡️ | **Moderação** — ban, mute, purge, remover zumbis, banimento global |
-| 🔒 | **Firewall de PV** — captcha matemático para mensagens privadas não autorizadas, auto-resposta AFK |
-| 🎭 | **Figurinhas** — kang automático (rouba e cria pacotes sozinho) |
-| ⬇️ | **Downloader** — YouTube, Instagram, TikTok via `yt-dlp` |
-| 🔄 | **Auto-atualização** — puxa a versão mais recente do GitHub com um comando |
-| 🔌 | **Plugins dinâmicos** — instale novos plugins por URL sem reiniciar manualmente |
-| 🌐 | **Bilíngue** — Português e Inglês, troque a qualquer momento |
+| `,alive` | Confirma que está no ar: uptime, build, versões |
+| `,setalive` · `,delalive` | Define ou remove a mídia mostrada no `,alive` |
+| `,versao` | Build local, remota e se há atualização |
+| `,atualizar` | Baixa a última versão do GitHub e reinicia |
+| `,reiniciar` · `,desligar` | Reinicia ou encerra o userbot |
+| `,logs [n]` | Últimas linhas do `userbot.log` |
+| `,sysinfo` | CPU, GPU, RAM, disco e rede da máquina |
+| `,ping` | Latência |
+| `,idioma pt\|en` | Troca o idioma |
+| `,menu [módulo]` | Lista os comandos |
+| `,id` | ID do chat, do usuário ou da mensagem |
+| `,stats` | Estatísticas da sua conta (grupos, canais, contatos) |
+| `,eval` | Executa Python no contexto do bot |
 
----
+</details>
 
-## 📋 Requisitos
+<details>
+<summary><b>👮 Moderação</b></summary>
 
-- **Python 3.10+**
-- **Git**
-- Uma conta do Telegram com `API_ID` e `API_HASH` obtidos em [my.telegram.org](https://my.telegram.org)
-- Um canal ou grupo privado seu para receber os logs do bot (você vai precisar do ID)
+| Comando | O que faz |
+|---|---|
+| `,ban` · `,unban` | Bane e desbane no grupo |
+| `,mute` · `,unmute` | Silencia e libera |
+| `,gban` | Bane em todos os grupos onde você é admin |
+| `,fban` · `,addfed` · `,delfed` · `,feds` | Banimento por federação de grupos |
+| `,admins` | Lista os administradores |
+| `,zombies` | Remove contas deletadas (pede confirmação) |
+| `,fixar` · `,desafixar` | Fixa e desafixa mensagem |
+| `,purge` · `,del` · `,purgeme` | Apaga mensagens em lote, uma, ou só as suas |
+| `,sd 10 texto` | Manda mensagem que se autodestrói |
+| `,travar` · `,destravar` · `,travas` | Trava tipos de conteúdo no grupo |
+| `,setflood` · `,noflood` · `,flood` | Antiflood por grupo |
+| `,addfiltro` · `,delfiltro` · `,filtros` | Respostas automáticas por palavra |
+| `,nota` · `,delnota` · `,notas` | Notas salvas do grupo |
+| `,setbemvindo` · `,delbemvindo` · `,bemvindo` | Boas-vindas a quem entra |
+| `,addtrigger` · `,deltrigger` · `,triggers` | Gatilhos de resposta |
+| `,mencionar` | Menciona todo mundo, em lotes de 5 |
 
----
+</details>
 
-## 📥 Instalação
+<details>
+<summary><b>👤 Conta e privacidade</b></summary>
 
-### Passo 1 — Clone o repositório
+| Comando | O que faz |
+|---|---|
+| `,afk [motivo]` · `,unafk` | Responde sozinho enquanto você está fora |
+| `,pmpermit on\|off` | Firewall de mensagens privadas |
+| `,captcha on\|off\|math\|palavra\|emoji` | Desafio pra quem te manda PV |
+| `,permit` · `,unpermit` · `,permitidos` | Autoriza, revoga e lista quem pode te mandar PV |
+| `,monitor on\|off` | Encaminha PVs e menções pro canal de logs |
+| `,setname` · `,setbio` · `,setpfp` · `,delpfp` | Edita seu perfil |
 
-```bash
-git clone https://github.com/syhhw/AxonBot.git
-cd AxonBot
-```
+</details>
 
-### Passo 2 — Execute o setup interativo
+<details>
+<summary><b>🛠️ Ferramentas, mídia e IA</b></summary>
 
-O setup detecta sua plataforma automaticamente, verifica o Python, instala todas as dependências e guia você pela configuração.
-
-**Windows:**
-```cmd
-python setup.py
-```
-
-**Linux / Termux:**
-```bash
-python3 setup.py
-```
-
-> **Nota para Ubuntu/Debian:** O script trata automaticamente a restrição `--break-system-packages` do Python 3.12+. Não é preciso fazer nada manualmente.
-
-> **Nota para Termux:** Certifique-se de ter Python e Git instalados antes:
-> ```bash
-> pkg update && pkg install python git
-> ```
-
-### Passo 3 — Siga as perguntas na tela
-
-O setup vai pedir:
-1. `API_ID` e `API_HASH` — em [my.telegram.org](https://my.telegram.org)
-2. **ID do canal de logs** — um canal/grupo privado seu onde o bot manda alertas do sistema (formato: `-1001234567890`)
-3. **Prefixo dos comandos** — padrão é `,` (vírgula)
-4. **Idioma** — `pt` (Português) ou `en` (Inglês)
-5. *(Opcional)* Chave do Google Gemini — grátis em [aistudio.google.com](https://aistudio.google.com/app/apikey)
-6. *(Opcional)* Configuração do Google Drive
-
----
-
-## 🚀 Iniciando o Bot
-
-**Windows (primeiro plano):**
-```cmd
-python main.py
-```
-
-**Linux / Termux (primeiro plano):**
-```bash
-python3 main.py
-```
-
-**Linux — segundo plano (continua após fechar o terminal):**
-```bash
-nohup python3 main.py --background > userbot.log 2>&1 &
-```
-
-**Linux — com screen (recomendado para servidores):**
-```bash
-screen -S userbot
-python3 main.py
-# Pressione Ctrl+A, D para desanexar
-```
-
-**Ver logs em tempo real:**
-```bash
-tail -f userbot.log
-```
-
-**Parar o bot:**
-```bash
-kill $(pgrep -f 'python.*main.py')
-```
-
-> Na primeira execução, o bot vai fazer login na sua conta do Telegram (número de telefone + código). Essa sessão é salva localmente — você não precisará logar de novo.
-
----
-
-## 📚 Comandos
-
-Digite `,menu` em qualquer chat para ver todos os comandos agrupados por módulo.
-
-### 🖥️ Sistema
-| Comando | Descrição |
-|:---|:---|
-| `,menu` | Lista todos os comandos disponíveis por módulo |
-| `,versao` | Verifica versão local vs remota no GitHub |
-| `,ping` | Mede a latência do bot |
-| `,idioma [pt/en]` | Muda o idioma do bot |
-| `,id` | Retorna o ID do chat, usuário ou mensagem respondida |
-| `,stats` | Estatísticas da conta (grupos, canais, contatos, bots) |
-| `,alive` | Status completo do userbot (uptime, build, dono) |
-| `,github [user/repo]` | Consulta perfil ou repositório no GitHub |
-| `,filme [nome]` | Informações de filme ou série (OMDb) |
-
-> Gerenciamento de VPS/infraestrutura (`atualizar`, `restart`, `sysinfo`, `speed`, `processos`, `desligar`, `term`) e a foto/vídeo/gif do `,alive` agora ficam inteiramente no **Painel Bot** — veja a seção Painel Bot mais abaixo. O userbot só roda os módulos e fala com a API do Telegram.
-
-### 👮 Moderação
-| Comando | Descrição |
-|:---|:---|
-| `,ban` / `,unban` | Bane ou desbane um usuário |
-| `,mute` / `,unmute` | Silencia ou desmuta um usuário |
-| `,del` | Apaga a mensagem respondida |
-| `,purge` | Apaga todas as mensagens a partir da respondida |
-| `,purgeme [N]` | Apaga suas últimas N mensagens no chat |
-| `,sd [segundos] [texto]` | Envia mensagem que se autodestrói após N segundos |
-| `,admins` | Lista todos os admins do grupo |
-| `,zombies` | Remove contas deletadas do grupo |
-| `,gban` | Bane um usuário em todos os seus grupos admin |
-| `,fban` | Bane um usuário em todos os grupos da federação |
-| `,addfed` / `,delfed` / `,feds` | Gerencia quais grupos pertencem à sua federação |
-| `,fixar` / `,desafixar` | Fixa ou desafixa a mensagem respondida |
-| `,travar [tipo]` / `,destravar [tipo]` | Bloqueia ou desbloqueia uma permissão do grupo |
-| `,travas` | Mostra o status de todas as permissões do grupo |
-| `,setflood [msgs] [segundos]` | Muta automaticamente quem passar desse limite |
-| `,noflood` / `,flood` | Desativa o antiflood / mostra o status atual |
-
-### 👤 Conta & AFK
-| Comando | Descrição |
-|:---|:---|
-| `,afk [motivo]` | Ativa o modo AFK com auto-resposta |
-| `,unafk` | Desativa o AFK manualmente |
-| `,permit` | Autoriza um usuário a te enviar mensagens privadas |
-
-### 🧠 IA (Gemini)
-| Comando | Descrição |
-|:---|:---|
-| `,perguntar [pergunta]` | Pergunta qualquer coisa ao Google Gemini |
-| `,resumir` | Resume as últimas 50 mensagens do chat em tópicos |
-
-### 🎭 Figurinhas
-| Comando | Descrição |
-|:---|:---|
-| `,kang [emoji]` | Responda a uma figurinha/foto para roubá-la pro seu pacote |
-| `,packinfo` | Lista seus pacotes de figurinhas com links |
-
-### ⬇️ Downloader
-| Comando | Descrição |
-|:---|:---|
-| `,dlinfo [link]` | Mostra título, duração, canal e tamanho estimado antes de baixar |
-| `,dl [url]` | Baixa vídeo do YouTube, Instagram, TikTok |
-
-### 📂 Google Drive
-| Comando | Descrição |
-|:---|:---|
-| `,status` | Mostra uso do Drive (barra de espaço) |
-| `,get [url]` | Baixa um arquivo de uma URL direto para o Drive |
-| `,direto` | Responda a um arquivo do Telegram para subir no Drive |
-| `,procurar [nome]` | Pesquisa arquivos no seu Drive |
-| `,apagar [N]` | Apaga arquivo dos resultados da busca |
-| `,organizar` | Organiza os arquivos da pasta raiz em subpastas por tipo |
-
-### 👋 Gerenciamento de Grupo
-| Comando | Descrição |
-|:---|:---|
-| `,setbemvindo [mensagem]` | Define a mensagem de boas-vindas (`{name}`, `{mention}`, `{chat}`, `{count}`) |
-| `,delbemvindo` / `,bemvindo` | Remove ou mostra a mensagem de boas-vindas atual |
-| `,nota [nome]` / `,delnota [nome]` / `,notas` | Salva, remove ou lista notas rápidas (recupere com `#nome`) |
-| `,addfiltro "palavra" "resposta"` / `,delfiltro "palavra"` / `,filtros` | Gerencia filtros automáticos por grupo |
-| `,mencionar [mensagem]` | Menciona todos os membros do grupo em lotes de 5 |
-
-### 🪪 Perfil
-| Comando | Descrição |
-|:---|:---|
-| `,setname [nome]` | Altera seu nome no Telegram |
-| `,setbio [texto]` | Altera sua bio |
-| `,setpfp` | Define foto de perfil (responda a uma foto) |
-| `,delpfp` | Remove a foto de perfil atual |
-| `,clone` | Clona nome, bio e foto de perfil de outro usuário |
-| `,reverter` | Restaura seu perfil original após `,clone` |
-
-### 🛠️ Utilidades & Diversão
-| Comando | Descrição |
-|:---|:---|
-| `,carbon [código]` | Gera imagem estilizada do código via carbon.now.sh |
-| `,paste` | Envia o texto (ou mensagem respondida) para um pastebin |
-| `,hack` | Simulador de hack interativo com dados reais do alvo |
-| `,type [texto]` | Simula digitação letra por letra |
-| `,ghost [segundos] [texto]` | Envia mensagem que se autodestrói após N segundos |
-| `,fake [typing/recording/...]` | Simula ação de digitação, gravação de áudio ou vídeo |
+| Comando | O que faz |
+|---|---|
+| `,dl` · `,dlinfo` | Baixa de YouTube, Instagram, TikTok e afins |
+| `,kang` · `,packinfo` | Rouba figurinha pro seu pacote |
 | `,tr [idioma]` | Traduz a mensagem respondida |
-| `,voz [texto]` | Converte texto em áudio de voz (br, pt, en, es, ja, ru) |
-| `,print` | Gera imagem estilizada de uma mensagem respondida |
-| `,encurtar [url]` | Encurta uma URL usando o TinyURL |
-| `,ipinfo [ip]` | Exibe informações sobre um endereço IP |
-| `,clima [cidade]` | Clima atual e previsão de 3 dias |
-| `,specs [modelo]` | Especificações técnicas de celular via GSMArena |
+| `,voz [texto]` | Transforma texto em áudio |
+| `,print` | Vira a mensagem respondida numa imagem |
+| `,carbon` | Imagem estilizada de código |
+| `,paste` | Sobe texto num pastebin e devolve o link |
+| `,clima [cidade]` | Tempo agora e nos próximos 3 dias |
+| `,encurtar [url]` · `,ipinfo` · `,specs` | Encurtador, dados de IP, ficha de celular |
+| `,github user/repo` · `,filme [nome]` | Consulta GitHub e IMDb |
+| `,ghost` | Mensagem que se apaga sozinha |
+| `,perguntar` · `,resumir` | Pergunta à IA e resume as últimas 50 mensagens |
+| `,status` · `,organizar` · `,get` · `,direto` · `,procurar` · `,apagar` | Google Drive |
 
-### ⚙️ Desenvolvedor
-| Comando | Descrição |
-|:---|:---|
-| `,eval [código]` | Executa código Python dinamicamente |
-
-> Acesso a shell (`,term`) e instalação/remoção de plugin foram pro `/painel` do Painel Bot — upload de arquivo em vez de URL, com confirmação antes de apagar.
-
-### ⚡ Gatilhos
-| Comando | Descrição |
-|:---|:---|
-| `,addtrigger "palavra" "resposta"` | Adiciona uma auto-resposta por gatilho |
-| `,deltrigger "palavra"` | Remove um gatilho |
-| `,triggers` | Lista todos os gatilhos ativos |
+</details>
 
 ---
 
-## 🔑 Integrações Opcionais
+## O que vem desligado
 
-### Google Gemini IA
-1. Crie uma chave grátis em [aistudio.google.com](https://aistudio.google.com/app/apikey)
-2. Durante o `setup.py`, cole quando solicitado — ou adicione manualmente ao `config.json`:
-```json
-"GEMINI_API_KEY": "sua-chave-aqui"
+Recursos que afetam outras pessoas **começam desativados de propósito**. Uma instalação nova não bloqueia ninguém nem copia mensagem pra lugar nenhum:
+
+| Recurso | Padrão | Ligue com |
+|---|---|---|
+| Firewall de PV | desligado | `,pmpermit on` |
+| Encaminhar PVs e menções pro canal de logs | desligado | `,monitor on` |
+| Antiflood, filtros, notas, boas-vindas, travas | desligado | configurados por grupo |
+
+O bot **nunca** encaminha nem responde mensagens da conta oficial do Telegram (`777000`) — é de lá que vêm códigos de login, e mexer nisso pode travar o acesso à sua própria conta.
+
+---
+
+## Integrações opcionais
+
+<details>
+<summary><b>🧠 Google Gemini — libera <code>,perguntar</code> e <code>,resumir</code></b></summary>
+
+1. Pegue uma chave grátis em **[aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)**
+2. Cole no setup, ou adicione `"GEMINI_API_KEY": "sua-chave"` no `config.json`
+
+</details>
+
+<details>
+<summary><b>☁️ Google Drive — envio e organização automática de arquivos</b></summary>
+
+1. Abra o **[Google Cloud Console](https://console.cloud.google.com)**
+2. Crie um projeto e ative a **Google Drive API**
+3. **Credenciais → Criar credencial → ID do cliente OAuth**, tipo **Computador**
+4. Baixe o JSON, renomeie para **`client_secrets.json`** e coloque na pasta do AxonBot
+5. Rode `python setup.py` de novo e aceite configurar o Drive
+
+Na primeira conexão o navegador abre pedindo autorização; depois disso o `meu_drive.json` guarda o acesso.
+
+</details>
+
+---
+
+## Atualizando
+
+```
+,atualizar
 ```
 
-### Google Drive
-1. Acesse o [Google Cloud Console](https://console.cloud.google.com)
-2. Crie um projeto → Ative a **Google Drive API**
-3. Vá em **Credenciais** → Criar Credencial → **ID do cliente OAuth 2.0**
-4. Tipo de aplicativo: **App para computador**
-5. Baixe o JSON e salve como **`client_secrets.json`** na pasta raiz do bot
-6. Execute `setup.py` e escolha configurar o Drive — ou reinicie o bot, ele detecta o arquivo automaticamente
-7. Na primeira execução com Drive ativado, uma janela do navegador abrirá para autorizar — depois disso a sessão é salva automaticamente em `meu_drive.json`
+Ele busca a última versão da branch, aplica e reinicia sozinho.
 
-### Painel Bot
-Uma conta de **bot** separada do Telegram (`bot.py`, rodada junto com o userbot) que assume a gestão de infraestrutura da VPS e dos plugins através de um `/painel` com botões — restart, update, sysinfo, teste de velocidade, top processos, um prompt de shell, instalação/remoção de plugin (upload de arquivo) e a foto/vídeo/gif do `,alive`, tudo com teclado inline de verdade. Esse último ponto importa: **botão inline só renderiza pra conta de bot**, não pra sessão de usuário pessoal — o Telegram descarta silenciosamente o `reply_markup` enviado por um userbot. Então qualquer coisa interativa fica aqui, não no userbot.
-1. Crie um bot com o [@BotFather](https://t.me/BotFather) e pegue o token
-2. Durante o `setup.py`, escolha configurar o Painel Bot e cole o token + seu ID numérico do Telegram — ou adicione manualmente ao `config.json`:
-```json
-"BOT_TOKEN": "seu-token-aqui",
-"DONO_ID": 123456789
+> [!NOTE]
+> O `,atualizar` usa `git reset --hard`: qualquer alteração que você tenha feito nos arquivos é descartada. Se você mexe no código, use `git pull` na mão.
+
+---
+
+## Problemas comuns
+
+<details>
+<summary><b>O bot não sobe e o terminal fecha sozinho</b></summary>
+
+Rode em primeiro plano pra ver o erro: responda **n** quando ele perguntar sobre segundo plano. Ou leia o `userbot.log`, que guarda tudo.
+
+</details>
+
+<details>
+<summary><b>Escolhi segundo plano e o bot nunca ficou online</b></summary>
+
+Costumava acontecer quando ainda não havia sessão salva: o login pede o código no terminal, e em segundo plano não existe terminal pra responder. Hoje o `main.py` detecta isso e força o primeiro plano até você logar. Se ainda acontecer, apague `meu_userbot.session` e rode `python main.py` de novo.
+
+</details>
+
+<details>
+<summary><b><code>externally-managed-environment</code> ao instalar</b></summary>
+
+É o Debian/Ubuntu novo protegendo o Python do sistema. O setup já contorna. Manualmente:
+
+```bash
+pip install -r requirements.txt --break-system-packages
 ```
-3. Rode `python bot.py` junto com o `main.py` (ele já é iniciado automaticamente pelo userbot se `BOT_TOKEN` estiver definido)
-4. Mande `/painel` no PV com o bot
+
+</details>
+
+<details>
+<summary><b><code>UnicodeEncodeError</code> no Windows</b></summary>
+
+Console antigo em cp1252 engasgando com acento. O `setup.py` e o `main.py` já forçam UTF-8 na saída. Se aparecer em outro script, rode antes:
+
+```
+chcp 65001
+```
+
+</details>
+
+<details>
+<summary><b><code>Conflict: terminated by other getUpdates</code> ou dois bots respondendo</b></summary>
+
+Sobrou um processo antigo rodando. Pare todos e suba um só:
+
+```bash
+kill $(pgrep -f 'python.*main.py')     # Linux/Termux
+taskkill /F /IM pythonw.exe            # Windows
+```
+
+</details>
+
+<details>
+<summary><b>Perdi o acesso / quero deslogar</b></summary>
+
+Apague o `meu_userbot.session` e rode o setup de novo. Para revogar de qualquer lugar, use o próprio Telegram: **Configurações → Dispositivos → encerrar sessão**.
+
+</details>
 
 ---
 
-## 🛡️ Firewall de PV
+## 🇺🇸 English
 
-Quando um usuário desconhecido te manda mensagem privada, o bot intercepta e envia um **captcha matemático**. Só após resolver é que a conversa chega até você. Use `,permit` no chat do usuário para liberar manualmente.
+AxonBot is a Telegram **userbot** — it runs on your own account, not on a separate bot account. You type commands as regular messages and it edits them in place with the answer.
 
----
+**Install:**
 
-## ⚠️ Aviso Legal
+```bash
+git clone https://github.com/syhhw/AxonBot.git
+cd AxonBot
+python setup.py
+```
 
-Este projeto é apenas para fins educacionais. O uso de userbots não é oficialmente suportado pelos Termos de Serviço do Telegram. Automação massiva ou spam pode resultar em restrições na sua conta. **Use com responsabilidade.**
+The setup is interactive and walks you through everything: Python check, dependencies, credentials, optional Google Drive, and the Telegram login. Only `API_ID` and `API_HASH` are required — get them free at [my.telegram.org](https://my.telegram.org) under *API development tools*.
+
+Then run `python main.py` and type `,alive` in any Telegram chat.
+
+**The interface is bilingual.** Switch with `,idioma en` and every command answers in English. Command names work in both languages: `,atualizar` and `,update` are the same command. Type `,menu` for the full list.
+
+Features that affect other people — the PM firewall and message forwarding — ship **disabled**. Enable them with `,pmpermit on` and `,monitor on`.
+
+> **Warning:** automating a personal account is tolerated by Telegram, but spamming gets accounts banned. Your account, your risk.
 
 ---
 
 <div align="center">
-  Desenvolvido com ❤️ &nbsp;|&nbsp; <b>AxonBot</b>
+<sub>Feito com Pyrogram · Use com responsabilidade</sub>
 </div>

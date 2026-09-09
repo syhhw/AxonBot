@@ -1,6 +1,7 @@
 """
-plugins/account.py
-Comandos de conta e monitoramento: afk, unafk, permit + handlers passivos (pm_permit, auto_unafk, monitor)
+plugins/account/account.py
+Conta e firewall de PV: afk, unafk, permit, unpermit, permitidos, pmpermit,
+captcha, monitor — mais os handlers passivos (pm_permit, auto_unafk, monitor).
 
 Créditos: ,afk é um padrão popularizado por TeamUltroid (Ultroid) no
 ecossistema de userbots Telegram.
@@ -18,7 +19,6 @@ from pyrogram import Client, enums, filters
 
 from utils.commands import cmd
 from utils.helpers import (
-    alertar_dono_via_bot,
     carregar,
     prefixo,
     salvar,
@@ -26,7 +26,6 @@ from utils.helpers import (
     verificar_admin,
 )
 from utils.i18n import tr_log
-from utils.monitor_db import registrar as registrar_monitor
 
 # Estado global do AFK (compartilhado dentro deste módulo)
 AFK_ATIVO  = False
@@ -38,16 +37,21 @@ _AFK_COOLDOWN = 60          # segundos entre auto-respostas AFK para o mesmo usu
 _LOG_PM_COOLDOWN: dict[int, float] = {}
 _LOG_PM_COOLDOWN_S = 300    # log de PM: apenas 1x por usuário a cada 5 minutos
 _CAPTCHA_FALHAS: dict[int, int] = {}
-_CAPTCHA_FALHAS_LIMITE = 3  # falhas seguidas antes de alertar o dono via bot
+_CAPTCHA_FALHAS_LIMITE = 3  # falhas seguidas antes de avisar no canal de logs
 
 # Conta oficial de notificações de serviço do Telegram (códigos de login, avisos).
 # Nunca deve receber captcha nem ter mensagens encaminhadas/logadas — contém dados sensíveis.
 TELEGRAM_SERVICE_ID = 777000
 
-# ── Textos editáveis pelo painel (/painel → Mensagens) ────────────────────────
-# Override fica em "mensagens_custom" (carregar/salvar) — só as chaves que o
-# dono realmente customizou; o resto cai no padrão bilíngue abaixo.
-_MENSAGENS_PADRAO = {
+# Recursos que mexem com terceiros nascem DESLIGADOS: numa instalação nova
+# ninguém leva bloqueio no PV e nenhuma mensagem privada é encaminhada pra
+# lugar nenhum sem o dono ligar na mão (,pmpermit on / ,monitor on).
+_FIREWALL_PADRAO = False
+_MONITOR_PADRAO  = False
+_CAPTCHA_PADRAO  = True   # só tem efeito quando o firewall está ligado
+
+# ── Textos do firewall e do AFK ───────────────────────────────────────────────
+_MENSAGENS = {
     "firewall_intro": {
         "pt": "🛡️ **Firewall de Segurança**\n\nMensagens restritas. Para provar que é humano, resolva:",
         "en": "🛡️ **Security Firewall**\n\nRestricted messages. To prove you are human, solve this:",
@@ -79,12 +83,9 @@ _CAPTCHA_EMOJIS   = ["🍕", "🚀", "🐱", "⚽", "🎸", "🌵", "🎲", "�
 
 
 def _msg(chave: str, **kwargs) -> str:
-    """Busca o texto customizado no painel; cai pro padrão bilíngue se não houver."""
-    custom = carregar("mensagens_custom", {})
-    texto  = custom.get(chave)
-    if not texto:
-        padrao = _MENSAGENS_PADRAO.get(chave, {})
-        texto  = tr(padrao.get("pt", ""), padrao.get("en", ""))
+    """Texto bilíngue do firewall/AFK, já formatado."""
+    padrao = _MENSAGENS.get(chave, {})
+    texto  = tr(padrao.get("pt", ""), padrao.get("en", ""))
     try:
         return texto.format(**kwargs)
     except Exception:
@@ -92,7 +93,7 @@ def _msg(chave: str, **kwargs) -> str:
 
 
 def _gerar_captcha() -> tuple[str, str]:
-    """Gera (resposta_esperada, descrição_do_desafio) conforme captcha_tipo (painel)."""
+    """Gera (resposta_esperada, descrição_do_desafio) conforme o tipo em ,captcha."""
     tipo = carregar("captcha_tipo", "math")
     if tipo == "palavra":
         palavra = random.choice(_CAPTCHA_PALAVRAS)
@@ -190,6 +191,138 @@ async def cmd_permit(client, message):
     await message.edit_text(tr(f"✅ **PV autorizado para `{uid}`**", f"✅ **PM authorized for `{uid}`**"))
 
 
+@cmd("unpermit")
+async def cmd_unpermit(client, message):
+    """Revoga a autorização de PV de um usuário."""
+    if message.reply_to_message and message.reply_to_message.from_user:
+        uid = message.reply_to_message.from_user.id
+    elif message.chat.type == enums.ChatType.PRIVATE:
+        uid = message.chat.id
+    else:
+        return await message.edit_text(tr("⚠️ Use em PV ou responda a alguém.", "⚠️ Use in PM or reply to someone."))
+
+    permitidos = carregar("permitidos.json", [])
+    if uid not in permitidos:
+        return await message.edit_text(tr(f"ℹ️ `{uid}` não estava autorizado.", f"ℹ️ `{uid}` was not authorized."))
+    permitidos.remove(uid)
+    salvar("permitidos.json", permitidos)
+    await message.edit_text(tr(f"🚫 **PV revogado para `{uid}`**", f"🚫 **PM revoked for `{uid}`**"))
+
+
+@cmd("permitidos")
+async def cmd_permitidos(client, message):
+    """Lista os usuários autorizados a mandar PV."""
+    permitidos = carregar("permitidos.json", [])
+    if not permitidos:
+        return await message.edit_text(tr("📋 Nenhum usuário autorizado ainda.", "📋 No authorized users yet."))
+    linhas = "\n".join(f"├ `{uid}`" for uid in permitidos[:-1])
+    linhas += f"\n└ `{permitidos[-1]}`" if linhas else f"└ `{permitidos[-1]}`"
+    await message.edit_text(tr(
+        f"📋 **Autorizados a mandar PV** ({len(permitidos)})\n{linhas}",
+        f"📋 **Allowed to PM you** ({len(permitidos)})\n{linhas}",
+    ))
+
+
+_LIGAR    = ("on", "ligar", "1", "sim")
+_DESLIGAR = ("off", "desligar", "0", "nao", "não")
+
+
+def _aplicar_flag(chave: str, arg: str) -> bool | None:
+    """Grava on/off numa flag persistida. Retorna o novo estado, ou None se
+    o argumento não for reconhecido."""
+    if arg in _LIGAR:
+        novo = True
+    elif arg in _DESLIGAR:
+        novo = False
+    else:
+        return None
+    salvar(chave, novo)
+    return novo
+
+
+def _estado(ativo: bool) -> str:
+    return tr("ligado ✅", "on ✅") if ativo else tr("desligado ❌", "off ❌")
+
+
+@cmd("pmpermit")
+async def cmd_pmpermit(client, message):
+    """Liga ou desliga o firewall de mensagens privadas."""
+    p      = prefixo(client)
+    partes = message.text.split(None, 1)
+
+    if len(partes) < 2:
+        ativo = carregar("pm_firewall_ativo", _FIREWALL_PADRAO)
+        total = len(carregar("permitidos.json", []))
+        return await message.edit_text(tr(
+            f"🛡️ **Firewall de PV:** {_estado(ativo)}\n"
+            f"└ {total} usuário(s) autorizado(s)\n\n`{p}pmpermit [on/off]`",
+            f"🛡️ **PM firewall:** {_estado(ativo)}\n"
+            f"└ {total} authorized user(s)\n\n`{p}pmpermit [on/off]`",
+        ))
+
+    novo = _aplicar_flag("pm_firewall_ativo", partes[1].strip().lower())
+    if novo is None:
+        return await message.edit_text(f"⚠️ `{p}pmpermit [on/off]`")
+    await message.edit_text(tr(
+        f"🛡️ **Firewall de PV {_estado(novo)}**",
+        f"🛡️ **PM firewall {_estado(novo)}**",
+    ))
+
+
+@cmd("captcha")
+async def cmd_captcha(client, message):
+    """Liga/desliga o captcha do firewall e escolhe o tipo do desafio."""
+    p      = prefixo(client)
+    partes = message.text.split(None, 1)
+    tipos  = {"math": "math", "conta": "math", "palavra": "palavra",
+              "word": "palavra", "emoji": "emoji"}
+
+    if len(partes) < 2:
+        ativo = carregar("captcha_ativo", _CAPTCHA_PADRAO)
+        tipo  = carregar("captcha_tipo", "math")
+        return await message.edit_text(tr(
+            f"🤖 **Captcha:** {_estado(ativo)}\n└ Tipo: `{tipo}`\n\n"
+            f"`{p}captcha [on/off]`\n`{p}captcha [math/palavra/emoji]`",
+            f"🤖 **Captcha:** {_estado(ativo)}\n└ Type: `{tipo}`\n\n"
+            f"`{p}captcha [on/off]`\n`{p}captcha [math/word/emoji]`",
+        ))
+
+    arg = partes[1].strip().lower()
+    if arg in tipos:
+        salvar("captcha_tipo", tipos[arg])
+        return await message.edit_text(tr(
+            f"🤖 **Tipo de captcha:** `{tipos[arg]}`",
+            f"🤖 **Captcha type:** `{tipos[arg]}`",
+        ))
+
+    novo = _aplicar_flag("captcha_ativo", arg)
+    if novo is None:
+        return await message.edit_text(f"⚠️ `{p}captcha [on/off/math/palavra/emoji]`")
+    await message.edit_text(tr(f"🤖 **Captcha {_estado(novo)}**", f"🤖 **Captcha {_estado(novo)}**"))
+
+
+@cmd("monitor")
+async def cmd_monitor(client, message):
+    """Liga/desliga o encaminhamento de PVs e menções pro canal de logs."""
+    p      = prefixo(client)
+    partes = message.text.split(None, 1)
+
+    if len(partes) < 2:
+        ativo = carregar("monitor_forward_ativo", _MONITOR_PADRAO)
+        return await message.edit_text(tr(
+            f"📡 **Encaminhar PVs/menções pro canal de logs:** {_estado(ativo)}\n\n`{p}monitor [on/off]`",
+            f"📡 **Forward PMs/mentions to the log channel:** {_estado(ativo)}\n\n`{p}monitor [on/off]`",
+        ))
+
+    novo = _aplicar_flag("monitor_forward_ativo", partes[1].strip().lower())
+    if novo is None:
+        return await message.edit_text(f"⚠️ `{p}monitor [on/off]`")
+    await message.edit_text(tr(
+        f"📡 **Encaminhamento {_estado(novo)}**",
+        f"📡 **Forwarding {_estado(novo)}**",
+    ))
+
+
 # ==========================================
 # 📡 HANDLERS PASSIVOS (Monitoramento)
 # ==========================================
@@ -198,10 +331,10 @@ async def cmd_permit(client, message):
 async def pm_permit_checker(client, message):
     """Bloqueia mensagens privadas de usuários não autorizados.
 
-    Liga/desliga e lista de autorizados são configurados pelo painel bot
-    (/painel → 🛡️ PM Permit) — mesma chave via utils.db, aplica na hora.
+    Liga/desliga em ,pmpermit, tipo do desafio em ,captcha, liberação
+    manual em ,permit.
     """
-    if not carregar("pm_firewall_ativo", True):
+    if not carregar("pm_firewall_ativo", _FIREWALL_PADRAO):
         return
 
     permitidos = carregar("permitidos.json", [])
@@ -211,9 +344,9 @@ async def pm_permit_checker(client, message):
         return
 
     if uid not in permitidos:
-        # Captcha desativado no painel: bloqueia sem desafio — só o dono
-        # consegue liberar manualmente com ,permit ou pelo painel.
-        if not carregar("captcha_ativo", True):
+        # Captcha desligado (,captcha off): bloqueia sem desafio — só o dono
+        # libera, manualmente, com ,permit.
+        if not carregar("captcha_ativo", _CAPTCHA_PADRAO):
             try:
                 await message.reply_text(_msg("firewall_bloqueado"))
             except Exception as e:
@@ -243,16 +376,20 @@ async def pm_permit_checker(client, message):
                 falhas = _CAPTCHA_FALHAS.get(uid, 0) + 1
                 _CAPTCHA_FALHAS[uid] = falhas
                 await message.reply_text(_msg("firewall_erro"))
-                if falhas >= _CAPTCHA_FALHAS_LIMITE:
+                log_id = getattr(client, "config", {}).get("ID_CANAL_LOGS")
+                if falhas >= _CAPTCHA_FALHAS_LIMITE and log_id:
                     sender = message.from_user
                     nome   = (sender.first_name if sender else None) or "?"
                     tag    = f" (@{sender.username})" if sender and sender.username else ""
-                    cfg    = getattr(client, "config", {})
-                    await alertar_dono_via_bot(cfg, (
-                        f"⚠️ <b>Possível spam detectado</b>\n\n"
-                        f"<code>{uid}</code> — {nome}{tag}\n"
-                        f"Falhou o captcha {falhas}x seguidas tentando te mandar PV."
-                    ))
+                    try:
+                        await client.send_message(log_id, tr_log(
+                            f"⚠️ **Possível spam**\n`{uid}` — {nome}{tag}\n"
+                            f"Errou o captcha {falhas}x seguidas tentando te mandar PV.",
+                            f"⚠️ **Possible spam**\n`{uid}` — {nome}{tag}\n"
+                            f"Failed the captcha {falhas} times in a row trying to PM you.",
+                        ))
+                    except Exception as e:
+                        logger.debug(f"[account.py] ignorado: {e}")
                 message.stop_propagation()
                 return
 
@@ -314,21 +451,6 @@ async def monitor_central(client, message):
     # já sabemos que é um ou outro.
     is_pm = message.chat.type == enums.ChatType.PRIVATE
 
-    # Captura pro banco de relatórios (/painel → 📊 Relatórios) — desligável
-    # separado do resto (perda de admin, auto-resposta AFK continuam
-    # funcionando mesmo com o monitor de mensagens desativado).
-    if carregar("monitor_ativo", True):
-        registrar_monitor(
-            tipo="pm" if is_pm else "mencao",
-            chat_id=message.chat.id,
-            chat_nome=None if is_pm else (message.chat.title or "?"),
-            sender_id=uid_sender,
-            sender_nome=(sender.first_name if sender else None) or "?",
-            sender_username=sender.username if sender else None,
-            texto=message.text or message.caption or "",
-            tem_midia=bool(message.media),
-        )
-
     ts = datetime.now().strftime("%d/%m/%Y %H:%M")
 
     # Verifica perda de admin (apenas em grupos)
@@ -370,11 +492,10 @@ async def monitor_central(client, message):
     if not log_id:
         return  # sem canal de logs, não há mais nada a fazer (forward e auto-upload dependem dele)
 
-    # Encaminhamento pro canal de logs é opcional (/painel → 📊 Relatórios)
-    # agora que o histórico completo já foi gravado no banco acima — mas isso
-    # NÃO deve afetar o auto-upload pro Drive logo abaixo, que é um recurso
-    # independente (só compartilha o mesmo log_id como pré-requisito).
-    if carregar("monitor_forward_ativo", True):
+    # Encaminhar PVs/menções pro canal de logs é opcional (,monitor on/off) e
+    # NÃO afeta o auto-upload pro Drive logo abaixo, que é independente — os
+    # dois só compartilham o log_id como pré-requisito.
+    if carregar("monitor_forward_ativo", _MONITOR_PADRAO):
         # Rate-limit do log para PMs: só encaminha a primeira mensagem de cada
         # remetente a cada 5 minutos — evita spam no canal quando alguém manda
         # várias mensagens seguidas.

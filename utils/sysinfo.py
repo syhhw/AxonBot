@@ -1,8 +1,7 @@
 """
 utils/sysinfo.py
-Coleta de informações de infraestrutura (CPU, GPU, disco, rede, speedtest,
-processos). Não depende de pyrogram/telegram — usado pelo painel bot
-(bot.py), que é o dono da gestão de VPS/infraestrutura do AxonBot.
+Leitura de hardware (CPU, GPU, RAM, disco, rede) para o ,sysinfo.
+Tudo aqui bloqueia — quem chama roda via asyncio.to_thread.
 """
 import os
 import platform
@@ -153,24 +152,3 @@ def collect() -> dict:
         "os_info":     f"{platform.system()} {platform.release()} ({platform.machine()})",
         "boot_time":   psutil.boot_time(),
     }
-
-
-def run_speedtest() -> dict:
-    """Bloqueante — rodar via asyncio.to_thread()."""
-    import speedtest
-    st = speedtest.Speedtest()
-    st.get_best_server()
-    st.download()
-    st.upload()
-    return st.results.dict()
-
-
-def top_processes(n: int = 5) -> list[dict]:
-    coletados = []
-    for proc in psutil.process_iter(["pid", "name", "cpu_percent"]):
-        try:
-            coletados.append(proc.info)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
-    coletados.sort(key=lambda x: x.get("cpu_percent") or 0, reverse=True)
-    return coletados[:n]
